@@ -122,6 +122,32 @@ function TC.dividerUnder(c, listX, x)
     return nil
 end
 
+--[[ Which column the cursor is over, as one of "name" / "cat" / "mid" / "price".
+     Used for click-to-sort on the header. Returns nil past the right edge, where the
+     scrollbar gutter lives. ]]
+function TC.columnAtPoint(c, listX, x)
+    local rel = x - listX
+    if rel < 0 or rel > c.rightEdge then return nil end
+    if rel >= c.priceLeft then return "price" end
+    if rel >= c.midLeft   then return "mid" end
+    if c.hasCat and rel >= c.catLeft then return "cat" end
+    return "name"
+end
+
+--[[ A sort arrow, built from stacked rectangles rather than a glyph.
+
+     The obvious choice is a triangle character, but the game's bitmap fonts have no
+     guaranteed coverage for those code points and a missing glyph renders as nothing
+     at all -- an invisible sort indicator is worse than none. Four rects always draw.
+]]
+function TC.drawSortArrow(panel, x, y, ascending)
+    local rows = { 7, 5, 3, 1 }
+    for i, w in ipairs(rows) do
+        local step = ascending and (i - 1) or (#rows - i)
+        panel:drawRect(x + (7 - w) / 2, y + step, w, 1, 0.9, 0.85, 0.85, 0.9)
+    end
+end
+
 --[[ Draw a right-aligned string ending at `right`, held off the edge by CELL_PAD.
      Right-aligning numbers is what lets the eye compare prices down a column, and the
      padding is what stops them touching the divider. ]]

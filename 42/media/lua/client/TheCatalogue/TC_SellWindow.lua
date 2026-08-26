@@ -32,6 +32,10 @@ local BUTTON_HGT = FONT_HGT_MEDIUM + 12
 local HEADER_HGT = FONT_HGT_SMALL + 12
 local FOOTER_HGT = FONT_HGT_LARGE + FONT_HGT_SMALL + PAD * 2
 
+-- Same reasoning as the buy window: the top edge is framed by the visible title bar,
+-- the bottom edge is not, so an identical PAD reads as cramped down there.
+local BOTTOM_PAD = PAD * 2
+
 -- ---------------------------------------------------------------------------
 -- The staged list
 -- ---------------------------------------------------------------------------
@@ -122,6 +126,8 @@ function TC_SellWindow:new(x, y, w, h, playerNum)
     o.messageIsError = false
     o.colW = TC.defaultColumnWidths("sell")   -- per window, so drags do not leak across
     o.dragCol = nil
+    o.sortKey = "name"                       -- name | mid (condition) | price (value)
+    o.sortAsc = true
     o:setResizable(true)
     o.minimumWidth = 640
     o.minimumHeight = 460
@@ -130,7 +136,7 @@ end
 
 function TC_SellWindow:listGeometry()
     local listY = self:titleBarHeight() + PAD + HEADER_HGT
-    local listH = self.height - listY - FOOTER_HGT - BUTTON_HGT - PAD * 2
+    local listH = self.height - listY - FOOTER_HGT - BUTTON_HGT - PAD - BOTTOM_PAD
     return listY, listH
 end
 
@@ -148,7 +154,7 @@ function TC_SellWindow:createChildren()
     self.list.target = self
     self:addChild(self.list)
 
-    local by    = self.height - PAD - BUTTON_HGT
+    local by    = self.height - BOTTOM_PAD - BUTTON_HGT
     local third = (self.width - PAD * 4) / 3
 
     self.removeBtn = ISButton:new(PAD, by, third, BUTTON_HGT,
@@ -289,12 +295,68 @@ function TC_SellWindow:pruneStaged()
     return false
 end
 
+--[[ Comparator for the active sort.
+
+     Sorts a COPY, never self.staged itself: the staged array is the record of what
+     will be sold and in what order it will be removed, and reordering it to suit the
+     display would quietly reorder the sale.
+]]
+function TC_SellWindow:sortedStaged()
+    local out = {}
+    for _, item in ipairs(self.staged) do table.insert(out, item) end
+
+    local asc, key = self.sortAsc, self.sortKey
+
+    table.sort(out, function(a, b)
+        local an, bn = a:getDisplayName(), b:getDisplayName()
+
+        if key == "mid" then
+            local ac, bc = TC.conditionRatio(a), TC.conditionRatio(b)
+            if ac ~= bc then
+                if asc then return ac < bc end
+                return ac > bc
+            end
+            return an < bn
+        end
+
+        if key == "price" then
+            local av = TC.getSellPriceRounded(a) or 0
+            local bv = TC.getSellPriceRounded(b) or 0
+            if av ~= bv then
+                if asc then return av < bv end
+                return av > bv
+            end
+            return an < bn
+        end
+
+        if an ~= bn then
+            if asc then return an < bn end
+            return an > bn
+        end
+        return a:getFullType() < b:getFullType()
+    end)
+
+    return out
+end
+
 function TC_SellWindow:refreshList()
     self:pruneStaged()
     self.list:clear()
-    for _, item in ipairs(self.staged) do
+    for _, item in ipairs(self:sortedStaged()) do
         self.list:addItem(item:getDisplayName(), item)
     end
+end
+
+--[[ Click a header to sort by it; click the active one again to reverse. Text opens
+     ascending, numbers open descending. ]]
+function TC_SellWindow:sortBy(key)
+    if self.sortKey == key then
+        self.sortAsc = not self.sortAsc
+    else
+        self.sortKey = key
+        self.sortAsc = (key == "name")
+    end
+    self:refreshList()
 end
 
 function TC_SellWindow:total()
@@ -382,16 +444,38 @@ function TC_SellWindow:drawListHeader(headerY, listW)
     TC.drawColumnRules(self, c, PAD, headerY, HEADER_HGT, 0.4)
 
     local ty = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
-    self:drawText(TC.truncate(F, getText("IGUI_TC_ColItem"), c.nameW),
-                  PAD + c.nameLeft, ty, 0.72, 0.72, 0.76, 1, F)
+    local ay = headerY + (HEADER_HGT - 4) / 2
+    local ARROW = 11
 
-    local function headRight(key, right, avail)
-        local text = TC.truncate(F, getText(key), avail)
-        local w = getTextManager():MeasureStringX(F, text)
-        self:drawText(text, PAD + right - w - TC.UI.CELL_PAD, ty, 0.72, 0.72, 0.76, 1, F)
+    local function shade(key)
+        if self.sortKey == key then return 1, 1, 1 end
+        return 0.72, 0.72, 0.76
     end
-    headRight("IGUI_TC_ColCondition", c.midRight, c.midW)
-    headRight("IGUI_TC_ColValue", c.priceRight, c.priceW)
+
+    local nameRoom = (self.sortKey == "name") and (c.nameW - ARROW) or c.nameW
+    local nameText = TC.truncate(F, getText("IGUI_TC_ColItem"), nameRoom)
+    local nr, ng, nb = shade("name")
+    self:drawText(nameText, PAD + c.nameLeft, ty, nr, ng, nb, 1, F)
+    if self.sortKey == "name" then
+        local w = getTextManager():MeasureStringX(F, nameText)
+        TC.drawSortArrow(self, PAD + c.nameLeft + w + 4, ay, self.sortAsc)
+    end
+
+    -- The arrow goes to the LEFT of a right-aligned label, so the label keeps its edge
+    -- alignment with the numbers in the column below it.
+    local function headRight(key, tkey, right, avail)
+        local room = (self.sortKey == key) and (avail - ARROW) or avail
+        local text = TC.truncate(F, getText(tkey), room)
+        local w = getTextManager():MeasureStringX(F, text)
+        local x = PAD + right - w - TC.UI.CELL_PAD
+        local r, g, b = shade(key)
+        self:drawText(text, x, ty, r, g, b, 1, F)
+        if self.sortKey == key then
+            TC.drawSortArrow(self, x - ARROW, ay, self.sortAsc)
+        end
+    end
+    headRight("mid", "IGUI_TC_ColCondition", c.midRight, c.midW)
+    headRight("price", "IGUI_TC_ColValue", c.priceRight, c.priceW)
 
     if self.hoverDivider then
         self:drawRect(PAD + self.hoverDivider.x - 1, headerY, 3, HEADER_HGT, 0.8, 0.6, 0.7, 0.9)
@@ -435,6 +519,18 @@ function TC_SellWindow:onMouseDown(x, y)
         self:bringToTop()
         return true
     end
+
+    -- Header click sorts. Checked after the divider so the drag handle is never stolen.
+    local hx, hy, hw, hh = self:headerBand()
+    if y >= hy and y <= hy + hh and x >= hx and x <= hx + hw then
+        local col = TC.columnAtPoint(TC.columns(hw, self.colW), hx, x)
+        if col then
+            self:sortBy(col)
+            self:bringToTop()
+            return true
+        end
+    end
+
     return ISCollapsableWindow.onMouseDown(self, x, y)
 end
 
@@ -516,7 +612,7 @@ function TC_SellWindow:onResize()
     self.list:setWidth(self.width - PAD * 2)
     self.list:setHeight(listH)
 
-    local by    = self.height - PAD - BUTTON_HGT
+    local by    = self.height - BOTTOM_PAD - BUTTON_HGT
     local third = (self.width - PAD * 4) / 3
     self.removeBtn:setX(PAD);               self.removeBtn:setY(by); self.removeBtn:setWidth(third)
     self.clearBtn:setX(PAD * 2 + third);    self.clearBtn:setY(by);  self.clearBtn:setWidth(third)

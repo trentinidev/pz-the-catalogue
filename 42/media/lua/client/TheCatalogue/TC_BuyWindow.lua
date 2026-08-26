@@ -23,6 +23,15 @@ local DETAIL_W   = 340
 local BUTTON_HGT = FONT_HGT_MEDIUM + 12
 local HEADER_HGT = FONT_HGT_SMALL + 12
 
+--[[ The bottom margin has to be larger than the top one to LOOK the same.
+
+     At the top, content sits below the title bar, which is itself a visible band that
+     reads as framing. At the bottom there is only the window border and the resize
+     grip, so an identical PAD leaves the button and the row count looking pressed
+     against the edge. Matching the top's total inset is what balances it.
+]]
+local BOTTOM_PAD = PAD * 2
+
 -- ---------------------------------------------------------------------------
 -- The list
 -- ---------------------------------------------------------------------------
@@ -97,6 +106,8 @@ function TC_BuyWindow:new(x, y, w, h, playerNum)
     o.messageIsError = false
     o.colW = TC.defaultColumnWidths("buy")   -- per window, so drags do not leak across
     o.dragCol = nil
+    o.sortKey = "name"                       -- name | cat | mid (weight) | price
+    o.sortAsc = true
     o:setResizable(true)
     o.minimumWidth = 900
     o.minimumHeight = 640
@@ -107,7 +118,7 @@ function TC_BuyWindow:listGeometry()
     local top   = self:titleBarHeight() + PAD
     local listW = self.width - DETAIL_W - PAD * 3
     local listY = top + BUTTON_HGT + PAD + HEADER_HGT
-    local listH = self.height - listY - PAD - FONT_HGT_SMALL - PAD
+    local listH = self.height - listY - BOTTOM_PAD - FONT_HGT_SMALL - PAD
     return top, listW, listY, listH
 end
 
@@ -133,11 +144,15 @@ function TC_BuyWindow:createChildren()
     self.list.itemheight = ROW_HGT
     self.list.drawBorder = true
     self.list.target = self
+    -- Without this the rows fall back to the DEFAULT column widths while the header
+    -- uses the live ones, so dragging a divider moved only the header. The list needs
+    -- a way back to the window that owns the widths.
+    self.list.parentWindow = self
     self.list.onmousedown = TC_BuyWindow.onSelectItem
     self:addChild(self.list)
 
     local dx = self.width - DETAIL_W - PAD
-    local by = self.height - PAD - BUTTON_HGT
+    local by = self.height - BOTTOM_PAD - BUTTON_HGT
 
     self.minusBtn = ISButton:new(dx + PAD, by - BUTTON_HGT - PAD, 34, BUTTON_HGT, "-",
                                  self, TC_BuyWindow.onQuantityStep)
@@ -191,25 +206,101 @@ function TC_BuyWindow:onCategoryChange()
     self:refreshList()
 end
 
+--[[ Comparator for the active sort.
+
+     Every ordering falls back to the display name, which is what makes the category
+     sort group its categories into readable blocks instead of leaving each block in
+     whatever order the index happened to produce. The name tiebreak also makes the
+     sort stable in practice, which table.sort does not otherwise guarantee.
+]]
+function TC_BuyWindow:comparator()
+    local asc = self.sortAsc
+    local key = self.sortKey
+
+    local function cmp(a, b)
+        if key == "cat" then
+            if a.category ~= b.category then
+                if asc then return a.category < b.category end
+                return a.category > b.category
+            end
+            return a.name < b.name
+        end
+
+        if key == "mid" then
+            local aw, bw = a.weight or 0, b.weight or 0
+            if aw ~= bw then
+                if asc then return aw < bw end
+                return aw > bw
+            end
+            return a.name < b.name
+        end
+
+        if key == "price" then
+            local ap = TC.getBuyPrice(a.fullType) or 0
+            local bp = TC.getBuyPrice(b.fullType) or 0
+            if ap ~= bp then
+                if asc then return ap < bp end
+                return ap > bp
+            end
+            return a.name < b.name
+        end
+
+        -- name
+        if a.name ~= b.name then
+            if asc then return a.name < b.name end
+            return a.name > b.name
+        end
+        return a.fullType < b.fullType
+    end
+
+    return cmp
+end
+
 function TC_BuyWindow:refreshList()
     TC.buildIndex()
 
     local needle = string.lower(self.search:getInternalText() or "")
     local cat = self.categoryList and self.categoryList[self.categoryCombo.selected] or ""
 
-    self.list:clear()
+    -- Filter into a plain array first, sort it, then hand it to the list box. Sorting
+    -- the list box's own item wrappers afterwards would work too, but this keeps the
+    -- comparator dealing in catalogue entries rather than in UI structures.
+    local matched = {}
     for _, e in ipairs(TC.entries) do
         local catOk = (cat == "" or e.category == cat)
         -- entry.lower holds "display name  fulltype" pre-lowercased at index time,
         -- so typing matches either what the player sees or what a modder would type.
         local textOk = (needle == "" or string.find(e.lower, needle, 1, true) ~= nil)
         if catOk and textOk then
-            self.list:addItem(e.name, e)
+            table.insert(matched, e)
         end
+    end
+
+    table.sort(matched, self:comparator())
+
+    self.list:clear()
+    for _, e in ipairs(matched) do
+        self.list:addItem(e.name, e)
     end
 
     self.selectedEntry = nil
     self.list.selected = -1
+end
+
+--[[ Click a header to sort by it; click the active one again to reverse.
+
+     Text columns open ascending (A-Z) and numeric columns open descending, because
+     "show me the expensive things" is the question people actually arrive with when
+     they click a price header.
+]]
+function TC_BuyWindow:sortBy(key)
+    if self.sortKey == key then
+        self.sortAsc = not self.sortAsc
+    else
+        self.sortKey = key
+        self.sortAsc = (key == "name" or key == "cat")
+    end
+    self:refreshList()
 end
 
 --[[ ISScrollingListBox calls this as onmousedown(self.target, item.item), so the
@@ -321,23 +412,48 @@ function TC_BuyWindow:drawListHeader(listX, headerY, listW)
     TC.drawColumnRules(self, c, listX, headerY, HEADER_HGT, 0.4)
 
     local ty = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
+    local ay = headerY + (HEADER_HGT - 4) / 2      -- the arrow is 4px tall
     local F  = UIFont.Small
+    local ARROW = 11                                -- glyph width plus its gap
 
-    self:drawText(TC.truncate(F, getText("IGUI_TC_ColItem"), c.nameW),
-                  listX + c.nameLeft, ty, 0.72, 0.72, 0.76, 1, F)
-
-    if c.catW > 20 then
-        self:drawText(TC.truncate(F, getText("IGUI_TC_ColCategory"), c.catW),
-                      listX + c.catLeft + TC.UI.CELL_PAD, ty, 0.72, 0.72, 0.76, 1, F)
+    -- The active column is brighter, so which sort is in force is readable at a glance.
+    local function shade(key)
+        if self.sortKey == key then return 1, 1, 1 end
+        return 0.72, 0.72, 0.76
     end
 
-    local function headRight(key, right, avail)
-        local text = TC.truncate(F, getText(key), avail)
+    -- Left-aligned headers: label first, arrow immediately after it.
+    local function headLeft(key, tkey, x, avail)
+        local room = (self.sortKey == key) and (avail - ARROW) or avail
+        local text = TC.truncate(F, getText(tkey), room)
+        local r, g, b = shade(key)
+        self:drawText(text, x, ty, r, g, b, 1, F)
+        if self.sortKey == key then
+            local w = getTextManager():MeasureStringX(F, text)
+            TC.drawSortArrow(self, x + w + 4, ay, self.sortAsc)
+        end
+    end
+
+    -- Right-aligned headers: arrow sits to the LEFT of the label, so the label keeps
+    -- its edge alignment with the numbers underneath it.
+    local function headRight(key, tkey, right, avail)
+        local room = (self.sortKey == key) and (avail - ARROW) or avail
+        local text = TC.truncate(F, getText(tkey), room)
         local w = getTextManager():MeasureStringX(F, text)
-        self:drawText(text, listX + right - w - TC.UI.CELL_PAD, ty, 0.72, 0.72, 0.76, 1, F)
+        local x = listX + right - w - TC.UI.CELL_PAD
+        local r, g, b = shade(key)
+        self:drawText(text, x, ty, r, g, b, 1, F)
+        if self.sortKey == key then
+            TC.drawSortArrow(self, x - ARROW, ay, self.sortAsc)
+        end
     end
-    headRight("IGUI_TC_ColWeight", c.midRight, c.midW)
-    headRight("IGUI_TC_ColPrice", c.priceRight, c.priceW)
+
+    headLeft("name", "IGUI_TC_ColItem", listX + c.nameLeft, c.nameW)
+    if c.catW > 20 then
+        headLeft("cat", "IGUI_TC_ColCategory", listX + c.catLeft + TC.UI.CELL_PAD, c.catW)
+    end
+    headRight("mid", "IGUI_TC_ColWeight", c.midRight, c.midW)
+    headRight("price", "IGUI_TC_ColPrice", c.priceRight, c.priceW)
 
     -- Highlight the divider under the cursor so the drag handle is discoverable.
     if self.hoverDivider then
@@ -384,6 +500,19 @@ function TC_BuyWindow:onMouseDown(x, y)
         self:bringToTop()
         return true          -- consumed: the window must not start moving
     end
+
+    -- A click anywhere else on the header sorts by that column. Checked after the
+    -- divider so the few pixels of a drag handle are never stolen by the sort.
+    local hx, hy, hw, hh = self:headerBand()
+    if y >= hy and y <= hy + hh and x >= hx and x <= hx + hw then
+        local col = TC.columnAtPoint(TC.columns(hw, self.colW), hx, x)
+        if col then
+            self:sortBy(col)
+            self:bringToTop()
+            return true
+        end
+    end
+
     return ISCollapsableWindow.onMouseDown(self, x, y)
 end
 
@@ -449,7 +578,7 @@ function TC_BuyWindow:prerender()
         -- The detail block flows downward while the cash block below it is pinned to
         -- the bottom of the panel. On a short window the two would meet, so lines stop
         -- rather than print over it. Losing the last line beats an unreadable overlap.
-        local detailFloor = self.height - PAD - BUTTON_HGT * 2 - PAD
+        local detailFloor = self.height - BOTTOM_PAD - BUTTON_HGT * 2 - PAD
                             - FONT_HGT_LARGE - PAD - 4 - FONT_HGT_SMALL
 
         local function line(label, value, font, r, g, b)
@@ -501,13 +630,15 @@ function TC_BuyWindow:prerender()
             line(getText("IGUI_TC_CashAfter"), "$" .. after, UIFont.Medium, 0.72, 0.72, 0.76)
         end
     else
-        self:drawText(getText("IGUI_TC_SelectAnItem"), innerLeft, y + 4,
-                      0.55, 0.55, 0.6, 1, UIFont.Medium)
+        -- Truncated against the panel width: at UIFont.Medium this string is wider
+        -- than the detail panel, so it used to run off the right edge of the window.
+        self:drawText(TC.truncate(UIFont.Small, getText("IGUI_TC_SelectAnItem"), DETAIL_W - PAD * 2),
+                      innerLeft, y + 4, 0.55, 0.55, 0.6, 1, UIFont.Small)
     end
 
     -- Balance and message live in a fixed block above the controls, so they never
     -- move as the detail above them grows or shrinks.
-    local blockY = self.height - PAD - BUTTON_HGT * 2 - PAD - FONT_HGT_LARGE - PAD - 4
+    local blockY = self.height - BOTTOM_PAD - BUTTON_HGT * 2 - PAD - FONT_HGT_LARGE - PAD - 4
 
     self:drawText(getText("IGUI_TC_YourCash"), innerLeft, blockY + 4,
                   0.68, 0.68, 0.72, 1, UIFont.Small)
@@ -530,7 +661,7 @@ function TC_BuyWindow:prerender()
     local countText = (#self.list.items == 0)
         and getText("IGUI_TC_NoMatches")
         or  getText("IGUI_TC_ItemsListed", #self.list.items)
-    self:drawText(countText, PAD, self.height - PAD - FONT_HGT_SMALL,
+    self:drawText(countText, PAD, self.height - BOTTOM_PAD - FONT_HGT_SMALL,
                   0.6, 0.6, 0.64, 1, UIFont.Small)
 end
 
@@ -545,7 +676,7 @@ function TC_BuyWindow:onResize()
     self.list:setHeight(listH)
 
     local dx = self.width - DETAIL_W - PAD
-    local by = self.height - PAD - BUTTON_HGT
+    local by = self.height - BOTTOM_PAD - BUTTON_HGT
     self.minusBtn:setX(dx + PAD);        self.minusBtn:setY(by - BUTTON_HGT - PAD)
     self.qtyEntry:setX(dx + PAD + 40);   self.qtyEntry:setY(by - BUTTON_HGT - PAD)
     self.plusBtn:setX(dx + PAD + 130);   self.plusBtn:setY(by - BUTTON_HGT - PAD)
