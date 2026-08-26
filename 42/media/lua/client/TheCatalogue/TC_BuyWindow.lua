@@ -64,8 +64,9 @@ function TC_BuyList:doDrawItem(y, item, alt)
     self:drawRect(0, y + ROW_HGT - 1, self:getWidth(), 1, 0.25, 1, 1, 1)
     TC.drawColumnRules(self, c, 0, y, ROW_HGT - 1, 0.22)
 
-    if e.icon then
-        self:drawTextureScaledAspect(e.icon, TC.UI.CELL_PAD, y + (ROW_HGT - ICON) / 2,
+    local icon = TC.entryIcon(e)
+    if icon then
+        self:drawTextureScaledAspect(icon, TC.UI.CELL_PAD, y + (ROW_HGT - ICON) / 2,
                                      ICON, ICON, 1, 1, 1, 1)
     end
 
@@ -82,7 +83,7 @@ function TC_BuyList:doDrawItem(y, item, alt)
     TC.drawRight(self, string.format("%.1f", e.weight or 0), c.midRight, smallY,
                  UIFont.Small, 0.62, 0.62, 0.66)
 
-    TC.drawRight(self, "$" .. tostring(TC.getBuyPrice(e.fullType) or 0),
+    TC.drawRight(self, "$" .. TC.entryPrice(e),
                  c.priceRight, textY, UIFont.Medium, 0.78, 0.96, 0.78)
 
     return y + ROW_HGT
@@ -206,82 +207,47 @@ function TC_BuyWindow:onCategoryChange()
     self:refreshList()
 end
 
---[[ Comparator for the active sort.
+--[[ Rebuild the visible rows.
 
-     Every ordering falls back to the display name, which is what makes the category
-     sort group its categories into readable blocks instead of leaving each block in
-     whatever order the index happened to produce. The name tiebreak also makes the
-     sort stable in practice, which table.sort does not otherwise guarantee.
+     Two things here exist purely for speed, because this runs on every keystroke in
+     the search box over a ten-thousand-row catalogue.
+
+     The ordering comes from TC.sortedEntries, which caches one array per sort and
+     returns the index itself for the default name-ascending view. Filtering an
+     already-ordered array preserves that order, so nothing is sorted here at all.
+
+     The rows are then written straight into the list box's items table instead of
+     going through addItem. addItem calls getScrollHeight and setScrollHeight on every
+     single call, and both cross into Java through javaObject -- twenty thousand round
+     trips to accumulate a total that is one multiplication.
 ]]
-function TC_BuyWindow:comparator()
-    local asc = self.sortAsc
-    local key = self.sortKey
-
-    local function cmp(a, b)
-        if key == "cat" then
-            if a.category ~= b.category then
-                if asc then return a.category < b.category end
-                return a.category > b.category
-            end
-            return a.name < b.name
-        end
-
-        if key == "mid" then
-            local aw, bw = a.weight or 0, b.weight or 0
-            if aw ~= bw then
-                if asc then return aw < bw end
-                return aw > bw
-            end
-            return a.name < b.name
-        end
-
-        if key == "price" then
-            local ap = TC.getBuyPrice(a.fullType) or 0
-            local bp = TC.getBuyPrice(b.fullType) or 0
-            if ap ~= bp then
-                if asc then return ap < bp end
-                return ap > bp
-            end
-            return a.name < b.name
-        end
-
-        -- name
-        if a.name ~= b.name then
-            if asc then return a.name < b.name end
-            return a.name > b.name
-        end
-        return a.fullType < b.fullType
-    end
-
-    return cmp
-end
-
 function TC_BuyWindow:refreshList()
-    TC.buildIndex()
+    local ordered = TC.sortedEntries(self.sortKey, self.sortAsc)
 
     local needle = string.lower(self.search:getInternalText() or "")
     local cat = self.categoryList and self.categoryList[self.categoryCombo.selected] or ""
+    local filtering = (needle ~= "" or cat ~= "")
 
-    -- Filter into a plain array first, sort it, then hand it to the list box. Sorting
-    -- the list box's own item wrappers afterwards would work too, but this keeps the
-    -- comparator dealing in catalogue entries rather than in UI structures.
-    local matched = {}
-    for _, e in ipairs(TC.entries) do
-        local catOk = (cat == "" or e.category == cat)
-        -- entry.lower holds "display name  fulltype" pre-lowercased at index time,
-        -- so typing matches either what the player sees or what a modder would type.
-        local textOk = (needle == "" or string.find(e.lower, needle, 1, true) ~= nil)
-        if catOk and textOk then
-            table.insert(matched, e)
+    local items, n = {}, 0
+    for i = 1, #ordered do
+        local e = ordered[i]
+        local keep = true
+        if filtering then
+            -- entry.lower holds "display name  fulltype" pre-lowercased at index time,
+            -- so typing matches either what the player sees or what a modder would type.
+            keep = (cat == "" or e.category == cat)
+                   and (needle == "" or string.find(e.lower, needle, 1, true) ~= nil)
+        end
+        if keep then
+            n = n + 1
+            items[n] = { text = e.name, item = e, itemindex = n, height = ROW_HGT }
         end
     end
 
-    table.sort(matched, self:comparator())
-
-    self.list:clear()
-    for _, e in ipairs(matched) do
-        self.list:addItem(e.name, e)
-    end
+    self.list.items = items
+    self.list.count = n
+    self.list:setScrollHeight(n * ROW_HGT)
+    self.list:setYScroll(0)
 
     self.selectedEntry = nil
     self.list.selected = -1
@@ -705,11 +671,16 @@ function TC.openBuyWindow(playerNum, catalogueItem)
     local x = (getCore():getScreenWidth()  - w) / 2
     local y = (getCore():getScreenHeight() - h) / 2
 
+    local started = getTimestampMs()
+
     local win = TC_BuyWindow:new(x, y, w, h, playerNum)
     win:initialise()
     win:instantiate()
     win:setTitle(getText("IGUI_TC_BuyTitle"))
     win:addToUIManager()
     TC_BuyWindow.instances[playerNum] = win
+
+    print(string.format("[TheCatalogue] buy window opened in %d ms (%d rows)",
+                        getTimestampMs() - started, #win.list.items))
     return win
 end

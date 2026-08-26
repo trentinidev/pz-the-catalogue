@@ -123,6 +123,8 @@ TC.priceByType = nil   -- fullType -> base price, for O(1) lookup when selling
 function TC.buildIndex()
     if TC.entries then return end
 
+    local started = getTimestampMs()
+
     TC.entries     = {}
     TC.priceByType = {}
 
@@ -134,12 +136,16 @@ function TC.buildIndex()
 
     local overrides = TC.PRICE_OVERRIDES or {}
     local skipped = 0
+    local n = 0
 
     for i = 0, all:size() - 1 do
         local si = all:get(i)
-        local ok, fullType = pcall(function() return si:getFullName() end)
+        -- getFullName is called directly rather than through pcall. The old form
+        -- allocated a fresh closure on every one of eleven thousand iterations purely
+        -- to guard a getter that does not throw.
+        local fullType = si:getFullName()
 
-        if ok and fullType and not TC.EXCLUDED_ITEMS[fullType]
+        if fullType and not TC.EXCLUDED_ITEMS[fullType]
            and not si:getObsolete() and not si:isHidden() then
 
             local price = overrides[fullType] or priceFromFormula(si)
@@ -148,15 +154,19 @@ function TC.buildIndex()
                 TC.priceByType[fullType] = price
 
                 local name = si:getDisplayName() or fullType
-                table.insert(TC.entries, {
+                n = n + 1
+                TC.entries[n] = {
                     fullType = fullType,
                     name     = name,
                     lower    = string.lower(name .. " " .. fullType),
                     price    = price,
                     category = si:getDisplayCategory() or "Generic",
                     weight   = si:getActualWeight() or 0,
-                    icon     = si:getNormalTexture(),
-                })
+                    -- NO icon here. Resolving getNormalTexture() for every item in the
+                    -- game costs eleven thousand texture lookups at load, to draw about
+                    -- twenty rows. TC.entryIcon fetches it on first draw instead.
+                    script   = si,
+                }
             else
                 skipped = skipped + 1
             end
@@ -168,8 +178,102 @@ function TC.buildIndex()
         return a.name < b.name
     end)
 
-    print(string.format("[TheCatalogue] indexed %d items (%d excluded)",
-                        #TC.entries, skipped))
+    -- Timed because this is the one unavoidable pass over every item in the game, and
+    -- if the window ever feels slow to open again this number says whether the cost is
+    -- here or in the window.
+    print(string.format("[TheCatalogue] indexed %d items (%d excluded) in %d ms",
+                        #TC.entries, skipped, getTimestampMs() - started))
+end
+
+--[[ The inventory texture for an entry, resolved on first draw and kept.
+
+     Only the handful of rows actually on screen ever ask, so the cost is paid for
+     dozens of items instead of eleven thousand, and spread over the frames the player
+     scrolls through rather than landing all at once on the loading of the window. ]]
+function TC.entryIcon(e)
+    if e.icon == nil then
+        if e.script then
+            e.icon = e.script:getNormalTexture() or false
+        else
+            e.icon = false        -- false, not nil, so we never retry a failed lookup
+        end
+    end
+    if e.icon == false then return nil end
+    return e.icon
+end
+
+--[[ Display price for an entry, straight off the stored base. Saves the fullType table
+     lookup that getBuyPrice does, which matters when this is called per row per frame. ]]
+function TC.entryPrice(e)
+    return roundPrice(e.price * TC.opt("PriceMultiplier"))
+end
+
+-- ---------------------------------------------------------------------------
+-- Sorted views of the index
+-- ---------------------------------------------------------------------------
+
+local function comparatorFor(key, asc)
+    return function(a, b)
+        if key == "cat" then
+            if a.category ~= b.category then
+                if asc then return a.category < b.category end
+                return a.category > b.category
+            end
+            return a.name < b.name
+        end
+
+        if key == "mid" then
+            local aw, bw = a.weight or 0, b.weight or 0
+            if aw ~= bw then
+                if asc then return aw < bw end
+                return aw > bw
+            end
+            return a.name < b.name
+        end
+
+        if key == "price" then
+            -- The stored base, not getBuyPrice(). The sandbox multiplier is positive
+            -- and uniform, so it cannot change the ordering, and reading it through a
+            -- function for every one of a quarter-million comparisons was most of what
+            -- made a price sort expensive.
+            if a.price ~= b.price then
+                if asc then return a.price < b.price end
+                return a.price > b.price
+            end
+            return a.name < b.name
+        end
+
+        if a.name ~= b.name then
+            if asc then return a.name < b.name end
+            return a.name > b.name
+        end
+        return a.fullType < b.fullType
+    end
+end
+
+--[[ The whole index in the requested order.
+
+     Sorting ten thousand entries through a Lua comparator is not cheap on this
+     interpreter, so each ordering is built at most once per session and kept. The
+     default view -- name, ascending -- is the order buildIndex already leaves the
+     index in, so opening the window sorts nothing at all.
+]]
+function TC.sortedEntries(key, asc)
+    TC.buildIndex()
+
+    if key == "name" and asc then return TC.entries end
+
+    TC.sortCache = TC.sortCache or {}
+    local cacheKey = key .. (asc and "+" or "-")
+    local cached = TC.sortCache[cacheKey]
+    if cached then return cached end
+
+    local arr = {}
+    for i = 1, #TC.entries do arr[i] = TC.entries[i] end
+    table.sort(arr, comparatorFor(key, asc))
+
+    TC.sortCache[cacheKey] = arr
+    return arr
 end
 
 -- ---------------------------------------------------------------------------
