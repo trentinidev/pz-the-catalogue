@@ -1,0 +1,502 @@
+--[[ The Catalogue -- the sell window.
+
+     WHY ITEMS DO NOT ACTUALLY MOVE. The original design was a real ItemContainer with
+     an enormous capacity, which the player fills and then sells. ItemContainer.new()
+     works fine from Lua -- the game builds the floor container that way -- but a
+     container created in Lua and attached to no IsoObject IS NEVER SAVED, and the
+     game exposes no OnSave or OnQuit event to Lua to empty it on the way out. Vanilla
+     has exactly one save-lifecycle hook, OnPlayerDeath. Anyone who alt-F4s or quits
+     to the menu with a full sell box would lose every item in it, silently.
+
+     So nothing moves. Items are STAGED: the window holds references to items that are
+     still sitting in whatever container they came from, shows what each is worth, and
+     only removes them at the moment the sale is confirmed. Closing the window, dying,
+     crashing or quitting all cost nothing, because there is nothing to give back.
+
+     The one thing this gives up is weight relief -- staged loot still weighs on the
+     player until it sells. Everything else about the described behaviour is intact,
+     including unlimited capacity: you can stage as much as you can reach.
+]]
+
+TheCatalogue = TheCatalogue or {}
+local TC = TheCatalogue
+
+local FONT_HGT_SMALL  = getTextManager():getFontHeight(UIFont.Small)
+local FONT_HGT_MEDIUM = getTextManager():getFontHeight(UIFont.Medium)
+local FONT_HGT_LARGE  = getTextManager():getFontHeight(UIFont.Large)
+
+local PAD        = 14
+local ROW_HGT    = 34
+local ICON       = 26
+local BUTTON_HGT = FONT_HGT_MEDIUM + 12
+local HEADER_HGT = FONT_HGT_SMALL + 12
+local FOOTER_HGT = FONT_HGT_LARGE + FONT_HGT_SMALL + PAD * 2
+
+-- ---------------------------------------------------------------------------
+-- The staged list
+-- ---------------------------------------------------------------------------
+
+TC_SellList = ISScrollingListBox:derive("TC_SellList")
+
+-- Same culling reason as the buy list: the base class draws every row every frame.
+function TC_SellList:doDrawItem(y, item, alt)
+    local scroll = self:getYScroll()
+    if y + ROW_HGT + scroll < 0 or y + scroll > self.height then
+        return y + ROW_HGT
+    end
+
+    local it = item.item
+    local c  = TC.columns(self.width, { conditionColumn = true })
+
+    if self.selected == item.index then
+        self:drawRect(0, y, self:getWidth(), ROW_HGT - 1, 0.55, 0.24, 0.34, 0.45)
+    end
+    self:drawRect(0, y + ROW_HGT - 1, self:getWidth(), 1, 0.25, 1, 1, 1)
+
+    local tex = it:getTex()
+    if tex then
+        self:drawTextureScaledAspect(tex, TC.UI.CELL_PAD, y + (ROW_HGT - ICON) / 2,
+                                     ICON, ICON, 1, 1, 1, 1)
+    end
+
+    local textY  = y + (ROW_HGT - FONT_HGT_MEDIUM) / 2
+    local smallY = y + (ROW_HGT - FONT_HGT_SMALL) / 2
+
+    self:drawText(TC.truncate(UIFont.Medium, it:getDisplayName(), c.nameW),
+                  c.nameLeft, textY, 1, 1, 1, 1, UIFont.Medium)
+
+    -- Condition, but only when the item actually models wear. Printing "100%" beside
+    -- a nail is noise; the absence of a figure is itself the information.
+    local ratio = TC.conditionRatio(it)
+    if ratio < 0.999 then
+        local pct = string.format("%d%%", math.floor(ratio * 100 + 0.5))
+        -- Colour carries the warning: green is fine, amber is worn, red is nearly spent.
+        local r, g, b = 0.55, 0.9, 0.55
+        if ratio < 0.3 then r, g, b = 0.95, 0.45, 0.4
+        elseif ratio < 0.7 then r, g, b = 0.95, 0.82, 0.45 end
+        TC.drawRight(self, pct, c.midRight, smallY, UIFont.Small, r, g, b)
+    end
+
+    local value = TC.getSellPriceRounded(it)
+    if value then
+        TC.drawRight(self, "$" .. value, c.priceRight, textY, UIFont.Medium, 0.78, 0.96, 0.78)
+    else
+        TC.drawRight(self, getText("IGUI_TC_NoValue"), c.priceRight, smallY,
+                     UIFont.Small, 0.7, 0.45, 0.45)
+    end
+
+    return y + ROW_HGT
+end
+
+--[[ The drop target. ISMouseDrag.dragging holds whatever the inventory pane picked
+     up; getActualItems flattens grouped stacks into real InventoryItems, and skips
+     the dummy duplicate that leads each group. ]]
+function TC_SellList:onMouseUp(x, y)
+    if ISMouseDrag.dragging ~= nil and ISMouseDrag.draggingFocus ~= self then
+        local dropped = ISInventoryPane.getActualItems(ISMouseDrag.dragging)
+        if dropped and #dropped > 0 then
+            self.parentWindow:stageItems(dropped)
+            ISMouseDrag.dragging = nil
+            return
+        end
+    end
+    ISScrollingListBox.onMouseUp(self, x, y)
+end
+
+-- ---------------------------------------------------------------------------
+-- The window
+-- ---------------------------------------------------------------------------
+
+TC_SellWindow = ISCollapsableWindow:derive("TC_SellWindow")
+TC_SellWindow.instances = TC_SellWindow.instances or {}
+
+function TC_SellWindow:new(x, y, w, h, playerNum)
+    local o = ISCollapsableWindow:new(x, y, w, h)
+    setmetatable(o, self)
+    self.__index = self
+    o.playerNum = playerNum
+    o.player = getSpecificPlayer(playerNum)
+    o.staged = {}
+    o.message = nil
+    o.messageIsError = false
+    o:setResizable(true)
+    o.minimumWidth = 640
+    o.minimumHeight = 460
+    return o
+end
+
+function TC_SellWindow:listGeometry()
+    local listY = self:titleBarHeight() + PAD + HEADER_HGT
+    local listH = self.height - listY - FOOTER_HGT - BUTTON_HGT - PAD * 2
+    return listY, listH
+end
+
+function TC_SellWindow:createChildren()
+    ISCollapsableWindow.createChildren(self)
+
+    local listY, listH = self:listGeometry()
+
+    self.list = TC_SellList:new(PAD, listY, self.width - PAD * 2, listH)
+    self.list:initialise()
+    self.list:instantiate()
+    self.list.itemheight = ROW_HGT
+    self.list.drawBorder = true
+    self.list.parentWindow = self
+    self.list.target = self
+    self:addChild(self.list)
+
+    local by    = self.height - PAD - BUTTON_HGT
+    local third = (self.width - PAD * 4) / 3
+
+    self.removeBtn = ISButton:new(PAD, by, third, BUTTON_HGT,
+                                  getText("IGUI_TC_RemoveSelected"), self, TC_SellWindow.onRemoveSelected)
+    self.removeBtn:initialise(); self.removeBtn:instantiate()
+    self:addChild(self.removeBtn)
+
+    self.clearBtn = ISButton:new(PAD * 2 + third, by, third, BUTTON_HGT,
+                                 getText("IGUI_TC_ClearAll"), self, TC_SellWindow.onClearAll)
+    self.clearBtn:initialise(); self.clearBtn:instantiate()
+    self:addChild(self.clearBtn)
+
+    self.sellBtn = ISButton:new(PAD * 3 + third * 2, by, third, BUTTON_HGT,
+                                getText("IGUI_TC_Sell"), self, TC_SellWindow.onSell)
+    self.sellBtn:initialise(); self.sellBtn:instantiate()
+    self:addChild(self.sellBtn)
+end
+
+-- ---------------------------------------------------------------------------
+-- Staging
+-- ---------------------------------------------------------------------------
+
+local function isStaged(self, item)
+    for _, it in ipairs(self.staged) do
+        if it == item then return true end
+    end
+    return false
+end
+
+--[[ Is this item sitting inside something already staged?
+
+     It matters because selling a bag sells its contents with it (see
+     TC.getSellValue). If both the bag and a book inside it were staged, the book
+     would be counted twice and then removed twice. Walking up the container chain
+     catches that before it can happen.
+]]
+local function isInsideStaged(self, item)
+    local ok, container = pcall(function() return item:getContainer() end)
+    local guard = 0
+    while ok and container and guard < 8 do
+        local okp, parent = pcall(function() return container:getContainingItem() end)
+        if not okp or not parent then return false end
+        if isStaged(self, parent) then return true end
+        ok, container = pcall(function() return parent:getContainer() end)
+        guard = guard + 1
+    end
+    return false
+end
+
+--[[ Is the player holding or wearing this right now?
+
+     Lifted from ISUnequipAction, which is the game's own answer to the same question:
+     an item is in use if it is in either hand or in the worn-items list. There is no
+     single isEquipped on IsoPlayer that covers all three.
+]]
+local function isInUse(player, item)
+    if not player then return false end
+    if player:getPrimaryHandItem() == item then return true end
+    if player:getSecondaryHandItem() == item then return true end
+    local ok, worn = pcall(function() return player:getWornItems() end)
+    if ok and worn and worn:contains(item) then return true end
+    return false
+end
+
+--[[ Reasons an item is refused, in the order a player would expect to hear them. ]]
+function TC_SellWindow:canStage(item)
+    if item:getFullType() == TC.ITEM_FULL then
+        return false, getText("IGUI_TC_RefuseCatalogue")
+    end
+
+    local okFav, fav = pcall(function() return item:isFavorite() end)
+    if okFav and fav then
+        return false, getText("IGUI_TC_RefuseFavorite")
+    end
+
+    if isInUse(self.player, item) then
+        return false, getText("IGUI_TC_RefuseEquipped")
+    end
+
+    local value, reason = TC.getSellPriceRounded(item)
+    if not value then
+        if reason == "condition" then return false, getText("IGUI_TC_RefuseCondition") end
+        return false, getText("IGUI_TC_RefuseNotListed")
+    end
+
+    if not TC.opt("SellContainerContents") then
+        local okInv, inv = pcall(function() return item:getInventory() end)
+        if okInv and inv and inv:getItems():size() > 0 then
+            return false, getText("IGUI_TC_RefuseNotEmpty")
+        end
+    end
+
+    return true
+end
+
+function TC_SellWindow:stageItems(items)
+    local added, refused, lastReason = 0, 0, nil
+
+    for _, item in ipairs(items) do
+        if isStaged(self, item) or isInsideStaged(self, item) then
+            -- Already accounted for; not an error worth reporting.
+        else
+            local ok, reason = self:canStage(item)
+            if ok then
+                table.insert(self.staged, item)
+                added = added + 1
+            else
+                refused = refused + 1
+                lastReason = reason
+            end
+        end
+    end
+
+    self:refreshList()
+
+    if added > 0 and refused == 0 then
+        self:setMessage(getText("IGUI_TC_Staged", added), false)
+    elseif added > 0 then
+        self:setMessage(getText("IGUI_TC_StagedSomeRefused", added, refused), false)
+    elseif lastReason then
+        self:setMessage(lastReason, true)
+    end
+end
+
+--[[ Drop anything that has left the world behind our back -- eaten, dropped on the
+     floor, moved into a container we can no longer see. Called before every render
+     path that reads self.staged, so a stale reference never reaches the sale. ]]
+function TC_SellWindow:pruneStaged()
+    local kept = {}
+    for _, item in ipairs(self.staged) do
+        local ok, container = pcall(function() return item:getContainer() end)
+        if ok and container then table.insert(kept, item) end
+    end
+    if #kept ~= #self.staged then
+        self.staged = kept
+        return true
+    end
+    return false
+end
+
+function TC_SellWindow:refreshList()
+    self:pruneStaged()
+    self.list:clear()
+    for _, item in ipairs(self.staged) do
+        self.list:addItem(item:getDisplayName(), item)
+    end
+end
+
+function TC_SellWindow:total()
+    local sum = 0
+    for _, item in ipairs(self.staged) do
+        local v = TC.getSellPriceRounded(item)
+        if v then sum = sum + v end
+    end
+    return sum
+end
+
+-- ---------------------------------------------------------------------------
+-- Buttons
+-- ---------------------------------------------------------------------------
+
+function TC_SellWindow:onRemoveSelected()
+    local sel = self.list.items[self.list.selected]
+    if not sel then return end
+    for i, item in ipairs(self.staged) do
+        if item == sel.item then
+            table.remove(self.staged, i)
+            break
+        end
+    end
+    self:refreshList()
+    self.message = nil
+end
+
+function TC_SellWindow:onClearAll()
+    self.staged = {}
+    self:refreshList()
+    self.message = nil
+end
+
+function TC_SellWindow:onSell()
+    self:pruneStaged()
+
+    if #self.staged == 0 then
+        self:setMessage(getText("IGUI_TC_NothingStaged"), true)
+        return
+    end
+
+    local total, sold = 0, 0
+
+    for _, item in ipairs(self.staged) do
+        local value = TC.getSellPriceRounded(item)
+        local container = item:getContainer()
+        if value and container then
+            container:Remove(item)
+            total = total + value
+            sold = sold + 1
+        end
+    end
+
+    self.staged = {}
+    self:refreshList()
+
+    if sold == 0 then
+        self:setMessage(getText("IGUI_TC_NothingStaged"), true)
+        return
+    end
+
+    TC.giveCash(self.player, total)
+    self:setMessage(getText("IGUI_TC_Sold", sold, total), false)
+end
+
+function TC_SellWindow:setMessage(text, isError)
+    self.message = text
+    self.messageIsError = isError and true or false
+end
+
+-- ---------------------------------------------------------------------------
+-- Drawing
+-- ---------------------------------------------------------------------------
+
+function TC_SellWindow:drawListHeader(headerY, listW)
+    local c = TC.columns(listW, { conditionColumn = true })
+
+    self:drawRect(PAD, headerY, listW, HEADER_HGT, 0.6, 0.13, 0.13, 0.15)
+    self:drawRectBorder(PAD, headerY, listW, HEADER_HGT, 0.5, 0.4, 0.4, 0.4)
+
+    local ty = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
+    self:drawText(getText("IGUI_TC_ColItem"), PAD + c.nameLeft, ty, 0.72, 0.72, 0.76, 1, UIFont.Small)
+
+    local function headRight(text, right)
+        local w = getTextManager():MeasureStringX(UIFont.Small, text)
+        self:drawText(text, PAD + right - w - TC.UI.CELL_PAD, ty, 0.72, 0.72, 0.76, 1, UIFont.Small)
+    end
+    headRight(getText("IGUI_TC_ColCondition"), c.midRight)
+    headRight(getText("IGUI_TC_ColValue"), c.priceRight)
+end
+
+function TC_SellWindow:prerender()
+    ISCollapsableWindow.prerender(self)
+
+    if self:pruneStaged() then self:refreshList() end
+
+    local listY, listH = self:listGeometry()
+    local listW = self.width - PAD * 2
+    self:drawListHeader(listY - HEADER_HGT, listW)
+
+    if #self.staged == 0 then
+        -- The empty state has to say what to do: a blank box with a Sell button under
+        -- it explains nothing.
+        local hint = getText("IGUI_TC_DragHint")
+        local hw = getTextManager():MeasureStringX(UIFont.Medium, hint)
+        self:drawText(hint, (self.width - hw) / 2, listY + listH / 2 - FONT_HGT_MEDIUM,
+                      0.6, 0.6, 0.64, 1, UIFont.Medium)
+
+        local sub = getText("IGUI_TC_DragHintSub")
+        local sw = getTextManager():MeasureStringX(UIFont.Small, sub)
+        self:drawText(sub, (self.width - sw) / 2, listY + listH / 2 + 6,
+                      0.45, 0.45, 0.5, 1, UIFont.Small)
+    end
+
+    -- Footer: staged count on the left, payout on the right, spread note beneath.
+    local footY = listY + listH + PAD
+
+    self:drawRect(PAD, footY - 6, listW, 1, 0.3, 1, 1, 1)
+
+    self:drawText(getText("IGUI_TC_StagedCount", #self.staged), PAD, footY + 6,
+                  0.62, 0.62, 0.66, 1, UIFont.Small)
+
+    local label = getText("IGUI_TC_TotalPayout")
+    local total = self:total()
+    local tText = "$" .. total
+    local tw = getTextManager():MeasureStringX(UIFont.Large, tText)
+    local lw = getTextManager():MeasureStringX(UIFont.Small, label)
+
+    self:drawText(tText, self.width - PAD - tw, footY, 0.85, 1, 0.85, 1, UIFont.Large)
+    self:drawText(label, self.width - PAD - tw - lw - PAD, footY + (FONT_HGT_LARGE - FONT_HGT_SMALL) / 2,
+                  0.68, 0.68, 0.72, 1, UIFont.Small)
+
+    -- Spell out the spread rather than leaving the player to work out why the total
+    -- falls short of the sticker prices.
+    local msgY = footY + FONT_HGT_LARGE + 6
+    if self.message then
+        local msg = TC.truncate(UIFont.Small, self.message, listW)
+        if self.messageIsError then
+            self:drawText(msg, PAD, msgY, 1, 0.3, 0.3, 1, UIFont.Small)
+        else
+            self:drawText(msg, PAD, msgY, 0.6, 1, 0.6, 1, UIFont.Small)
+        end
+    else
+        local ratio = TC.opt("SellRatio")
+        if ratio < 1 then
+            local note = getText("IGUI_TC_SellRatioNote",
+                                 string.format("%d", math.floor((1 - ratio) * 100 + 0.5)))
+            self:drawText(note, PAD, msgY, 0.5, 0.5, 0.55, 1, UIFont.Small)
+        end
+    end
+end
+
+function TC_SellWindow:onResize()
+    ISCollapsableWindow.onResize(self)
+
+    local listY, listH = self:listGeometry()
+    self.list:setWidth(self.width - PAD * 2)
+    self.list:setHeight(listH)
+
+    local by    = self.height - PAD - BUTTON_HGT
+    local third = (self.width - PAD * 4) / 3
+    self.removeBtn:setX(PAD);               self.removeBtn:setY(by); self.removeBtn:setWidth(third)
+    self.clearBtn:setX(PAD * 2 + third);    self.clearBtn:setY(by);  self.clearBtn:setWidth(third)
+    self.sellBtn:setX(PAD * 3 + third * 2); self.sellBtn:setY(by);   self.sellBtn:setWidth(third)
+end
+
+function TC_SellWindow:close()
+    -- Nothing to hand back: staged items never left their containers.
+    self.staged = {}
+    ISCollapsableWindow.close(self)
+    self:removeFromUIManager()
+    TC_SellWindow.instances[self.playerNum] = nil
+end
+
+-- ---------------------------------------------------------------------------
+
+function TC.openSellWindow(playerNum, catalogueItem)
+    local existing = TC_SellWindow.instances[playerNum]
+    if existing then
+        existing:setVisible(true)
+        existing:bringToTop()
+        return existing
+    end
+
+    local w = math.min(820, getCore():getScreenWidth()  - 80)
+    local h = math.min(620, getCore():getScreenHeight() - 80)
+    local x = (getCore():getScreenWidth()  - w) / 2
+    local y = (getCore():getScreenHeight() - h) / 2
+
+    local win = TC_SellWindow:new(x, y, w, h, playerNum)
+    win:initialise()
+    win:instantiate()
+    win:setTitle(getText("IGUI_TC_SellTitle"))
+    win:addToUIManager()
+    TC_SellWindow.instances[playerNum] = win
+    return win
+end
+
+--[[ Death empties the box. The items are still wherever they were -- on the corpse,
+     usually -- but the window must not keep pointing at them. ]]
+Events.OnPlayerDeath.Add(function(player)
+    local num = player and player:getPlayerNum()
+    local win = num and TC_SellWindow.instances[num]
+    if win then win:close() end
+    local buy = num and TC_BuyWindow and TC_BuyWindow.instances[num]
+    if buy then buy:close() end
+end)

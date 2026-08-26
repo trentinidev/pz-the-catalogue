@@ -1,0 +1,6 @@
+# Project Zomboid writes nothing into a mod folder, so this is mostly OS noise.
+Thumbs.db
+desktop.ini
+.DS_Store
+*.bak
+*.tmp

@@ -1,0 +1,18 @@
+{
+    "Sandbox_TheCatalogue": "The Catalogue",
+
+    "Sandbox_TheCatalogue_PriceMultiplier": "Price multiplier",
+    "Sandbox_TheCatalogue_PriceMultiplier_tooltip": "Scales every buy price. Sell prices follow automatically, since they are derived from the buy price.",
+
+    "Sandbox_TheCatalogue_SellRatio": "Sell ratio",
+    "Sandbox_TheCatalogue_SellRatio_tooltip": "Fraction of an item's value paid out when selling. 0.9 means a 10 percent spread. Setting this to 1.0 makes buying and selling lossless, which turns any value-adding craft into an infinite money loop.",
+
+    "Sandbox_TheCatalogue_MaxQuantityPerPurchase": "Max quantity per purchase",
+    "Sandbox_TheCatalogue_MaxQuantityPerPurchase_tooltip": "Upper bound on the quantity field in the buy panel.",
+
+    "Sandbox_TheCatalogue_SellContainerContents": "Sell container contents",
+    "Sandbox_TheCatalogue_SellContainerContents_tooltip": "When on, selling a bag or a loaded gun sells what is inside it too, at its own value. When off, the catalogue refuses non-empty containers.",
+
+    "Sandbox_TheCatalogue_MinConditionToSell": "Minimum condition to sell",
+    "Sandbox_TheCatalogue_MinConditionToSell_tooltip": "Items below this fraction of condition are refused. 0.0 accepts anything, including near-broken gear and rotten food."
+}

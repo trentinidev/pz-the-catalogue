@@ -1,0 +1,74 @@
+/* The Catalogue -- sandbox options.
+
+   FORMAT WARNINGS, both of which fail silently:
+     * this file is parsed by ScriptParser, so comments are the C-style block form ONLY.
+       A // line comment is not merely unsupported -- the parser has no rule for it, the
+       text survives into the token stream as garbage, and the whole block silently fails
+       to register with nothing written to the log.
+     * every option id must contain EXACTLY ONE dot. SandboxOptions.parseName splits on it
+       and falls back to a null table name when the split is not two parts, which drops the
+       option into the root of SandboxVars instead of under TheCatalogue.
+
+   WHERE TO FIND THESE IN GAME: custom sandbox options are drawn by the SERVER SETTINGS
+   screen (Host -> Manage settings), not by the singleplayer sandbox screen -- the only
+   consumer of SandboxOptions.isCustom() in the game's Lua is ServerSettingsScreen.lua.
+   For a solo save you can also hand-edit <save>_SandboxVars.lua:
+       TheCatalogue = { PriceMultiplier = 1.0, SellRatio = 0.9 },
+*/
+
+VERSION = 1,
+
+/* Scales every buy price. Raise it to make the world expensive and money scarce,
+   lower it to make looting cash meaningful. Sell prices follow automatically, since
+   they are derived from the buy price. */
+option TheCatalogue.PriceMultiplier
+{
+    type = double,
+    min = 0.05, max = 20.0,
+    default = 1.0,
+    page = TheCatalogue,
+    translation = TheCatalogue_PriceMultiplier,
+}
+
+/* Fraction of an item's value paid out when selling. 0.9 is the 10% spread asked for.
+   Setting this to 1.0 makes buy and sell lossless, which turns any craft that adds
+   value into an infinite money loop -- deliberately allowed, but be aware. */
+option TheCatalogue.SellRatio
+{
+    type = double,
+    min = 0.0, max = 1.0,
+    default = 0.9,
+    page = TheCatalogue,
+    translation = TheCatalogue_SellRatio,
+}
+
+/* Upper bound on the quantity spinner in the buy panel. */
+option TheCatalogue.MaxQuantityPerPurchase
+{
+    type = integer,
+    min = 1, max = 1000,
+    default = 100,
+    page = TheCatalogue,
+    translation = TheCatalogue_MaxQuantityPerPurchase,
+}
+
+/* When on, selling a bag or a loaded gun sells its contents too, at their own value.
+   When off, the catalogue refuses non-empty containers and loaded firearms. */
+option TheCatalogue.SellContainerContents
+{
+    type = boolean,
+    default = true,
+    page = TheCatalogue,
+    translation = TheCatalogue_SellContainerContents,
+}
+
+/* Minimum condition an item must have to be accepted for sale, as a fraction.
+   0.0 accepts anything including near-broken gear and rotten food. */
+option TheCatalogue.MinConditionToSell
+{
+    type = double,
+    min = 0.0, max = 1.0,
+    default = 0.0,
+    page = TheCatalogue,
+    translation = TheCatalogue_MinConditionToSell,
+}

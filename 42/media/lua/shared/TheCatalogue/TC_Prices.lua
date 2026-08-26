@@ -1,0 +1,293 @@
+--[[ The Catalogue -- the price engine.
+
+     Two layers. TC_Overrides.lua pins the items whose price carries balance weight;
+     everything else lands on the formula below, which reads only what a ScriptItem
+     will reliably give us: its display category and its weight.
+
+     WHY NOT INSTANTIATE EVERY ITEM. instanceItem() would hand us the full
+     InventoryItem API -- damage, nutrition, capacity -- and a far smarter formula.
+     It would also mean constructing ~5,000 Java objects during the loading screen to
+     read four fields off each and throw them away. The category table below buys most
+     of that accuracy for none of that cost, and the overrides cover the rest.
+
+     The index is built lazily on first use, not at file load: getAllItems() is not
+     safe to call while scripts are still being parsed.
+]]
+
+TheCatalogue = TheCatalogue or {}
+local TC = TheCatalogue
+
+--[[ Base price per display category, before the weight curve.
+
+     Read these as "what a typical, unremarkable member of this category costs".
+     Weight then spreads the category out -- see priceFromFormula.
+
+     The categories are the game's own DisplayCategory values, all 80 of them as of
+     42.20. An unlisted category falls back to DEFAULT_BASE rather than vanishing,
+     so a future patch adding a category leaves those items buyable at a dull price
+     rather than silently dropping them out of the catalogue.
+]]
+local DEFAULT_BASE = 4
+
+local CATEGORY_BASE = {
+    -- Food and drink
+    Food = 1.1, Cooking = 6, Water = 1, WaterContainer = 8,
+
+    -- Weapons. Weapon is the firearms-and-serious-blades bucket; the rest are the
+    -- improvised categories, priced as the scavenged junk they are.
+    Weapon = 95, ToolWeapon = 13, WeaponCrafted = 9, WeaponPart = 55,
+    MaterialWeapon = 6, HouseholdWeapon = 6, JunkWeapon = 4, SportsWeapon = 12,
+    GardeningWeapon = 8, CookingWeapon = 7, InstrumentWeapon = 10,
+    AnimalPartWeapon = 4, FishingWeapon = 7, FirstAidWeapon = 5,
+    VehicleMaintenanceWeapon = 8, WeaponImprovised = 4, BrokenWeapon = 1,
+    Ammo = 9, Explosives = 70,
+
+    -- Tools and hardware
+    Tool = 14, Material = 3.5, Household = 5, Electronics = 40,
+    VehicleMaintenance = 26, Security = 55, Paint = 5,
+
+    -- Carry
+    Container = 5, Bag = 30,
+
+    -- Furniture. Cheap per kilo on purpose: the weight curve does the work, and a
+    -- looted couch should not outprice a rifle.
+    Furniture = 2.2, Appearance = 5, Memento = 3, Junk = 1, Teddy = 3,
+
+    -- Paper
+    Literature = 3.5, SkillBook = 40, RecipeResource = 26, Cartography = 14,
+    Entertainment = 9,
+
+    -- Medicine
+    FirstAid = 10, Bandage = 1.5,
+
+    -- Worn
+    Clothing = 11, ProtectiveGear = 32, Accessory = 7,
+
+    -- Outdoors
+    Camping = 16, Fishing = 11, Trapping = 9, Gardening = 4.5,
+    LightSource = 14, FireSource = 2.5, AnimalPart = 3,
+
+    -- Signal
+    Communications = 40, Instrument = 75, Sports = 13,
+
+    -- Odds and ends
+    Bug = 0.5, Generic = 2,
+}
+
+TC.CATEGORY_BASE = CATEGORY_BASE
+
+--[[ The weight curve.
+
+     Sub-linear on purpose. A 40 kg generator should not cost fifty times a 0.8 kg can
+     of beans purely on mass, but weight is still the only handle the formula has on
+     "how much stuff is this", so it has to count for something. w^0.85 splits the
+     difference; the 0.55 floor keeps featherweight items from rounding to nothing.
+]]
+local function weightFactor(w)
+    if type(w) ~= "number" or w <= 0 then return 0.55 end
+    return 0.55 + 0.45 * (w ^ 0.85)
+end
+
+local function roundPrice(p)
+    if p < 1 then return 1 end
+    return math.floor(p + 0.5)
+end
+
+--[[ Formula price for one ScriptItem. Returns nil for anything the catalogue
+     refuses to trade, which is how excluded items stay out of the index. ]]
+local function priceFromFormula(scriptItem)
+    local cat = scriptItem:getDisplayCategory()
+    if cat and TC.EXCLUDED_CATEGORIES[cat] then return nil end
+
+    local base = (cat and CATEGORY_BASE[cat]) or DEFAULT_BASE
+
+    local ok, w = pcall(function() return scriptItem:getActualWeight() end)
+    if not ok then w = 1 end
+
+    return roundPrice(base * weightFactor(w))
+end
+
+-- ---------------------------------------------------------------------------
+-- The index
+-- ---------------------------------------------------------------------------
+
+TC.entries     = nil   -- array, sorted by display name, for the buy list
+TC.priceByType = nil   -- fullType -> base price, for O(1) lookup when selling
+
+--[[ Walk every item the game knows about and price it once.
+
+     getObsolete() and isHidden() are the game's own "this is not a real item" flags.
+     They cost nothing to honour and they are the only filter that will keep working
+     when the devs retire an item in a future patch.
+]]
+function TC.buildIndex()
+    if TC.entries then return end
+
+    TC.entries     = {}
+    TC.priceByType = {}
+
+    local all = getAllItems()
+    if not all then
+        print("[TheCatalogue] getAllItems() returned nil -- index left empty")
+        return
+    end
+
+    local overrides = TC.PRICE_OVERRIDES or {}
+    local skipped = 0
+
+    for i = 0, all:size() - 1 do
+        local si = all:get(i)
+        local ok, fullType = pcall(function() return si:getFullName() end)
+
+        if ok and fullType and not TC.EXCLUDED_ITEMS[fullType]
+           and not si:getObsolete() and not si:isHidden() then
+
+            local price = overrides[fullType] or priceFromFormula(si)
+
+            if price then
+                TC.priceByType[fullType] = price
+
+                local name = si:getDisplayName() or fullType
+                table.insert(TC.entries, {
+                    fullType = fullType,
+                    name     = name,
+                    lower    = string.lower(name .. " " .. fullType),
+                    price    = price,
+                    category = si:getDisplayCategory() or "Generic",
+                    weight   = si:getActualWeight() or 0,
+                    icon     = si:getNormalTexture(),
+                })
+            else
+                skipped = skipped + 1
+            end
+        end
+    end
+
+    table.sort(TC.entries, function(a, b)
+        if a.name == b.name then return a.fullType < b.fullType end
+        return a.name < b.name
+    end)
+
+    print(string.format("[TheCatalogue] indexed %d items (%d excluded)",
+                        #TC.entries, skipped))
+end
+
+-- ---------------------------------------------------------------------------
+-- Queries
+-- ---------------------------------------------------------------------------
+
+--[[ Buy price for one unit, with the sandbox multiplier folded in.
+     Applied at query time rather than baked into the index, so an admin changing
+     PriceMultiplier mid-save takes effect without a rebuild. ]]
+function TC.getBuyPrice(fullType)
+    TC.buildIndex()
+    local base = TC.priceByType[fullType]
+    if not base then return nil end
+    return roundPrice(base * TC.opt("PriceMultiplier"))
+end
+
+--[[ How intact an item is, as a fraction of 1.
+
+     Four separate vanilla systems model "worn out" and none of them share an
+     interface, so each is asked in turn and the first that answers wins:
+       condition   -- weapons, clothing, tools
+       usedDelta   -- drainables: bleach, fuel, a half-smoked cigarette
+       age         -- perishable food, which also has a hard rotten flag
+     Anything that models no wear at all is worth full price, which is correct for
+     a nail or a can of beans.
+]]
+function TC.conditionRatio(item)
+    if not item then return 1 end
+
+    -- Rotten food is worth essentially nothing, however fresh its condition claims.
+    local okRot, rotten = pcall(function() return item:isRotten() end)
+    if okRot and rotten then return 0.02 end
+
+    local okAge, age = pcall(function() return item:getAge() end)
+    if okAge and type(age) == "number" then
+        local _, offAge    = pcall(function() return item:getOffAge() end)
+        local _, offAgeMax = pcall(function() return item:getOffAgeMax() end)
+        if type(offAge) == "number" and type(offAgeMax) == "number"
+           and offAgeMax > offAge and offAgeMax < 1000000 then
+            if age <= offAge then return 1 end
+            -- Stale but not rotten: fade from full price down to a tenth.
+            local decay = (age - offAge) / (offAgeMax - offAge)
+            return math.max(0.1, 1 - decay * 0.9)
+        end
+    end
+
+    local okCond, cond = pcall(function() return item:getCondition() end)
+    if okCond and type(cond) == "number" then
+        local _, condMax = pcall(function() return item:getConditionMax() end)
+        if type(condMax) == "number" and condMax > 0 then
+            return math.max(0, math.min(1, cond / condMax))
+        end
+    end
+
+    local okUsed, used = pcall(function() return item:getUsedDelta() end)
+    if okUsed and type(used) == "number" and used >= 0 and used <= 1 then
+        return used
+    end
+
+    return 1
+end
+
+--[[ Market value of one item and everything inside it, BEFORE the sell spread.
+
+     Kept separate from getSellValue for one reason: the spread must be applied
+     exactly once, to the finished total. Folding it in here and then summing would
+     charge it again for every level of nesting, so a book in a bag would be paid at
+     ratio squared.
+
+     depth guards against a bag inside a bag inside a bag; three levels is deeper
+     than vanilla containers nest anyway.
+]]
+local function rawValue(item, depth)
+    local fullType = item:getFullType()
+    if TC.EXCLUDED_ITEMS[fullType] then return nil, "excluded" end
+
+    local unit = TC.getBuyPrice(fullType)
+    if not unit then return nil, "notlisted" end
+
+    local ratio = TC.conditionRatio(item)
+    local minCond = TC.opt("MinConditionToSell")
+    if minCond > 0 and ratio < minCond then return nil, "condition" end
+
+    local value = unit * ratio
+
+    -- Contents, when the sandbox allows it. A rifle case full of rifles is worth
+    -- the case plus the rifles; this is what makes "sell everything" workable.
+    if depth < 3 and TC.opt("SellContainerContents") then
+        local ok, inv = pcall(function() return item:getInventory() end)
+        if ok and inv then
+            local items = inv:getItems()
+            for i = 0, items:size() - 1 do
+                local subValue = rawValue(items:get(i), depth + 1)
+                if subValue then value = value + subValue end
+            end
+        end
+    end
+
+    return value
+end
+
+--[[ What the catalogue actually pays for one InventoryItem.
+
+     Returns value, reason. A nil value means it will not be bought, and reason names
+     the rule that refused it so the UI can say something useful.
+]]
+function TC.getSellValue(item)
+    if not item then return nil, "invalid" end
+    local value, reason = rawValue(item, 0)
+    if not value then return nil, reason end
+    return value * TC.opt("SellRatio")
+end
+
+--[[ Same as getSellValue but rounded to whole dollars, which is what actually
+     changes hands. Kept separate so totals can be summed at full precision and
+     rounded once, rather than rounding every item and accumulating the error. ]]
+function TC.getSellPriceRounded(item)
+    local v, reason = TC.getSellValue(item)
+    if not v then return nil, reason end
+    return math.max(0, math.floor(v + 0.5))
+end

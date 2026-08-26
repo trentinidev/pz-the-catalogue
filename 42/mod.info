@@ -1,0 +1,9 @@
+name=The Catalogue
+id=TheCatalogue
+author=trentini
+description=Craft a Shop Catalogue from a Notebook and use it to buy and sell items for cash. Every vanilla item has a price on an early-90s scale. Buying deducts real Money and MoneyBundles from your inventory; selling pays 90% of value, scaled by item condition.
+icon=icon.png
+poster=poster.png
+category=features
+modversion=1.0.0
+versionMin=42.0.0

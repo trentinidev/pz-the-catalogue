@@ -1,0 +1,40 @@
+module Catalogue
+{
+    imports { Base }
+
+    /* The catalogue itself. Deliberately a plain "normal" item and NOT literature:
+       literature items get a Read context option and a page/boredom system we do not
+       want competing with our own Buy/Sell entries on the right-click menu.
+       Art is borrowed wholesale from vanilla Base.Catalog, which already ships an
+       inventory icon, an open-book static model and a ground model. */
+    item Catalogue
+    {
+        DisplayCategory = Literature,
+        ItemType = base:normal,
+        Weight = 0.5,
+        Icon = ShopCatalogue,
+        StaticModel = Catalogue_Open,
+        WorldStaticModel = Catalogue,
+        Tags = base:isfirefuel;base:isfiretinder,
+        FireFuelRatio = 0.25,
+    }
+
+    /* One Notebook in, one Catalogue out. The notebook is consumed.
+       InHandCraft keeps it out of the workstation-only lists, and CanBeDoneInDark
+       matches the vanilla paper recipes -- writing a shopping list needs no light. */
+    craftRecipe MakeShopCatalogue
+    {
+        timedAction = Making,
+        time = 30,
+        Tags = InHandCraft;CanBeDoneInDark,
+        category = Miscellaneous,
+        inputs
+        {
+            item 1 [Base.Notebook],
+        }
+        outputs
+        {
+            item 1 Catalogue.Catalogue,
+        }
+    }
+}

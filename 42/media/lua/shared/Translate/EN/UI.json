@@ -1,0 +1,52 @@
+{
+    "IGUI_TC_BuyTitle": "Shop Catalogue - Buy",
+    "IGUI_TC_SellTitle": "Shop Catalogue - Sell",
+
+    "IGUI_TC_Buy": "Buy",
+    "IGUI_TC_Sell": "Sell",
+    "IGUI_TC_AllCategories": "All categories",
+    "IGUI_TC_SearchHint": "Search by name or ID",
+    "IGUI_TC_SelectAnItem": "Select an item from the list",
+    "IGUI_TC_ItemsListed": "%1 items listed",
+    "IGUI_TC_NoMatches": "No items match this search",
+
+    "IGUI_TC_ColItem": "Item",
+    "IGUI_TC_ColCategory": "Category",
+    "IGUI_TC_ColWeight": "Weight",
+    "IGUI_TC_ColPrice": "Price",
+    "IGUI_TC_ColCondition": "Condition",
+    "IGUI_TC_ColValue": "Value",
+
+    "IGUI_TC_UnitPrice": "Unit price",
+    "IGUI_TC_Quantity": "Quantity",
+    "IGUI_TC_Total": "Total",
+    "IGUI_TC_AddedWeight": "Added weight",
+    "IGUI_TC_YourCash": "Your cash",
+    "IGUI_TC_YouOwn": "You own",
+    "IGUI_TC_SellsBackFor": "Sells back for",
+    "IGUI_TC_CashAfter": "Cash after",
+
+    "IGUI_TC_InsufficientFunds": "Insufficient funds",
+    "IGUI_TC_Bought": "Bought %1 x %2 for $%3",
+    "IGUI_TC_BoughtOverweight": "Bought %1 x %2 for $%3 - you are %4 over capacity",
+
+    "IGUI_TC_RemoveSelected": "Remove selected",
+    "IGUI_TC_ClearAll": "Clear all",
+    "IGUI_TC_TotalPayout": "Total payout",
+    "IGUI_TC_SellRatioNote": "Payout is %1 percent below catalogue price",
+    "IGUI_TC_DragHint": "Drag items here to sell them",
+    "IGUI_TC_DragHintSub": "Or right-click an item and choose Add to sell box",
+    "IGUI_TC_NoValue": "no value",
+    "IGUI_TC_NothingStaged": "Nothing to sell",
+    "IGUI_TC_Staged": "Added %1 item(s)",
+    "IGUI_TC_StagedSomeRefused": "Added %1, refused %2",
+    "IGUI_TC_Sold": "Sold %1 item(s) for $%2",
+    "IGUI_TC_StagedCount": "%1 items staged",
+
+    "IGUI_TC_RefuseCatalogue": "The catalogue will not buy itself",
+    "IGUI_TC_RefuseFavorite": "That item is marked as a favourite",
+    "IGUI_TC_RefuseEquipped": "Unequip that first",
+    "IGUI_TC_RefuseCondition": "That item is in too poor a condition to sell",
+    "IGUI_TC_RefuseNotListed": "The catalogue does not deal in that",
+    "IGUI_TC_RefuseNotEmpty": "Empty that container first"
+}
