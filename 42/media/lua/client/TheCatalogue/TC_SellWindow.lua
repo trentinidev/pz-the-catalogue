@@ -46,12 +46,13 @@ function TC_SellList:doDrawItem(y, item, alt)
     end
 
     local it = item.item
-    local c  = TC.columns(self.width, { conditionColumn = true })
+    local c  = TC.columns(self.width, self.parentWindow and self.parentWindow.colW or nil)
 
     if self.selected == item.index then
         self:drawRect(0, y, self:getWidth(), ROW_HGT - 1, 0.55, 0.24, 0.34, 0.45)
     end
     self:drawRect(0, y + ROW_HGT - 1, self:getWidth(), 1, 0.25, 1, 1, 1)
+    TC.drawColumnRules(self, c, 0, y, ROW_HGT - 1, 0.22)
 
     local tex = it:getTex()
     if tex then
@@ -119,6 +120,8 @@ function TC_SellWindow:new(x, y, w, h, playerNum)
     o.staged = {}
     o.message = nil
     o.messageIsError = false
+    o.colW = TC.defaultColumnWidths("sell")   -- per window, so drags do not leak across
+    o.dragCol = nil
     o:setResizable(true)
     o.minimumWidth = 640
     o.minimumHeight = 460
@@ -367,21 +370,82 @@ end
 -- Drawing
 -- ---------------------------------------------------------------------------
 
+--[[ Header labels are truncated against their own column width -- that is what stops
+     "Condition" and "Value" printing on top of each other when the columns are
+     narrower than the words. ]]
 function TC_SellWindow:drawListHeader(headerY, listW)
-    local c = TC.columns(listW, { conditionColumn = true })
+    local c = TC.columns(listW, self.colW)
+    local F = UIFont.Small
 
-    self:drawRect(PAD, headerY, listW, HEADER_HGT, 0.6, 0.13, 0.13, 0.15)
+    self:drawRect(PAD, headerY, listW, HEADER_HGT, 0.75, 0.13, 0.13, 0.15)
     self:drawRectBorder(PAD, headerY, listW, HEADER_HGT, 0.5, 0.4, 0.4, 0.4)
+    TC.drawColumnRules(self, c, PAD, headerY, HEADER_HGT, 0.4)
 
     local ty = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
-    self:drawText(getText("IGUI_TC_ColItem"), PAD + c.nameLeft, ty, 0.72, 0.72, 0.76, 1, UIFont.Small)
+    self:drawText(TC.truncate(F, getText("IGUI_TC_ColItem"), c.nameW),
+                  PAD + c.nameLeft, ty, 0.72, 0.72, 0.76, 1, F)
 
-    local function headRight(text, right)
-        local w = getTextManager():MeasureStringX(UIFont.Small, text)
-        self:drawText(text, PAD + right - w - TC.UI.CELL_PAD, ty, 0.72, 0.72, 0.76, 1, UIFont.Small)
+    local function headRight(key, right, avail)
+        local text = TC.truncate(F, getText(key), avail)
+        local w = getTextManager():MeasureStringX(F, text)
+        self:drawText(text, PAD + right - w - TC.UI.CELL_PAD, ty, 0.72, 0.72, 0.76, 1, F)
     end
-    headRight(getText("IGUI_TC_ColCondition"), c.midRight)
-    headRight(getText("IGUI_TC_ColValue"), c.priceRight)
+    headRight("IGUI_TC_ColCondition", c.midRight, c.midW)
+    headRight("IGUI_TC_ColValue", c.priceRight, c.priceW)
+
+    if self.hoverDivider then
+        self:drawRect(PAD + self.hoverDivider.x - 1, headerY, 3, HEADER_HGT, 0.8, 0.6, 0.7, 0.9)
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Draggable column dividers
+-- ---------------------------------------------------------------------------
+
+-- Same reasoning as the buy window: a grab on a divider must not fall through to
+-- ISCollapsableWindow:onMouseDown, which starts dragging the whole window.
+function TC_SellWindow:headerBand()
+    local listY = self:listGeometry()
+    return PAD, listY - HEADER_HGT, self.width - PAD * 2, HEADER_HGT
+end
+
+function TC_SellWindow:dividerAtPoint(x, y)
+    local hx, hy, hw, hh = self:headerBand()
+    if y < hy or y > hy + hh then return nil end
+    return TC.dividerUnder(TC.columns(hw, self.colW), hx, x)
+end
+
+function TC_SellWindow:onMouseMove(dx, dy)
+    local x, y = self:getMouseX(), self:getMouseY()
+
+    if self.dragCol then
+        local hx, _, hw = self:headerBand()
+        TC.resizeColumn(self.colW, self.dragCol.key, x - hx, hw)
+        return true
+    end
+
+    self.hoverDivider = self:dividerAtPoint(x, y)
+    return ISCollapsableWindow.onMouseMove(self, dx, dy)
+end
+
+function TC_SellWindow:onMouseDown(x, y)
+    local d = self:dividerAtPoint(x, y)
+    if d then
+        self.dragCol = d
+        self:bringToTop()
+        return true
+    end
+    return ISCollapsableWindow.onMouseDown(self, x, y)
+end
+
+function TC_SellWindow:onMouseUp(x, y)
+    self.dragCol = nil
+    return ISCollapsableWindow.onMouseUp(self, x, y)
+end
+
+function TC_SellWindow:onMouseUpOutside(x, y)
+    self.dragCol = nil
+    return ISCollapsableWindow.onMouseUpOutside(self, x, y)
 end
 
 function TC_SellWindow:prerender()

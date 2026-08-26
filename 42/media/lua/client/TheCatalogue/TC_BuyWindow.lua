@@ -44,15 +44,16 @@ function TC_BuyList:doDrawItem(y, item, alt)
     end
 
     local e = item.item
-    local c = TC.columns(self.width, { categoryColumn = true })
+    local c = TC.columns(self.width, self.parentWindow and self.parentWindow.colW or nil)
 
     if self.selected == item.index then
         self:drawRect(0, y, self:getWidth(), ROW_HGT - 1, 0.55, 0.24, 0.34, 0.45)
     end
 
-    -- Faint separator under each row. With five columns the eye needs a horizontal
-    -- rail to stay on one record.
+    -- Grid: a horizontal rail under each row and a vertical rule between each column,
+    -- so a record reads across and a column reads down.
     self:drawRect(0, y + ROW_HGT - 1, self:getWidth(), 1, 0.25, 1, 1, 1)
+    TC.drawColumnRules(self, c, 0, y, ROW_HGT - 1, 0.22)
 
     if e.icon then
         self:drawTextureScaledAspect(e.icon, TC.UI.CELL_PAD, y + (ROW_HGT - ICON) / 2,
@@ -66,7 +67,7 @@ function TC_BuyList:doDrawItem(y, item, alt)
     local smallY = y + (ROW_HGT - FONT_HGT_SMALL) / 2
     if c.catW > 20 then
         self:drawText(TC.truncate(UIFont.Small, e.category, c.catW),
-                      c.catLeft, smallY, 0.62, 0.62, 0.66, 1, UIFont.Small)
+                      c.catLeft + TC.UI.CELL_PAD, smallY, 0.62, 0.62, 0.66, 1, UIFont.Small)
     end
 
     TC.drawRight(self, string.format("%.1f", e.weight or 0), c.midRight, smallY,
@@ -94,6 +95,8 @@ function TC_BuyWindow:new(x, y, w, h, playerNum)
     o.quantity = 1
     o.message = nil
     o.messageIsError = false
+    o.colW = TC.defaultColumnWidths("buy")   -- per window, so drags do not leak across
+    o.dragCol = nil
     o:setResizable(true)
     o.minimumWidth = 900
     o.minimumHeight = 640
@@ -303,28 +306,95 @@ end
 -- Drawing
 -- ---------------------------------------------------------------------------
 
---[[ Column headers, drawn on the window rather than inside the list so they stay
-     put while the rows scroll under them. ]]
-function TC_BuyWindow:drawListHeader(listX, headerY, listW)
-    local c = TC.columns(listW, { categoryColumn = true })
+--[[ Column headers, drawn on the window rather than inside the list so they stay put
+     while the rows scroll under them.
 
-    self:drawRect(listX, headerY, listW, HEADER_HGT, 0.6, 0.13, 0.13, 0.15)
+     Every label goes through truncate against its own column width. That is what fixes
+     the pile-up in the old header: the labels were drawn at full length regardless of
+     how much room the column had, so "Category", "Weight" and "Price" overprinted each
+     other whenever the columns were narrower than the words. ]]
+function TC_BuyWindow:drawListHeader(listX, headerY, listW)
+    local c = TC.columns(listW, self.colW)
+
+    self:drawRect(listX, headerY, listW, HEADER_HGT, 0.75, 0.13, 0.13, 0.15)
     self:drawRectBorder(listX, headerY, listW, HEADER_HGT, 0.5, 0.4, 0.4, 0.4)
+    TC.drawColumnRules(self, c, listX, headerY, HEADER_HGT, 0.4)
 
     local ty = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
-    local function head(text, x)
-        self:drawText(text, listX + x, ty, 0.72, 0.72, 0.76, 1, UIFont.Small)
+    local F  = UIFont.Small
+
+    self:drawText(TC.truncate(F, getText("IGUI_TC_ColItem"), c.nameW),
+                  listX + c.nameLeft, ty, 0.72, 0.72, 0.76, 1, F)
+
+    if c.catW > 20 then
+        self:drawText(TC.truncate(F, getText("IGUI_TC_ColCategory"), c.catW),
+                      listX + c.catLeft + TC.UI.CELL_PAD, ty, 0.72, 0.72, 0.76, 1, F)
     end
 
-    head(getText("IGUI_TC_ColItem"), c.nameLeft)
-    if c.catW > 20 then head(getText("IGUI_TC_ColCategory"), c.catLeft) end
-
-    local function headRight(text, right)
-        local w = getTextManager():MeasureStringX(UIFont.Small, text)
-        self:drawText(text, listX + right - w - TC.UI.CELL_PAD, ty, 0.72, 0.72, 0.76, 1, UIFont.Small)
+    local function headRight(key, right, avail)
+        local text = TC.truncate(F, getText(key), avail)
+        local w = getTextManager():MeasureStringX(F, text)
+        self:drawText(text, listX + right - w - TC.UI.CELL_PAD, ty, 0.72, 0.72, 0.76, 1, F)
     end
-    headRight(getText("IGUI_TC_ColWeight"), c.midRight)
-    headRight(getText("IGUI_TC_ColPrice"), c.priceRight)
+    headRight("IGUI_TC_ColWeight", c.midRight, c.midW)
+    headRight("IGUI_TC_ColPrice", c.priceRight, c.priceW)
+
+    -- Highlight the divider under the cursor so the drag handle is discoverable.
+    if self.hoverDivider then
+        self:drawRect(listX + self.hoverDivider.x - 1, headerY, 3, HEADER_HGT, 0.8, 0.6, 0.7, 0.9)
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Draggable column dividers
+-- ---------------------------------------------------------------------------
+
+--[[ The header strip is drawn by the window, not by the list box, so its mouse events
+     arrive here. ISCollapsableWindow:onMouseDown sets self.moving unconditionally --
+     it drags the window from anywhere, not just the title bar -- so a grab on a
+     divider must NOT fall through to it, or the whole window would follow the cursor. ]]
+function TC_BuyWindow:headerBand()
+    local _, listW, listY = self:listGeometry()
+    return PAD, listY - HEADER_HGT, listW, HEADER_HGT
+end
+
+function TC_BuyWindow:dividerAtPoint(x, y)
+    local hx, hy, hw, hh = self:headerBand()
+    if y < hy or y > hy + hh then return nil end
+    return TC.dividerUnder(TC.columns(hw, self.colW), hx, x)
+end
+
+function TC_BuyWindow:onMouseMove(dx, dy)
+    local x, y = self:getMouseX(), self:getMouseY()
+
+    if self.dragCol then
+        local hx, _, hw = self:headerBand()
+        TC.resizeColumn(self.colW, self.dragCol.key, x - hx, hw)
+        return true
+    end
+
+    self.hoverDivider = self:dividerAtPoint(x, y)
+    return ISCollapsableWindow.onMouseMove(self, dx, dy)
+end
+
+function TC_BuyWindow:onMouseDown(x, y)
+    local d = self:dividerAtPoint(x, y)
+    if d then
+        self.dragCol = d
+        self:bringToTop()
+        return true          -- consumed: the window must not start moving
+    end
+    return ISCollapsableWindow.onMouseDown(self, x, y)
+end
+
+function TC_BuyWindow:onMouseUp(x, y)
+    self.dragCol = nil
+    return ISCollapsableWindow.onMouseUp(self, x, y)
+end
+
+function TC_BuyWindow:onMouseUpOutside(x, y)
+    self.dragCol = nil
+    return ISCollapsableWindow.onMouseUpOutside(self, x, y)
 end
 
 function TC_BuyWindow:prerender()
@@ -376,9 +446,16 @@ function TC_BuyWindow:prerender()
         local balance    = TC.getBalance(self.player)
         local after      = balance - total
 
+        -- The detail block flows downward while the cash block below it is pinned to
+        -- the bottom of the panel. On a short window the two would meet, so lines stop
+        -- rather than print over it. Losing the last line beats an unreadable overlap.
+        local detailFloor = self.height - PAD - BUTTON_HGT * 2 - PAD
+                            - FONT_HGT_LARGE - PAD - 4 - FONT_HGT_SMALL
+
         local function line(label, value, font, r, g, b)
             font = font or UIFont.Medium
             local h = getTextManager():getFontHeight(font)
+            if y + h > detailFloor then return end
             self:drawText(label, innerLeft, y, 0.68, 0.68, 0.72, 1, UIFont.Small)
             local vw = getTextManager():MeasureStringX(font, value)
             self:drawText(value, innerRight - vw, y - (h - FONT_HGT_SMALL) / 2,
