@@ -143,6 +143,16 @@ Three layers, most specific first, in `media/lua/shared/TheCatalogue/`:
   the defence ratings) live on `InventoryItem`, not on the `ScriptItem` the index walks,
   so one instance of each unknown item is built at index time to read them. It encodes
   the same judgements as `tools/rules.ps1` and the two should be changed together.
+
+Changing `tools/rules.ps1` means `TC_PriceTable.lua` has to be regenerated, or the two
+disagree and the change looks done when it is not:
+
+```
+pwsh tools/gen_prices.ps1 "<PZ install>\media\scripts\generated\items"
+```
+
+The path is mandatory and points at an installed copy of the game, so this only runs on
+a machine that has Project Zomboid.
 - **`TC_Prices.lua`** — the original category-and-weight formula, now a last resort for
   an item that refuses to instantiate at all.
 

@@ -59,8 +59,13 @@ This repo is edited from a home PC (has the game) and a work PC (does not).
 
 `main` only ever holds code that has run in the game. Work-PC changes go on a branch,
 are pushed, and are merged into `main` at home after they have actually been played.
-The home PC links its mods folder at the repo with a junction, so `git switch` there
-changes the installed mod directly — no copying, and a branch can be tested as it is.
+
+At home the clone **is** the installed mod: the working tree is
+`C:\Users\vitor\Zomboid\mods\TheCatalogue`, which is where the game already looks. No
+junction, no symlink, no copying — `git switch` there changes the installed mod
+directly, so a branch can be tested exactly as it is. Two consequences: never check out
+a branch while the game is running, and moving this clone anywhere else uninstalls
+the mod.
 
 Never run `git push` or `git pull` without showing Vitor what will move and getting a
 yes first. This holds on both machines.
