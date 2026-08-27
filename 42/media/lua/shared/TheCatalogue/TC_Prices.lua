@@ -145,7 +145,7 @@ function TC.buildIndex()
 
     local all = getAllItems()
     if not all then
-        print("[TheCatalogue] getAllItems() returned nil -- index left empty")
+        TC.warn("getAllItems() returned nil -- index left empty")
         return
     end
 
@@ -217,8 +217,8 @@ function TC.buildIndex()
     -- Timed because this is the one unavoidable pass over every item in the game, and
     -- if the window ever feels slow to open again this number says whether the cost is
     -- here or in the window.
-    print(string.format("[TheCatalogue] indexed %d items (%d excluded) in %d ms",
-                        #TC.entries, skipped, getTimestampMs() - started))
+    TC.log("indexed %d items (%d excluded) in %d ms",
+           #TC.entries, skipped, getTimestampMs() - started)
 end
 
 --[[ The inventory texture for an entry, resolved on first draw and kept.
@@ -426,8 +426,8 @@ local function rawValue(item, visited)
     visited[item] = true
     visited.n = visited.n + 1
     if visited.n > MAX_NODES then
-        print("[TheCatalogue] container graph exceeded " .. MAX_NODES ..
-              " nodes; valuation stopped at " .. tostring(item:getFullType()))
+        TC.warn("container graph exceeded %d nodes; valuation stopped at %s",
+                MAX_NODES, tostring(item:getFullType()))
         return nil, "toobig"
     end
 

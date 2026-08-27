@@ -16,6 +16,18 @@ require 'Items/ProceduralDistributions'
 
 local CATALOGUE = "Catalogue.Catalogue"
 
+--[[ Diagnostics only, and deliberately not routed through TC.log.
+
+     This file runs during script loading, and the load order between a mod's server
+     folder and its shared folder is not something worth betting on -- if TheCatalogue
+     is not built yet, calling TC.log here would throw during startup. Reading the
+     sandbox value directly costs nothing and cannot fail. ]]
+local function log(fmt, ...)
+    local vars = SandboxVars and SandboxVars.TheCatalogue
+    if not (vars and vars.DebugLogging) then return end
+    print("[TheCatalogue] " .. string.format(fmt, ...))
+end
+
 local function rate()
     local vars = SandboxVars and SandboxVars.TheCatalogue
     local m = vars and vars.CatalogueLootMultiplier
@@ -67,8 +79,7 @@ if multiplier > 0 then
         end
     end
 
-    print(string.format("[TheCatalogue] catalogue added to %d loot containers (%d unknown, x%.2f)",
-                        added, missing, multiplier))
+    log("catalogue added to %d loot containers (%d unknown, x%.2f)", added, missing, multiplier)
 else
-    print("[TheCatalogue] catalogue loot spawning disabled by sandbox option")
+    log("catalogue loot spawning disabled by sandbox option")
 end

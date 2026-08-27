@@ -13,6 +13,9 @@
     "Sandbox_TheCatalogue_SellContainerContents": "Sell container contents",
     "Sandbox_TheCatalogue_SellContainerContents_tooltip": "When on, selling a bag or a loaded gun sells what is inside it too, at its own value. When off, the catalogue refuses non-empty containers.",
 
+    "Sandbox_TheCatalogue_DebugLogging": "Diagnostic logging",
+    "Sandbox_TheCatalogue_DebugLogging_tooltip": "Writes timing and loot-table detail to the console. Off by default. Real problems -- refused purchases, refunds, API misuse -- are always logged regardless of this setting.",
+
     "Sandbox_TheCatalogue_OrderSeconds": "Seconds to place an order",
     "Sandbox_TheCatalogue_OrderSeconds_tooltip": "How long the character spends filling in an order before it completes, as an interruptible action. Set to 0 for instant purchases.",
 

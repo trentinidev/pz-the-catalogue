@@ -153,13 +153,6 @@ function TC_CartWindow:setMessage(text, isError)
     self.messageIsError = isError and true or false
 end
 
---[[ Settle the whole cart in one transaction.
-
-     Same shape as the single-item purchase and for the same reasons: every fullType is
-     proved to exist BEFORE any money moves, the cash comes out once, deliveries are
-     counted, and anything undelivered is refunded. A cart that fails halfway must not
-     leave the player charged for goods they did not get.
-]]
 --[[ Everything that can REFUSE the order is checked here, before the action starts,
      so the player hears about it immediately rather than after standing still. The
      charge and the delivery happen in onOrderComplete.
@@ -176,7 +169,7 @@ function TC_CartWindow:onCheckout()
 
     for _, line in ipairs(cart) do
         if not getScriptManager():FindItem(line.fullType) then
-            print("[TheCatalogue] cart refused: unknown item " .. tostring(line.fullType))
+            TC.warn("cart refused: unknown item %s", tostring(line.fullType))
             self:setMessage(getText("IGUI_TC_ItemUnavailable"), true)
             return
         end
@@ -233,7 +226,7 @@ function TC_CartWindow:onOrderComplete()
 
     if owed > 0 then
         TC.giveCash(self.player, owed)
-        print(string.format("[TheCatalogue] cart short by $%d, refunded", owed))
+        TC.warn("cart short by $%d, refunded", owed)
     end
 
     if delivered > 0 then

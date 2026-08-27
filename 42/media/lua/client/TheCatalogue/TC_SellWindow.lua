@@ -193,6 +193,20 @@ function TC_SellWindow:listGeometry()
     return listY, listH
 end
 
+-- See the same block in TC_BuyWindow.lua: this is the whole interface TC_Table needs.
+function TC_SellWindow:tableGeometry()
+    local listY = self:listGeometry()
+    return PAD, listY - HEADER_HGT, self.width - PAD * 2
+end
+
+function TC_SellWindow:tableHeaderHeight() return HEADER_HGT end
+
+TC_SellWindow.tableCols = {
+    { key = "name",  textKey = "IGUI_TC_ColItem",      align = "left"  },
+    { key = "mid",   textKey = "IGUI_TC_ColCondition", align = "right" },
+    { key = "price", textKey = "IGUI_TC_ColValue",     align = "right" },
+}
+
 function TC_SellWindow:createChildren()
     ISCollapsableWindow.createChildren(self)
 
@@ -626,18 +640,6 @@ function TC_SellWindow:total()
     return self.totalValue or 0
 end
 
---[[ Click a header to sort by it; click the active one again to reverse. Text opens
-     ascending, numbers open descending. ]]
-function TC_SellWindow:sortBy(key)
-    if self.sortKey == key then
-        self.sortAsc = not self.sortAsc
-    else
-        self.sortKey = key
-        self.sortAsc = (key == "name")
-    end
-    self:refreshList()
-end
-
 -- ---------------------------------------------------------------------------
 -- Buttons
 -- ---------------------------------------------------------------------------
@@ -728,64 +730,9 @@ function TC_SellWindow:onSell()
     end
 end
 
-function TC_SellWindow:setMessage(text, isError)
-    self.message = text
-    self.messageIsError = isError and true or false
-end
-
 -- ---------------------------------------------------------------------------
 -- Drawing
 -- ---------------------------------------------------------------------------
-
---[[ Header labels are truncated against their own column width -- that is what stops
-     "Condition" and "Value" printing on top of each other when the columns are
-     narrower than the words. ]]
-function TC_SellWindow:drawListHeader(headerY, listW)
-    local c = TC.columns(listW, self.colW)
-    local F = UIFont.Small
-
-    self:drawRect(PAD, headerY, listW, HEADER_HGT, 0.75, 0.13, 0.13, 0.15)
-    self:drawRectBorder(PAD, headerY, listW, HEADER_HGT, 0.5, 0.4, 0.4, 0.4)
-    TC.drawColumnRules(self, c, PAD, headerY, HEADER_HGT, 0.4)
-
-    local ty = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
-    local ay = headerY + (HEADER_HGT - 4) / 2
-    local ARROW = 11
-
-    local function shade(key)
-        if self.sortKey == key then return 1, 1, 1 end
-        return 0.72, 0.72, 0.76
-    end
-
-    local nameRoom = (self.sortKey == "name") and (c.nameW - ARROW) or c.nameW
-    local nameText = TC.truncate(F, getText("IGUI_TC_ColItem"), nameRoom)
-    local nr, ng, nb = shade("name")
-    self:drawText(nameText, PAD + c.nameLeft, ty, nr, ng, nb, 1, F)
-    if self.sortKey == "name" then
-        local w = getTextManager():MeasureStringX(F, nameText)
-        TC.drawSortArrow(self, PAD + c.nameLeft + w + 4, ay, self.sortAsc)
-    end
-
-    -- The arrow goes to the LEFT of a right-aligned label, so the label keeps its edge
-    -- alignment with the numbers in the column below it.
-    local function headRight(key, tkey, right, avail)
-        local room = (self.sortKey == key) and (avail - ARROW) or avail
-        local text = TC.truncate(F, getText(tkey), room)
-        local w = getTextManager():MeasureStringX(F, text)
-        local x = PAD + right - w - TC.UI.CELL_PAD
-        local r, g, b = shade(key)
-        self:drawText(text, x, ty, r, g, b, 1, F)
-        if self.sortKey == key then
-            TC.drawSortArrow(self, x - ARROW, ay, self.sortAsc)
-        end
-    end
-    headRight("mid", "IGUI_TC_ColCondition", c.midRight, c.midW)
-    headRight("price", "IGUI_TC_ColValue", c.priceRight, c.priceW)
-
-    if self.hoverDivider then
-        self:drawRect(PAD + self.hoverDivider.x - 1, headerY, 3, HEADER_HGT, 0.8, 0.6, 0.7, 0.9)
-    end
-end
 
 -- ---------------------------------------------------------------------------
 -- Draggable column dividers
@@ -793,62 +740,6 @@ end
 
 -- Same reasoning as the buy window: a grab on a divider must not fall through to
 -- ISCollapsableWindow:onMouseDown, which starts dragging the whole window.
-function TC_SellWindow:headerBand()
-    local listY = self:listGeometry()
-    return PAD, listY - HEADER_HGT, self.width - PAD * 2, HEADER_HGT
-end
-
-function TC_SellWindow:dividerAtPoint(x, y)
-    local hx, hy, hw, hh = self:headerBand()
-    if y < hy or y > hy + hh then return nil end
-    return TC.dividerUnder(TC.columns(hw, self.colW), hx, x)
-end
-
-function TC_SellWindow:onMouseMove(dx, dy)
-    local x, y = self:getMouseX(), self:getMouseY()
-
-    if self.dragCol then
-        local hx, _, hw = self:headerBand()
-        TC.resizeColumn(self.colW, self.dragCol.key, x - hx, hw)
-        return true
-    end
-
-    self.hoverDivider = self:dividerAtPoint(x, y)
-    return ISCollapsableWindow.onMouseMove(self, dx, dy)
-end
-
-function TC_SellWindow:onMouseDown(x, y)
-    local d = self:dividerAtPoint(x, y)
-    if d then
-        self.dragCol = d
-        self:bringToTop()
-        return true
-    end
-
-    -- Header click sorts. Checked after the divider so the drag handle is never stolen.
-    local hx, hy, hw, hh = self:headerBand()
-    if y >= hy and y <= hy + hh and x >= hx and x <= hx + hw then
-        local col = TC.columnAtPoint(TC.columns(hw, self.colW), hx, x)
-        if col then
-            self:sortBy(col)
-            self:bringToTop()
-            return true
-        end
-    end
-
-    return ISCollapsableWindow.onMouseDown(self, x, y)
-end
-
-function TC_SellWindow:onMouseUp(x, y)
-    self.dragCol = nil
-    return ISCollapsableWindow.onMouseUp(self, x, y)
-end
-
-function TC_SellWindow:onMouseUpOutside(x, y)
-    self.dragCol = nil
-    return ISCollapsableWindow.onMouseUpOutside(self, x, y)
-end
-
 --[[ How often the cached values are rebuilt while the window just sits there.
 
      Something has to catch food rotting, an item eaten out of the staged set, or a bag
@@ -873,7 +764,7 @@ function TC_SellWindow:prerender()
 
     local listY, listH = self:listGeometry()
     local listW = self.width - PAD * 2
-    self:drawListHeader(listY - HEADER_HGT, listW)
+    self:drawTableHeader()
 
     if #self.staged == 0 then
         -- The empty state has to say what to do: a blank box with a Sell button under
@@ -987,3 +878,4 @@ Events.OnPlayerDeath.Add(function(player)
     local buy = num and TC_BuyWindow and TC_BuyWindow.instances[num]
     if buy then buy:close() end
 end)
+TC.applyTableBehaviour(TC_SellWindow)

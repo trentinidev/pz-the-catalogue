@@ -2,6 +2,12 @@
 
 A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
+> **Alpha — 0.5.0.** Not released, and the version number says so deliberately. It works
+> and it is played, but multiplayer is unsafe (all transaction logic runs client-side)
+> and parts of it have never been exercised. 1.0.0 is reserved for the first build that
+> has been played end to end and is safe on a dedicated server.
+> See [CHANGELOG.md](CHANGELOG.md) for what has landed.
+
 Craft a **Shop Catalogue** from a Notebook, right-click it, and trade with the world's
 last mail-order company. Every vanilla item has a price. You pay in real banknotes and
 you get paid in real banknotes.
