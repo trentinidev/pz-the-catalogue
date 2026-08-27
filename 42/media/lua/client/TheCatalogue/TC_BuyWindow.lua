@@ -289,9 +289,25 @@ function TC_BuyWindow:setQuantity(q)
     end
 end
 
+--[[ Clamp what was typed, and write the clamped value back into the box.
+
+     Only writing the variable let the field keep showing 999 while the purchase was
+     silently capped at 100 -- the total underneath disagreed with the number the
+     player was looking at. The box now always shows the quantity that will actually
+     be bought. ]]
 function TC_BuyWindow:onQuantityTyped()
-    local n = tonumber(self.qtyEntry:getInternalText())
-    if n then self.quantity = math.max(1, math.min(self:maxQuantity(), math.floor(n))) end
+    local text = self.qtyEntry:getInternalText()
+    local n = tonumber(text)
+    if not n then return end
+
+    local clamped = math.max(1, math.min(self:maxQuantity(), math.floor(n)))
+    self.quantity = clamped
+
+    -- Rewrite only when the typing actually exceeded the bounds. Correcting the field
+    -- on every keystroke would fight someone halfway through typing "10".
+    if clamped ~= n and text ~= tostring(clamped) then
+        self.qtyEntry:setText(tostring(clamped))
+    end
 end
 
 function TC_BuyWindow:onQuantityStep(button)
@@ -316,6 +332,16 @@ function TC_BuyWindow:onBuy()
     local qty   = self.quantity
     local total = unit * qty
 
+    -- Prove the item can actually be made BEFORE any money moves. A fullType can go
+    -- stale between indexing and checkout -- a mod unloaded, an item retired by a
+    -- patch -- and the old order of operations took the cash first, so a failed
+    -- AddItem left the player charged and empty-handed.
+    if not getScriptManager():FindItem(entry.fullType) then
+        print("[TheCatalogue] refused purchase: unknown item " .. tostring(entry.fullType))
+        self:setMessage(getText("IGUI_TC_ItemUnavailable"), true)
+        return
+    end
+
     if TC.getBalance(player) < total then
         self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
         return
@@ -328,9 +354,26 @@ function TC_BuyWindow:onBuy()
         return
     end
 
+    -- Count what is actually delivered and refund anything that was not. AddItem is
+    -- not supposed to fail once FindItem has answered, but "not supposed to" is not a
+    -- guarantee worth charging someone for.
     local inv = player:getInventory()
+    local delivered = 0
     for _ = 1, qty do
-        inv:AddItem(entry.fullType)
+        if inv:AddItem(entry.fullType) then delivered = delivered + 1 end
+    end
+
+    if delivered < qty then
+        local refund = unit * (qty - delivered)
+        TC.giveCash(player, refund)
+        total = unit * delivered
+        print(string.format("[TheCatalogue] delivered %d of %d %s -- refunded $%d",
+                            delivered, qty, tostring(entry.fullType), refund))
+        if delivered == 0 then
+            self:setMessage(getText("IGUI_TC_ItemUnavailable"), true)
+            return
+        end
+        qty = delivered
     end
 
     -- Deliver regardless of capacity, then say so. Being overloaded is a vanilla-legal

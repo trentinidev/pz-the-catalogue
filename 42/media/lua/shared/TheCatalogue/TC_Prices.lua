@@ -371,10 +371,32 @@ end
      charge it again for every level of nesting, so a book in a bag would be paid at
      ratio squared.
 
-     depth guards against a bag inside a bag inside a bag; three levels is deeper
-     than vanilla containers nest anyway.
+     Nesting is bounded by a visited set rather than a depth limit -- see MAX_NODES.
 ]]
-local function rawValue(item, depth)
+--[[ Guard against a container graph that loops or is absurdly deep.
+
+     The old code capped nesting at three levels, which was fine for vanilla and wrong
+     in principle: a mod can nest deeper, and anything past the cap was removed with
+     the container WITHOUT being priced -- silent loss, the same failure as selling a
+     bag with money in it.
+
+     A visited set is the correct guard. It cannot lose anything to a depth limit, it
+     stops a genuine cycle dead, and the counter is only a backstop against a graph
+     pathological enough that something else has already gone wrong. ]]
+local MAX_NODES = 4096
+
+local function rawValue(item, visited)
+    visited = visited or { n = 0 }
+
+    if visited[item] then return nil, "cycle" end
+    visited[item] = true
+    visited.n = visited.n + 1
+    if visited.n > MAX_NODES then
+        print("[TheCatalogue] container graph exceeded " .. MAX_NODES ..
+              " nodes; valuation stopped at " .. tostring(item:getFullType()))
+        return nil, "toobig"
+    end
+
     local fullType = item:getFullType()
     if TC.EXCLUDED_ITEMS[fullType] then return nil, "excluded" end
 
@@ -389,12 +411,12 @@ local function rawValue(item, depth)
 
     -- Contents, when the sandbox allows it. A rifle case full of rifles is worth
     -- the case plus the rifles; this is what makes "sell everything" workable.
-    if depth < 3 and TC.opt("SellContainerContents") then
+    if TC.opt("SellContainerContents") then
         local ok, inv = pcall(function() return item:getInventory() end)
         if ok and inv then
             local items = inv:getItems()
             for i = 0, items:size() - 1 do
-                local subValue = rawValue(items:get(i), depth + 1)
+                local subValue = rawValue(items:get(i), visited)
                 if subValue then value = value + subValue end
             end
         end
@@ -410,16 +432,97 @@ end
 ]]
 function TC.getSellValue(item)
     if not item then return nil, "invalid" end
-    local value, reason = rawValue(item, 0)
+    local value, reason = rawValue(item)
     if not value then return nil, reason end
     return value * TC.opt("SellRatio")
 end
 
---[[ Same as getSellValue but rounded to whole dollars, which is what actually
-     changes hands. Kept separate so totals can be summed at full precision and
-     rounded once, rather than rounding every item and accumulating the error. ]]
+--[[ Same as getSellValue but rounded to whole dollars.
+
+     FOR DISPLAY ONLY. Never sum these: rounding each line and then adding them up
+     destroys the spread on cheap items. Ten $1 items at a 0.9 sell ratio are worth
+     $9.00, but each line rounds to $1 and the sum comes to $10 -- the player is paid
+     more than the items are worth, and the configured 10% spread silently vanishes on
+     exactly the bulk junk sales where it matters most.
+
+     Sum getSellValue instead and round the total once. TC.sumSellValues does that. ]]
 function TC.getSellPriceRounded(item)
     local v, reason = TC.getSellValue(item)
     if not v then return nil, reason end
     return math.max(0, math.floor(v + 0.5))
+end
+
+--[[ Total payout for a list of items: full precision throughout, rounded once.
+     Returns the whole-dollar total and the count of items that were actually worth
+     something. ]]
+function TC.sumSellValues(items)
+    local sum, n = 0, 0
+    for _, item in ipairs(items) do
+        local v = TC.getSellValue(item)
+        if v then sum = sum + v; n = n + 1 end
+    end
+    return math.max(0, math.floor(sum + 0.5)), n
+end
+
+-- ---------------------------------------------------------------------------
+-- Protecting what a sale must never destroy
+-- ---------------------------------------------------------------------------
+
+--[[ Would selling this item pay for it?
+
+     A nil from rawValue means the catalogue will not pay: currency, an unlisted item,
+     something too broken to accept. Selling the BAG such a thing sits in used to
+     destroy it anyway, because removing the container removes everything inside it.
+     Money was the worst case -- a backpack with $500 in it paid nothing for the notes
+     and deleted them.
+]]
+local function isPaidFor(item)
+    return (rawValue(item)) ~= nil
+end
+
+--[[ Pull everything a sale must not destroy out of a container and hand it back.
+
+     Walks the whole tree under `item` and moves anything that will not be paid for --
+     currency, favourites, the catalogue itself, unlisted or refused items -- into the
+     player's inventory before the container is removed. Returns the list of what was
+     rescued so the UI can say so.
+
+     Favourites are rescued even though they would be paid for: a favourite is the
+     player's own explicit "do not touch this", and honouring it only at the top level
+     while quietly selling it out of a bag would be worse than not honouring it at all.
+]]
+function TC.rescueProtected(item, player, out, guard)
+    out = out or {}
+    guard = (guard or 0) + 1
+    if guard > 16 then return out end          -- pathological nesting or a cycle
+
+    local ok, inv = pcall(function() return item:getInventory() end)
+    if not ok or not inv then return out end
+
+    local playerInv = player:getInventory()
+    local contents = inv:getItems()
+
+    -- Collected first, moved second: mutating a container while iterating its own
+    -- item list is how you skip half the contents.
+    local doomed = {}
+    for i = 0, contents:size() - 1 do
+        table.insert(doomed, contents:get(i))
+    end
+
+    for _, sub in ipairs(doomed) do
+        TC.rescueProtected(sub, player, out, guard)
+
+        local favourite = false
+        local okFav, fav = pcall(function() return sub:isFavorite() end)
+        if okFav then favourite = fav end
+
+        if favourite or sub:getFullType() == TC.ITEM_FULL or not isPaidFor(sub) then
+            local c = sub:getContainer()
+            if c then c:Remove(sub) end
+            playerInv:AddItem(sub)
+            table.insert(out, sub)
+        end
+    end
+
+    return out
 end

@@ -283,14 +283,36 @@ end
 --[[ Drop anything that has left the world behind our back -- eaten, dropped on the
      floor, moved into a container we can no longer see. Called before every render
      path that reads self.staged, so a stale reference never reaches the sale. ]]
+--[[ Is this item still somewhere the player could actually hand it over?
+
+     Having a container is not enough. A staged item can be dropped on the floor, put
+     in a car boot or left in a crate three rooms away and it keeps a perfectly valid
+     container the whole time -- the reference stays alive and the sale would go
+     through from across the map.
+
+     getOutermostContainer walks up to the top of the nesting, so a wallet inside a
+     backpack still answers "the player's inventory". This is the same test
+     ISInventoryTransferAction uses to decide whether a transfer needs walking to. ]]
+local function isReachable(player, item)
+    local ok, container = pcall(function() return item:getContainer() end)
+    if not ok or not container then return false end
+
+    local playerInv = player:getInventory()
+    if container == playerInv then return true end
+
+    local okOut, outer = pcall(function() return container:getOutermostContainer() end)
+    return okOut and outer == playerInv
+end
+
 function TC_SellWindow:pruneStaged()
     local kept = {}
     for _, item in ipairs(self.staged) do
-        local ok, container = pcall(function() return item:getContainer() end)
-        if ok and container then table.insert(kept, item) end
+        if isReachable(self.player, item) then table.insert(kept, item) end
     end
     if #kept ~= #self.staged then
+        local dropped = #self.staged - #kept
         self.staged = kept
+        self:setMessage(getText("IGUI_TC_DroppedUnreachable", dropped), true)
         return true
     end
     return false
@@ -354,20 +376,23 @@ end
 function TC_SellWindow:rebuildRows()
     self:pruneStaged()
 
-    local rows, total = {}, 0
-    for i, item in ipairs(self:sortedStaged()) do
-        local value = TC.getSellPriceRounded(item)
+    local rows = {}
+    local sorted = self:sortedStaged()
+    for i, item in ipairs(sorted) do
         rows[i] = {
             item  = item,
             name  = item:getDisplayName(),
             ratio = TC.conditionRatio(item),
-            value = value,
+            value = TC.getSellPriceRounded(item),   -- per-line, for display only
         }
-        if value then total = total + value end
     end
 
     self.rows = rows
-    self.totalValue = total
+
+    -- The footer total is the one the player is actually paid, so it comes from the
+    -- same precise-sum-then-round path the sale uses. Adding up the rounded per-line
+    -- figures above would disagree with the payout by a dollar or two on big sales.
+    self.totalValue = TC.sumSellValues(sorted)
 
     local items = {}
     for i = 1, #rows do
@@ -434,14 +459,37 @@ function TC_SellWindow:onSell()
         return
     end
 
-    local total, sold = 0, 0
-
+    -- Settle on exactly the items that are going, and price the whole basket at full
+    -- precision before rounding once. Rounding line by line and adding those up hands
+    -- the player more than the goods are worth and erases the sell spread on cheap
+    -- items -- ten $1 items at 0.9 should pay $9, not $10.
+    local going = {}
     for _, item in ipairs(self.staged) do
-        local value = TC.getSellPriceRounded(item)
+        if TC.getSellValue(item) and item:getContainer() then
+            table.insert(going, item)
+        end
+    end
+
+    if #going == 0 then
+        self:setMessage(getText("IGUI_TC_NothingStaged"), true)
+        return
+    end
+
+    local total = TC.sumSellValues(going)
+
+    -- Rescue anything inside a sold container that the sale will not pay for, BEFORE
+    -- the container is removed. Otherwise selling a backpack deletes the money,
+    -- favourites and unlisted items sitting in it and pays nothing for them.
+    local rescued = {}
+    for _, item in ipairs(going) do
+        TC.rescueProtected(item, self.player, rescued)
+    end
+
+    local sold = 0
+    for _, item in ipairs(going) do
         local container = item:getContainer()
-        if value and container then
+        if container then
             container:Remove(item)
-            total = total + value
             sold = sold + 1
         end
     end
@@ -449,13 +497,13 @@ function TC_SellWindow:onSell()
     self.staged = {}
     self:refreshList()
 
-    if sold == 0 then
-        self:setMessage(getText("IGUI_TC_NothingStaged"), true)
-        return
-    end
-
     TC.giveCash(self.player, total)
-    self:setMessage(getText("IGUI_TC_Sold", sold, total), false)
+
+    if #rescued > 0 then
+        self:setMessage(getText("IGUI_TC_SoldAndKept", sold, total, #rescued), false)
+    else
+        self:setMessage(getText("IGUI_TC_Sold", sold, total), false)
+    end
 end
 
 function TC_SellWindow:setMessage(text, isError)
