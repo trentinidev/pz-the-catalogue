@@ -62,6 +62,17 @@ option TheCatalogue.SellContainerContents
     translation = TheCatalogue_SellContainerContents,
 }
 
+/* When on, both windows close if the player no longer has a Shop Catalogue on them.
+   Turn it off for an arcade-style game where the catalogue is a menu rather than an
+   object you have to be carrying. */
+option TheCatalogue.RequireCatalogueOnPerson
+{
+    type = boolean,
+    default = true,
+    page = TheCatalogue,
+    translation = TheCatalogue_RequireCatalogueOnPerson,
+}
+
 /* Minimum condition an item must have to be accepted for sale, as a fraction.
    0.0 accepts anything including near-broken gear and rotten food. */
 option TheCatalogue.MinConditionToSell

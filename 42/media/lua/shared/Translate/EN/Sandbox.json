@@ -13,6 +13,9 @@
     "Sandbox_TheCatalogue_SellContainerContents": "Sell container contents",
     "Sandbox_TheCatalogue_SellContainerContents_tooltip": "When on, selling a bag or a loaded gun sells what is inside it too, at its own value. When off, the catalogue refuses non-empty containers.",
 
+    "Sandbox_TheCatalogue_RequireCatalogueOnPerson": "Require the catalogue on you",
+    "Sandbox_TheCatalogue_RequireCatalogueOnPerson_tooltip": "When on, both windows close if you no longer have a Shop Catalogue in your inventory or a bag. Turn it off for an arcade-style game where the catalogue is a menu rather than an object you carry.",
+
     "Sandbox_TheCatalogue_MinConditionToSell": "Minimum condition to sell",
     "Sandbox_TheCatalogue_MinConditionToSell_tooltip": "Items below this fraction of condition are refused. 0.0 accepts anything, including near-broken gear and rotten food."
 }

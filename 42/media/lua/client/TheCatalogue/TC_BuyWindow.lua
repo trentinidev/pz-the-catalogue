@@ -71,8 +71,17 @@ function TC_BuyList:doDrawItem(y, item, alt)
     end
 
     local textY = y + (ROW_HGT - FONT_HGT_MEDIUM) / 2
+
+    -- A wishlisted row is tinted rather than given a star glyph, for the same reason
+    -- the sort arrows are drawn from rects: the bitmap fonts have no guaranteed
+    -- coverage for a star, and a missing glyph draws nothing at all.
+    local win = self.parentWindow
+    local wished = win and TC.isWished(win.player, e.fullType)
+    local nr, ng, nb = 1, 1, 1
+    if wished then nr, ng, nb = 1, 0.92, 0.6 end
+
     self:drawText(TC.truncate(UIFont.Medium, e.name, c.nameW),
-                  c.nameLeft, textY, 1, 1, 1, 1, UIFont.Medium)
+                  c.nameLeft, textY, nr, ng, nb, 1, UIFont.Medium)
 
     local smallY = y + (ROW_HGT - FONT_HGT_SMALL) / 2
     if c.catW > 20 then
@@ -128,11 +137,25 @@ function TC_BuyWindow:createChildren()
 
     local top, listW, listY, listH = self:listGeometry()
 
-    self.search = ISTextEntryBox:new("", PAD, top, listW - 220, BUTTON_HGT)
+    self.search = ISTextEntryBox:new("", PAD, top, listW - 400, BUTTON_HGT)
     self.search:initialise()
     self.search:instantiate()
     self.search.onTextChange = function() self:refreshList() end
     self:addChild(self.search)
+
+    -- Quick filter sits between the search and the category, because it answers a
+    -- narrower question than either and is the one most likely to be toggled twice in
+    -- a row -- "what can I actually afford" then straight back to everything.
+    self.quickCombo = ISComboBox:new(PAD + listW - 390, top, 180, BUTTON_HGT,
+                                     self, TC_BuyWindow.onCategoryChange)
+    self.quickCombo:initialise()
+    self.quickCombo:addOption(getText("IGUI_TC_QuickAll"))
+    self.quickCombo:addOption(getText("IGUI_TC_QuickAffordable"))
+    self.quickCombo:addOption(getText("IGUI_TC_QuickOwned"))
+    self.quickCombo:addOption(getText("IGUI_TC_QuickNotOwned"))
+    self.quickCombo:addOption(getText("IGUI_TC_QuickWishlist"))
+    self.quickCombo.selected = 1
+    self:addChild(self.quickCombo)
 
     self.categoryCombo = ISComboBox:new(PAD + listW - 210, top, 210, BUTTON_HGT,
                                         self, TC_BuyWindow.onCategoryChange)
@@ -172,6 +195,12 @@ function TC_BuyWindow:createChildren()
     self.plusBtn.internal = "PLUS"
     self.plusBtn:initialise(); self.plusBtn:instantiate()
     self:addChild(self.plusBtn)
+
+    self.wishBtn = ISButton:new(dx + PAD + 174, by - BUTTON_HGT - PAD,
+                                DETAIL_W - PAD * 2 - 174, BUTTON_HGT,
+                                getText("IGUI_TC_AddToWishlist"), self, TC_BuyWindow.onToggleWish)
+    self.wishBtn:initialise(); self.wishBtn:instantiate()
+    self:addChild(self.wishBtn)
 
     self.buyBtn = ISButton:new(dx + PAD, by, DETAIL_W - PAD * 2, BUTTON_HGT,
                                getText("IGUI_TC_Buy"), self, TC_BuyWindow.onBuy)
@@ -253,7 +282,17 @@ function TC_BuyWindow:refreshList()
     local needle = string.lower(self.search:getInternalText() or "")
     local spec = self.categoryList and self.categoryList[self.categoryCombo.selected]
                  or { kind = "all" }
-    local filtering = (needle ~= "" or spec.kind ~= "all")
+    local quick = self.quickCombo and self.quickCombo.selected or 1
+
+    -- Both of these are gathered ONCE per refresh and then read per row. Asking the
+    -- inventory or the balance per row would turn a filter into ten thousand
+    -- recursive walks.
+    local owned, balance
+    if quick == 3 or quick == 4 then owned = TC.ownedTypes(self.player) end
+    if quick == 2 then balance = TC.getBalance(self.player) end
+    local wishes = (quick == 5) and TC.wishlist(self.player) or nil
+
+    local filtering = (needle ~= "" or spec.kind ~= "all" or quick ~= 1)
 
     local items, n = {}, 0
     for i = 1, #ordered do
@@ -265,6 +304,15 @@ function TC_BuyWindow:refreshList()
             elseif spec.kind == "module" then
                 keep = ((e.module or "Base") == spec.value)
             end
+
+            if keep then
+                if     quick == 2 then keep = (TC.entryPrice(e) <= balance)
+                elseif quick == 3 then keep = (owned[e.fullType] ~= nil)
+                elseif quick == 4 then keep = (owned[e.fullType] == nil)
+                elseif quick == 5 then keep = (wishes[e.fullType] == true)
+                end
+            end
+
             -- entry.lower holds "display name  fulltype" pre-lowercased at index time,
             -- so typing matches either what the player sees or what a modder would type.
             if keep and needle ~= "" then
@@ -345,6 +393,15 @@ end
 
 function TC_BuyWindow:onQuantityStep(button)
     self:setQuantity(self.quantity + (button.internal == "PLUS" and 1 or -1))
+end
+
+function TC_BuyWindow:onToggleWish()
+    if not self.selectedEntry then return end
+    TC.toggleWish(self.player, self.selectedEntry.fullType)
+
+    -- Refresh only when the wishlist itself is what is being shown, otherwise
+    -- un-starring an item would make it vanish from under the cursor.
+    if self.quickCombo and self.quickCombo.selected == 5 then self:refreshList() end
 end
 
 -- ---------------------------------------------------------------------------
@@ -568,8 +625,21 @@ function TC_BuyWindow:onMouseUpOutside(x, y)
     return ISCollapsableWindow.onMouseUpOutside(self, x, y)
 end
 
+-- Same slow tick as the sell window: dropping the catalogue shuts the shop, but it is
+-- not worth asking the inventory about it sixty times a second.
+local CATALOGUE_CHECK_MS = 1000
+
 function TC_BuyWindow:prerender()
     ISCollapsableWindow.prerender(self)
+
+    local now = getTimestampMs()
+    if not self.lastCatalogueCheck or (now - self.lastCatalogueCheck) >= CATALOGUE_CHECK_MS then
+        self.lastCatalogueCheck = now
+        if not TC.hasCatalogue(self.player) then
+            self:close()
+            return
+        end
+    end
 
     local top, listW, listY, listH = self:listGeometry()
     self:drawListHeader(PAD, listY - HEADER_HGT, listW)
@@ -594,9 +664,21 @@ function TC_BuyWindow:prerender()
     local innerLeft  = dx + PAD
     local innerRight = dx + DETAIL_W - PAD
 
+    -- The wishlist button only makes sense with something selected, and its label has
+    -- to say which way it will go.
+    if self.wishBtn then
+        self.wishBtn:setEnable(entry ~= nil)
+        if entry and TC.isWished(self.player, entry.fullType) then
+            self.wishBtn:setTitle(getText("IGUI_TC_RemoveFromWishlist"))
+        else
+            self.wishBtn:setTitle(getText("IGUI_TC_AddToWishlist"))
+        end
+    end
+
     if entry then
-        if entry.icon then
-            self:drawTextureScaledAspect(entry.icon, innerLeft, y, 64, 64, 1, 1, 1, 1)
+        local icon = TC.entryIcon(entry)
+        if icon then
+            self:drawTextureScaledAspect(icon, innerLeft, y, 64, 64, 1, 1, 1, 1)
         end
 
         local textLeft = innerLeft + 64 + PAD
@@ -712,7 +794,8 @@ function TC_BuyWindow:onResize()
 
     local top, listW, listY, listH = self:listGeometry()
 
-    self.search:setWidth(listW - 220)
+    self.search:setWidth(listW - 400)
+    self.quickCombo:setX(PAD + listW - 390)
     self.categoryCombo:setX(PAD + listW - 210)
     self.list:setWidth(listW)
     self.list:setHeight(listH)
@@ -724,6 +807,8 @@ function TC_BuyWindow:onResize()
     self.plusBtn:setX(dx + PAD + 130);   self.plusBtn:setY(by - BUTTON_HGT - PAD)
     self.buyBtn:setX(dx + PAD);          self.buyBtn:setY(by)
     self.buyBtn:setWidth(DETAIL_W - PAD * 2)
+    self.wishBtn:setX(dx + PAD + 174);   self.wishBtn:setY(by - BUTTON_HGT - PAD)
+    self.wishBtn:setWidth(DETAIL_W - PAD * 2 - 174)
 end
 
 function TC_BuyWindow:close()

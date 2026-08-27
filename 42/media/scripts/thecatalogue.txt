@@ -19,6 +19,32 @@ module Catalogue
         FireFuelRatio = 0.25,
     }
 
+    /* Bundle loose notes. The exact mirror of vanilla's UnbundleMoney -- same time,
+       same tags, same category, same 1:100 rate -- so the two read as one pair of
+       recipes rather than as a mod bolted onto a vanilla one.
+
+       Vanilla can only take a bundle apart, never put one together, which is an odd
+       gap in a game that spawns thousands of loose notes: each one is a separate
+       InventoryItem at 0.01 weight, so a few thousand dollars is a few thousand
+       objects and tens of kilos. Bundling halves the weight and cuts the object count
+       by a hundred, and until now the catalogue was the only thing in the game that
+       could do it. */
+    craftRecipe BundleMoney
+    {
+        timedAction = Making,
+        time = 80,
+        Tags = InHandCraft;Packing;CanBeDoneInDark,
+        category = Packing,
+        inputs
+        {
+            item 100 [Base.Money] flags[AllowFavorite;InheritFavorite],
+        }
+        outputs
+        {
+            item 1 Base.MoneyBundle,
+        }
+    }
+
     /* One Notebook in, one Catalogue out. The notebook is consumed.
        InHandCraft keeps it out of the workstation-only lists, and CanBeDoneInDark
        matches the vanilla paper recipes -- writing a shopping list needs no light. */

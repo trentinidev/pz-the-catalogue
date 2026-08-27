@@ -363,6 +363,25 @@ function TC.conditionRatio(item)
         return 1
     end
 
+    --[[ B42 fluids are their own system, not drainables.
+
+         A water bottle, a petrol can and a bleach bottle hold a FluidContainer, and
+         they are not DrainableComboItems, so the drainable branch never saw them and a
+         half-empty bottle sold for the price of a full one. getFilledRatio is what the
+         game's own fluid UI reads.
+
+         An empty vessel is still worth something -- the bottle itself is the thing you
+         are buying half the time -- so the ratio floors at a quarter rather than at
+         nothing. ]]
+    local okFluid, fc = pcall(function() return item:getFluidContainer() end)
+    if okFluid and fc then
+        local okRatio, ratio = pcall(function() return fc:getFilledRatio() end)
+        if okRatio and type(ratio) == "number" then
+            return 0.25 + 0.75 * math.max(0, math.min(1, ratio))
+        end
+        return 1
+    end
+
     if instanceof(item, "DrainableComboItem") then
         local used = item:getUsedDelta()
         if type(used) == "number" and used >= 0 and used <= 1 then return used end

@@ -21,11 +21,12 @@ TC.NOTES_PER_BUNDLE = 100
 -- more often than you would think: an existing save made before the mod was added
 -- keeps its old SandboxVars table until the settings are re-saved.
 local DEFAULTS = {
-    PriceMultiplier         = 1.0,
-    SellRatio               = 0.9,
-    MaxQuantityPerPurchase  = 100,
-    SellContainerContents   = true,
-    MinConditionToSell      = 0.0,
+    PriceMultiplier            = 1.0,
+    SellRatio                  = 0.9,
+    MaxQuantityPerPurchase     = 100,
+    SellContainerContents      = true,
+    MinConditionToSell         = 0.0,
+    RequireCatalogueOnPerson   = true,
 }
 
 function TC.opt(name)
@@ -66,3 +67,73 @@ TC.EXCLUDED_ITEMS = {
     ["Base.MoneyBundle"] = true,
     ["Base.BareHands"]   = true,
 }
+
+-- ---------------------------------------------------------------------------
+-- Wishlist
+-- ---------------------------------------------------------------------------
+
+--[[ Stored on the player's own modData, which is where vanilla keeps its crafting
+     favourites and which persists per character across saves. Keyed by fullType, so it
+     survives a reindex and does not care what order the catalogue was built in. ]]
+local WISHLIST_KEY = "TheCatalogue_Wishlist"
+
+function TC.wishlist(player)
+    if not player then return {} end
+    local md = player:getModData()
+    if type(md[WISHLIST_KEY]) ~= "table" then md[WISHLIST_KEY] = {} end
+    return md[WISHLIST_KEY]
+end
+
+function TC.isWished(player, fullType)
+    return TC.wishlist(player)[fullType] == true
+end
+
+function TC.toggleWish(player, fullType)
+    local list = TC.wishlist(player)
+    if list[fullType] then
+        list[fullType] = nil
+        return false
+    end
+    list[fullType] = true
+    return true
+end
+
+--[[ Every fullType the player is carrying, gathered in one walk of their inventory.
+
+     Built once per list refresh and then read per row. Asking getItemCountRecurse for
+     each of ten thousand catalogue rows would be ten thousand recursive inventory
+     walks; walking the inventory once and asking a set is the same answer for a
+     fraction of the work. ]]
+function TC.ownedTypes(player, out, container, guard)
+    out = out or {}
+    guard = (guard or 0) + 1
+    if guard > 16 then return out end
+
+    container = container or (player and player:getInventory())
+    if not container then return out end
+
+    local items = container:getItems()
+    for i = 0, items:size() - 1 do
+        local it = items:get(i)
+        out[it:getFullType()] = (out[it:getFullType()] or 0) + 1
+        local ok, inv = pcall(function() return it:getInventory() end)
+        if ok and inv then TC.ownedTypes(player, out, inv, guard) end
+    end
+    return out
+end
+
+--[[ Does the player still have a catalogue on them?
+
+     Checked recursively, so one in a backpack counts. The window is opened from a
+     specific catalogue item, but holding a reference to THAT one would close the
+     window when a player consolidates two catalogues or moves one between bags, which
+     is worse than useless. What matters is that some catalogue is on the person. ]]
+function TC.hasCatalogue(player)
+    if not player then return false end
+    if not TC.opt("RequireCatalogueOnPerson") then return true end
+
+    local ok, n = pcall(function()
+        return player:getInventory():getItemCountRecurse(TC.ITEM_FULL)
+    end)
+    return ok and type(n) == "number" and n > 0
+end

@@ -688,6 +688,13 @@ function TC_SellWindow:prerender()
 
     local now = getTimestampMs()
     if not self.lastRevalidate or (now - self.lastRevalidate) >= REVALIDATE_MS then
+        -- Dropping the catalogue shuts the shop. Checked on the same slow tick as the
+        -- row rebuild rather than every frame: losing the catalogue is not something
+        -- that needs sub-second detection, and this path already costs the most.
+        if not TC.hasCatalogue(self.player) then
+            self:close()
+            return
+        end
         self:rebuildRows()
     end
 

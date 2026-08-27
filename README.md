@@ -18,6 +18,18 @@ the `Base.Money` and `Base.MoneyBundle` actually sitting in your inventory.
 40%-durability axe fetches 40%, a half-empty bleach bottle fetches half, rotten food
 fetches nothing. Selling pays 90% of catalogue price. The 10% spread is the house's.
 
+**Bundling cash** — a `Bundle Money` recipe turns 100 loose notes into one
+`MoneyBundle`, the exact mirror of vanilla's `UnbundleMoney`. Vanilla can only take a
+bundle apart, which is an odd gap in a game that spawns thousands of notes: each one is
+a separate object at 0.01 weight, so a few thousand dollars is a few thousand objects
+and tens of kilos.
+
+**Finding things** — search by name or item ID, filter by category or by source mod, and
+narrow further with a quick filter: what you can afford, what you already own, what you
+do not, or your wishlist. Star anything from the detail panel; the wishlist is stored per
+character and survives reloads. Click any column header to sort by it, click again to
+reverse, and drag the dividers to re-balance the widths.
+
 ## Installing
 
 Copy the `42/` folder into a folder named `TheCatalogue` inside your mods directory:
@@ -41,6 +53,7 @@ Custom sandbox options in B42 are drawn by the **server settings** screen
 | `MaxQuantityPerPurchase` | 100 | Cap on the quantity field. |
 | `SellContainerContents` | true | Selling a bag sells what is inside it. |
 | `MinConditionToSell` | 0.0 | Refuse items below this condition. |
+| `RequireCatalogueOnPerson` | true | Close both windows if you no longer carry a catalogue. |
 
 ---
 
