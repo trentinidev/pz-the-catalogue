@@ -159,7 +159,17 @@ function TC.buildIndex()
         if fullType and not TC.EXCLUDED_ITEMS[fullType]
            and not si:getObsolete() and not si:isHidden() then
 
-            local price = overrides[fullType] or priceFromFormula(si, fullType)
+            --[[ Three layers, most specific first.
+
+                 TC_Overrides    hand-set, 171 items whose price carries balance weight
+                 TC_PriceTable   generated, every vanilla item, priced from everything
+                                 the scripts declare (see tools/gen_prices.ps1)
+                 formula         category and weight only -- reached in practice only
+                                 by items from OTHER MODS, which the table never saw
+            ]]
+            local price = overrides[fullType]
+                          or (TC.PRICE_TABLE and TC.PRICE_TABLE[fullType])
+                          or priceFromFormula(si, fullType)
 
             if price then
                 TC.priceByType[fullType] = price

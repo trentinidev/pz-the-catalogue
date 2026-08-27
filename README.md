@@ -93,12 +93,26 @@ draw calls that hurt.
 
 ## Prices
 
-Two layers, in `media/lua/shared/TheCatalogue/`:
+Three layers, most specific first, in `media/lua/shared/TheCatalogue/`:
 
 - **`TC_Overrides.lua`** — 171 hand-set prices covering firearms, ammunition, tools,
   medicine, electronics, radios and bags. These win outright.
-- **`TC_Prices.lua`** — a formula for everything else, from the item's `DisplayCategory`
-  and weight, on a sub-linear weight curve (`base × (0.55 + 0.45 × w^0.85)`).
+- **`TC_PriceTable.lua`** — generated, covering all 4,916 tradeable vanilla items. Built
+  offline by `tools/gen_prices.ps1`, which reads everything the item scripts declare:
+  calories and macronutrients on food, `MaxDamage` and `ConditionMax` on weapons,
+  `BodyLocation` and the three defence ratings on clothing, `Capacity` and
+  `WeightReduction` on bags, `SkillTrained` on books, and the precious-material tags on
+  jewellery. Rules live in `tools/rules.ps1`.
+- **`TC_Prices.lua`** — the original category-and-weight formula, now only a fallback for
+  items the table has never seen, which in practice means items from other mods.
+
+Prices are set by **what a thing is**, with weight as a minor modifier — except for
+building materials, where weight is the honest signal, since a kilo of nails really is
+worth twice what half a kilo is. Weight alone was the original mistake: it priced a gold
+necklace and a corkscrew at $4 apiece.
+
+Sanity check on the result: median item $9, 90th percentile $56, dearest item the
+assault rifle at $750. Food runs a median of $2, clothing $26, skill books $46.
 
 Money, MoneyBundle and BareHands are excluded from the catalogue: a currency that can be
 bought and sold at any spread other than exactly 1.0 is an arbitrage loop. Corpses,
