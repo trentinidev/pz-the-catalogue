@@ -94,8 +94,14 @@ local function roundPrice(p)
 end
 
 --[[ Formula price for one ScriptItem. Returns nil for anything the catalogue
-     refuses to trade, which is how excluded items stay out of the index. ]]
-local function priceFromFormula(scriptItem)
+     refuses to trade, which is how excluded items stay out of the index.
+
+     Material value is ADDED to the formula result rather than replacing it, so a gold
+     necklace is worth its gold plus the small amount the piece itself is worth, and a
+     gold-set diamond is worth both stones' worth of markup. Without this the weight
+     curve prices every piece of jewellery in the game at about four dollars, since
+     weight is the only magnitude the formula can see. ]]
+local function priceFromFormula(scriptItem, fullType)
     local cat = scriptItem:getDisplayCategory()
     if cat and TC.EXCLUDED_CATEGORIES[cat] then return nil end
 
@@ -104,7 +110,12 @@ local function priceFromFormula(scriptItem)
     local ok, w = pcall(function() return scriptItem:getActualWeight() end)
     if not ok then w = 1 end
 
-    return roundPrice(base * weightFactor(w))
+    local price = base * weightFactor(w)
+
+    local material = TC.MATERIAL_VALUES and TC.MATERIAL_VALUES[fullType]
+    if material then price = price + material end
+
+    return roundPrice(price)
 end
 
 -- ---------------------------------------------------------------------------
@@ -148,7 +159,7 @@ function TC.buildIndex()
         if fullType and not TC.EXCLUDED_ITEMS[fullType]
            and not si:getObsolete() and not si:isHidden() then
 
-            local price = overrides[fullType] or priceFromFormula(si)
+            local price = overrides[fullType] or priceFromFormula(si, fullType)
 
             if price then
                 TC.priceByType[fullType] = price
@@ -300,37 +311,44 @@ end
      Anything that models no wear at all is worth full price, which is correct for
      a nail or a can of beans.
 ]]
+--[[ Asked with instanceof rather than by calling a getter inside pcall.
+
+     The old form wrapped each of six getters in its own pcall, because getCondition
+     does not exist on a can of beans and isRotten does not exist on an axe, and
+     calling a missing method here throws. That meant up to six closure allocations
+     per item -- fine once, ruinous when the sell window was valuing every staged item
+     on every frame. Asking the item what it IS costs one call and no allocation, and
+     these four class names are the same ones the game's own Lua tests against.
+]]
 function TC.conditionRatio(item)
     if not item then return 1 end
 
-    -- Rotten food is worth essentially nothing, however fresh its condition claims.
-    local okRot, rotten = pcall(function() return item:isRotten() end)
-    if okRot and rotten then return 0.02 end
+    if instanceof(item, "Food") then
+        -- Rotten is worth essentially nothing, however fresh the condition claims.
+        if item:isRotten() then return 0.02 end
 
-    local okAge, age = pcall(function() return item:getAge() end)
-    if okAge and type(age) == "number" then
-        local _, offAge    = pcall(function() return item:getOffAge() end)
-        local _, offAgeMax = pcall(function() return item:getOffAgeMax() end)
-        if type(offAge) == "number" and type(offAgeMax) == "number"
+        local age, offAge, offAgeMax = item:getAge(), item:getOffAge(), item:getOffAgeMax()
+        if type(age) == "number" and type(offAge) == "number" and type(offAgeMax) == "number"
            and offAgeMax > offAge and offAgeMax < 1000000 then
             if age <= offAge then return 1 end
             -- Stale but not rotten: fade from full price down to a tenth.
             local decay = (age - offAge) / (offAgeMax - offAge)
             return math.max(0.1, 1 - decay * 0.9)
         end
+        return 1
     end
 
-    local okCond, cond = pcall(function() return item:getCondition() end)
-    if okCond and type(cond) == "number" then
-        local _, condMax = pcall(function() return item:getConditionMax() end)
-        if type(condMax) == "number" and condMax > 0 then
+    if instanceof(item, "DrainableComboItem") then
+        local used = item:getUsedDelta()
+        if type(used) == "number" and used >= 0 and used <= 1 then return used end
+        return 1
+    end
+
+    if instanceof(item, "HandWeapon") or instanceof(item, "Clothing") then
+        local cond, condMax = item:getCondition(), item:getConditionMax()
+        if type(cond) == "number" and type(condMax) == "number" and condMax > 0 then
             return math.max(0, math.min(1, cond / condMax))
         end
-    end
-
-    local okUsed, used = pcall(function() return item:getUsedDelta() end)
-    if okUsed and type(used) == "number" and used >= 0 and used <= 1 then
-        return used
     end
 
     return 1

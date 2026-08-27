@@ -49,8 +49,11 @@ function TC_SellList:doDrawItem(y, item, alt)
         return y + ROW_HGT
     end
 
-    local it = item.item
-    local c  = TC.columns(self.width, self.parentWindow and self.parentWindow.colW or nil)
+    -- item.item is a ROW record built by rebuildRows, not the InventoryItem itself.
+    -- Name, condition and value were computed there; drawing only reads them back.
+    local row = item.item
+    local it  = row.item
+    local c   = TC.columns(self.width, self.parentWindow and self.parentWindow.colW or nil)
 
     if self.selected == item.index then
         self:drawRect(0, y, self:getWidth(), ROW_HGT - 1, 0.55, 0.24, 0.34, 0.45)
@@ -58,33 +61,31 @@ function TC_SellList:doDrawItem(y, item, alt)
     self:drawRect(0, y + ROW_HGT - 1, self:getWidth(), 1, 0.25, 1, 1, 1)
     TC.drawColumnRules(self, c, 0, y, ROW_HGT - 1, 0.22)
 
-    local tex = it:getTex()
-    if tex then
-        self:drawTextureScaledAspect(tex, TC.UI.CELL_PAD, y + (ROW_HGT - ICON) / 2,
+    if row.tex == nil then row.tex = it:getTex() or false end
+    if row.tex then
+        self:drawTextureScaledAspect(row.tex, TC.UI.CELL_PAD, y + (ROW_HGT - ICON) / 2,
                                      ICON, ICON, 1, 1, 1, 1)
     end
 
     local textY  = y + (ROW_HGT - FONT_HGT_MEDIUM) / 2
     local smallY = y + (ROW_HGT - FONT_HGT_SMALL) / 2
 
-    self:drawText(TC.truncate(UIFont.Medium, it:getDisplayName(), c.nameW),
+    self:drawText(TC.truncate(UIFont.Medium, row.name, c.nameW),
                   c.nameLeft, textY, 1, 1, 1, 1, UIFont.Medium)
 
     -- Condition, but only when the item actually models wear. Printing "100%" beside
     -- a nail is noise; the absence of a figure is itself the information.
-    local ratio = TC.conditionRatio(it)
-    if ratio < 0.999 then
-        local pct = string.format("%d%%", math.floor(ratio * 100 + 0.5))
+    if row.ratio < 0.999 then
+        local pct = string.format("%d%%", math.floor(row.ratio * 100 + 0.5))
         -- Colour carries the warning: green is fine, amber is worn, red is nearly spent.
         local r, g, b = 0.55, 0.9, 0.55
-        if ratio < 0.3 then r, g, b = 0.95, 0.45, 0.4
-        elseif ratio < 0.7 then r, g, b = 0.95, 0.82, 0.45 end
+        if row.ratio < 0.3 then r, g, b = 0.95, 0.45, 0.4
+        elseif row.ratio < 0.7 then r, g, b = 0.95, 0.82, 0.45 end
         TC.drawRight(self, pct, c.midRight, smallY, UIFont.Small, r, g, b)
     end
 
-    local value = TC.getSellPriceRounded(it)
-    if value then
-        TC.drawRight(self, "$" .. value, c.priceRight, textY, UIFont.Medium, 0.78, 0.96, 0.78)
+    if row.value then
+        TC.drawRight(self, "$" .. row.value, c.priceRight, textY, UIFont.Medium, 0.78, 0.96, 0.78)
     else
         TC.drawRight(self, getText("IGUI_TC_NoValue"), c.priceRight, smallY,
                      UIFont.Small, 0.7, 0.45, 0.45)
@@ -339,12 +340,52 @@ function TC_SellWindow:sortedStaged()
     return out
 end
 
-function TC_SellWindow:refreshList()
+--[[ Rebuild the row cache.
+
+     THIS IS THE WHOLE POINT. Valuing an item is not cheap: getSellValue walks into
+     container contents, and conditionRatio has to ask the item what it is. Before this
+     existed, prerender called total() -- which valued EVERY staged item from scratch --
+     and then doDrawItem valued each visible row again, all sixty times a second. Stage
+     two hundred items and that is twelve thousand recursive valuations per second.
+
+     Now each row's name, condition and value are computed once and kept. Drawing and
+     the payout total just read the numbers back.
+]]
+function TC_SellWindow:rebuildRows()
     self:pruneStaged()
-    self.list:clear()
-    for _, item in ipairs(self:sortedStaged()) do
-        self.list:addItem(item:getDisplayName(), item)
+
+    local rows, total = {}, 0
+    for i, item in ipairs(self:sortedStaged()) do
+        local value = TC.getSellPriceRounded(item)
+        rows[i] = {
+            item  = item,
+            name  = item:getDisplayName(),
+            ratio = TC.conditionRatio(item),
+            value = value,
+        }
+        if value then total = total + value end
     end
+
+    self.rows = rows
+    self.totalValue = total
+
+    local items = {}
+    for i = 1, #rows do
+        items[i] = { text = rows[i].name, item = rows[i], itemindex = i, height = ROW_HGT }
+    end
+    self.list.items = items
+    self.list.count = #items
+    self.list:setScrollHeight(#items * ROW_HGT)
+
+    self.lastRevalidate = getTimestampMs()
+end
+
+function TC_SellWindow:refreshList()
+    self:rebuildRows()
+end
+
+function TC_SellWindow:total()
+    return self.totalValue or 0
 end
 
 --[[ Click a header to sort by it; click the active one again to reverse. Text opens
@@ -359,15 +400,6 @@ function TC_SellWindow:sortBy(key)
     self:refreshList()
 end
 
-function TC_SellWindow:total()
-    local sum = 0
-    for _, item in ipairs(self.staged) do
-        local v = TC.getSellPriceRounded(item)
-        if v then sum = sum + v end
-    end
-    return sum
-end
-
 -- ---------------------------------------------------------------------------
 -- Buttons
 -- ---------------------------------------------------------------------------
@@ -375,8 +407,11 @@ end
 function TC_SellWindow:onRemoveSelected()
     local sel = self.list.items[self.list.selected]
     if not sel then return end
+
+    -- sel.item is a row record; the InventoryItem it stands for is row.item.
+    local target = sel.item.item
     for i, item in ipairs(self.staged) do
-        if item == sel.item then
+        if item == target then
             table.remove(self.staged, i)
             break
         end
@@ -544,10 +579,20 @@ function TC_SellWindow:onMouseUpOutside(x, y)
     return ISCollapsableWindow.onMouseUpOutside(self, x, y)
 end
 
+--[[ How often the cached values are rebuilt while the window just sits there.
+
+     Something has to catch food rotting, an item eaten out of the staged set, or a bag
+     emptied behind our back. Doing it every frame was the original sin; once a second
+     is far below what any of those changes can outrun, and costs a sixtieth as much. ]]
+local REVALIDATE_MS = 1000
+
 function TC_SellWindow:prerender()
     ISCollapsableWindow.prerender(self)
 
-    if self:pruneStaged() then self:refreshList() end
+    local now = getTimestampMs()
+    if not self.lastRevalidate or (now - self.lastRevalidate) >= REVALIDATE_MS then
+        self:rebuildRows()
+    end
 
     local listY, listH = self:listGeometry()
     local listW = self.width - PAD * 2
