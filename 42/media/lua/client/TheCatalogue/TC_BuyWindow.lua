@@ -137,6 +137,24 @@ function TC_BuyWindow:listGeometry()
     return top, listW, listY, listH
 end
 
+--[[ What TC_Table needs from this window: where the header sits, how tall it is, and
+     which heading belongs to which column slot. Everything else -- drawing, sorting,
+     divider dragging, the status line -- comes from the mixin at the bottom of this
+     file. ]]
+function TC_BuyWindow:tableGeometry()
+    local _, listW, listY = self:listGeometry()
+    return PAD, listY - HEADER_HGT, listW
+end
+
+function TC_BuyWindow:tableHeaderHeight() return HEADER_HGT end
+
+TC_BuyWindow.tableCols = {
+    { key = "name",  textKey = "IGUI_TC_ColItem",     align = "left"  },
+    { key = "cat",   textKey = "IGUI_TC_ColCategory", align = "left"  },
+    { key = "mid",   textKey = "IGUI_TC_ColWeight",   align = "right" },
+    { key = "price", textKey = "IGUI_TC_ColPrice",    align = "right" },
+}
+
 function TC_BuyWindow:createChildren()
     ISCollapsableWindow.createChildren(self)
 
@@ -400,22 +418,6 @@ function TC_BuyWindow:refreshList()
     self.list.selected = -1
 end
 
---[[ Click a header to sort by it; click the active one again to reverse.
-
-     Text columns open ascending (A-Z) and numeric columns open descending, because
-     "show me the expensive things" is the question people actually arrive with when
-     they click a price header.
-]]
-function TC_BuyWindow:sortBy(key)
-    if self.sortKey == key then
-        self.sortAsc = not self.sortAsc
-    else
-        self.sortKey = key
-        self.sortAsc = (key == "name" or key == "cat")
-    end
-    self:refreshList()
-end
-
 --[[ ISScrollingListBox calls this as onmousedown(self.target, item.item), so the
      catalogue entry arrives directly -- no need to go back through the selected
      index, which is also briefly stale right after a clear(). ]]
@@ -496,7 +498,7 @@ function TC_BuyWindow:onBuy()
     local total = unit * self.quantity
 
     if not getScriptManager():FindItem(entry.fullType) then
-        print("[TheCatalogue] refused purchase: unknown item " .. tostring(entry.fullType))
+        TC.warn("refused purchase: unknown item %s", tostring(entry.fullType))
         self:setMessage(getText("IGUI_TC_ItemUnavailable"), true)
         return
     end
@@ -563,8 +565,8 @@ function TC_BuyWindow:onOrderComplete(payload)
         local refund = unit * (qty - delivered)
         TC.giveCash(player, refund)
         total = unit * delivered
-        print(string.format("[TheCatalogue] delivered %d of %d %s -- refunded $%d",
-                            delivered, qty, tostring(entry.fullType), refund))
+        TC.warn("delivered %d of %d %s -- refunded $%d",
+                delivered, qty, tostring(entry.fullType), refund)
         if delivered == 0 then
             self:setMessage(getText("IGUI_TC_ItemUnavailable"), true)
             return
@@ -595,143 +597,13 @@ function TC_BuyWindow:overCapacityBy(player)
     return 0
 end
 
-function TC_BuyWindow:setMessage(text, isError)
-    self.message = text
-    self.messageIsError = isError and true or false
-end
-
 -- ---------------------------------------------------------------------------
 -- Drawing
 -- ---------------------------------------------------------------------------
 
---[[ Column headers, drawn on the window rather than inside the list so they stay put
-     while the rows scroll under them.
-
-     Every label goes through truncate against its own column width. That is what fixes
-     the pile-up in the old header: the labels were drawn at full length regardless of
-     how much room the column had, so "Category", "Weight" and "Price" overprinted each
-     other whenever the columns were narrower than the words. ]]
-function TC_BuyWindow:drawListHeader(listX, headerY, listW)
-    local c = TC.columns(listW, self.colW)
-
-    self:drawRect(listX, headerY, listW, HEADER_HGT, 0.75, 0.13, 0.13, 0.15)
-    self:drawRectBorder(listX, headerY, listW, HEADER_HGT, 0.5, 0.4, 0.4, 0.4)
-    TC.drawColumnRules(self, c, listX, headerY, HEADER_HGT, 0.4)
-
-    local ty = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
-    local ay = headerY + (HEADER_HGT - 4) / 2      -- the arrow is 4px tall
-    local F  = UIFont.Small
-    local ARROW = 11                                -- glyph width plus its gap
-
-    -- The active column is brighter, so which sort is in force is readable at a glance.
-    local function shade(key)
-        if self.sortKey == key then return 1, 1, 1 end
-        return 0.72, 0.72, 0.76
-    end
-
-    -- Left-aligned headers: label first, arrow immediately after it.
-    local function headLeft(key, tkey, x, avail)
-        local room = (self.sortKey == key) and (avail - ARROW) or avail
-        local text = TC.truncate(F, getText(tkey), room)
-        local r, g, b = shade(key)
-        self:drawText(text, x, ty, r, g, b, 1, F)
-        if self.sortKey == key then
-            local w = getTextManager():MeasureStringX(F, text)
-            TC.drawSortArrow(self, x + w + 4, ay, self.sortAsc)
-        end
-    end
-
-    -- Right-aligned headers: arrow sits to the LEFT of the label, so the label keeps
-    -- its edge alignment with the numbers underneath it.
-    local function headRight(key, tkey, right, avail)
-        local room = (self.sortKey == key) and (avail - ARROW) or avail
-        local text = TC.truncate(F, getText(tkey), room)
-        local w = getTextManager():MeasureStringX(F, text)
-        local x = listX + right - w - TC.UI.CELL_PAD
-        local r, g, b = shade(key)
-        self:drawText(text, x, ty, r, g, b, 1, F)
-        if self.sortKey == key then
-            TC.drawSortArrow(self, x - ARROW, ay, self.sortAsc)
-        end
-    end
-
-    headLeft("name", "IGUI_TC_ColItem", listX + c.nameLeft, c.nameW)
-    if c.catW > 20 then
-        headLeft("cat", "IGUI_TC_ColCategory", listX + c.catLeft + TC.UI.CELL_PAD, c.catW)
-    end
-    headRight("mid", "IGUI_TC_ColWeight", c.midRight, c.midW)
-    headRight("price", "IGUI_TC_ColPrice", c.priceRight, c.priceW)
-
-    -- Highlight the divider under the cursor so the drag handle is discoverable.
-    if self.hoverDivider then
-        self:drawRect(listX + self.hoverDivider.x - 1, headerY, 3, HEADER_HGT, 0.8, 0.6, 0.7, 0.9)
-    end
-end
-
 -- ---------------------------------------------------------------------------
 -- Draggable column dividers
 -- ---------------------------------------------------------------------------
-
---[[ The header strip is drawn by the window, not by the list box, so its mouse events
-     arrive here. ISCollapsableWindow:onMouseDown sets self.moving unconditionally --
-     it drags the window from anywhere, not just the title bar -- so a grab on a
-     divider must NOT fall through to it, or the whole window would follow the cursor. ]]
-function TC_BuyWindow:headerBand()
-    local _, listW, listY = self:listGeometry()
-    return PAD, listY - HEADER_HGT, listW, HEADER_HGT
-end
-
-function TC_BuyWindow:dividerAtPoint(x, y)
-    local hx, hy, hw, hh = self:headerBand()
-    if y < hy or y > hy + hh then return nil end
-    return TC.dividerUnder(TC.columns(hw, self.colW), hx, x)
-end
-
-function TC_BuyWindow:onMouseMove(dx, dy)
-    local x, y = self:getMouseX(), self:getMouseY()
-
-    if self.dragCol then
-        local hx, _, hw = self:headerBand()
-        TC.resizeColumn(self.colW, self.dragCol.key, x - hx, hw)
-        return true
-    end
-
-    self.hoverDivider = self:dividerAtPoint(x, y)
-    return ISCollapsableWindow.onMouseMove(self, dx, dy)
-end
-
-function TC_BuyWindow:onMouseDown(x, y)
-    local d = self:dividerAtPoint(x, y)
-    if d then
-        self.dragCol = d
-        self:bringToTop()
-        return true          -- consumed: the window must not start moving
-    end
-
-    -- A click anywhere else on the header sorts by that column. Checked after the
-    -- divider so the few pixels of a drag handle are never stolen by the sort.
-    local hx, hy, hw, hh = self:headerBand()
-    if y >= hy and y <= hy + hh and x >= hx and x <= hx + hw then
-        local col = TC.columnAtPoint(TC.columns(hw, self.colW), hx, x)
-        if col then
-            self:sortBy(col)
-            self:bringToTop()
-            return true
-        end
-    end
-
-    return ISCollapsableWindow.onMouseDown(self, x, y)
-end
-
-function TC_BuyWindow:onMouseUp(x, y)
-    self.dragCol = nil
-    return ISCollapsableWindow.onMouseUp(self, x, y)
-end
-
-function TC_BuyWindow:onMouseUpOutside(x, y)
-    self.dragCol = nil
-    return ISCollapsableWindow.onMouseUpOutside(self, x, y)
-end
 
 -- Same slow tick as the sell window: dropping the catalogue shuts the shop, but it is
 -- not worth asking the inventory about it sixty times a second.
@@ -750,7 +622,7 @@ function TC_BuyWindow:prerender()
     end
 
     local top, listW, listY, listH = self:listGeometry()
-    self:drawListHeader(PAD, listY - HEADER_HGT, listW)
+    self:drawTableHeader()
 
     -- Placeholder inside the empty search box. Without it the box reads as a blank
     -- field and players do not discover that they can type an item ID into it.
@@ -953,7 +825,8 @@ function TC.openBuyWindow(playerNum, catalogueItem)
     win:addToUIManager()
     TC_BuyWindow.instances[playerNum] = win
 
-    print(string.format("[TheCatalogue] buy window opened in %d ms (%d rows)",
-                        getTimestampMs() - started, #win.list.items))
+    TC.log("buy window opened in %d ms (%d rows)",
+           getTimestampMs() - started, #win.list.items)
     return win
 end
+TC.applyTableBehaviour(TC_BuyWindow)

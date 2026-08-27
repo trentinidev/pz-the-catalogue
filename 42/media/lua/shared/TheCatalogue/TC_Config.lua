@@ -29,6 +29,7 @@ local DEFAULTS = {
     RequireCatalogueOnPerson   = true,
     CatalogueLootMultiplier    = 1.0,
     OrderSeconds               = 2.0,
+    DebugLogging               = false,
 }
 
 function TC.opt(name)
@@ -69,6 +70,36 @@ TC.EXCLUDED_ITEMS = {
     ["Base.MoneyBundle"] = true,
     ["Base.BareHands"]   = true,
 }
+
+-- ---------------------------------------------------------------------------
+-- Logging
+-- ---------------------------------------------------------------------------
+
+--[[ Two levels, and the split matters more than it looks.
+
+     TC.warn is for things that went wrong and that a player might have to act on or
+     report: an item that could not be supplied, money refunded because a delivery came
+     up short, a mod misusing the API, a container graph deep enough to be a bug. These
+     always print. Someone filing a bug report needs them.
+
+     TC.log is diagnostics -- how long the index took, how many loot containers were
+     touched. Useful while building the mod, noise in a stranger's console. Off unless
+     DebugLogging is switched on in the sandbox.
+
+     Before this existed everything printed unconditionally, which meant every player
+     who installed the mod got timing output they had no use for. ]]
+function TC.warn(fmt, ...)
+    if select("#", ...) > 0 then
+        print("[TheCatalogue] " .. string.format(fmt, ...))
+    else
+        print("[TheCatalogue] " .. tostring(fmt))
+    end
+end
+
+function TC.log(fmt, ...)
+    if not TC.opt("DebugLogging") then return end
+    TC.warn(fmt, ...)
+end
 
 --[[ The container inside an item, or nil if it is not a container.
 

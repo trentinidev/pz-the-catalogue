@@ -62,6 +62,17 @@ option TheCatalogue.SellContainerContents
     translation = TheCatalogue_SellContainerContents,
 }
 
+/* Diagnostic logging. Off by default: the timing and loot-table lines are useful
+   while working on the mod and are noise in a player console. Real problems --
+   refused purchases, refunds, API misuse -- always print regardless. */
+option TheCatalogue.DebugLogging
+{
+    type = boolean,
+    default = false,
+    page = TheCatalogue,
+    translation = TheCatalogue_DebugLogging,
+}
+
 /* Seconds spent placing an order before it completes, as an interruptible action.
    0 makes buying instant, which is how the mod behaved before this existed. */
 option TheCatalogue.OrderSeconds

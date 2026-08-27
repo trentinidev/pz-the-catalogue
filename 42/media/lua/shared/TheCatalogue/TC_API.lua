@@ -43,7 +43,7 @@ TC.REGISTERED_BASES    = TC.REGISTERED_BASES or {}
 TC.REGISTERED_HANDLERS = TC.REGISTERED_HANDLERS or {}
 
 local function warn(msg)
-    print("[TheCatalogue] API: " .. msg)
+    TC.warn("API: %s", msg)
 end
 
 --[[ Fix the price of one item. Wins over everything The Catalogue works out itself. ]]
