@@ -74,10 +74,21 @@ local function addOptions(playerNum, context, items)
     local sellWin = TC_SellWindow and TC_SellWindow.instances[playerNum]
     if sellWin then
         local real = allRealItems(items)
-        if #real > 0 then
-            local label = (#real == 1) and getText("ContextMenu_TC_AddToSell")
-                                        or getText("ContextMenu_TC_AddToSellMany", #real)
-            context:addOption(label, playerNum, onAddToSell, real)
+
+        if #real == 1 then
+            context:addOption(getText("ContextMenu_TC_AddToSell"),
+                              playerNum, onAddToSell, real)
+
+        elseif #real > 1 then
+            --[[ Dragging a stack always brings the whole stack, because that is what
+                 the inventory pane puts in ISMouseDrag and nothing here can change it.
+                 So the choice lives in this menu instead: one, or all of them. Without
+                 it, selling a single ring out of a pile of nine means staging all nine
+                 and then picking eight back out one at a time. ]]
+            context:addOption(getText("ContextMenu_TC_AddOneToSell"),
+                              playerNum, onAddToSell, { real[1] })
+            context:addOption(getText("ContextMenu_TC_AddToSellMany", #real),
+                              playerNum, onAddToSell, real)
         end
     end
 end

@@ -271,6 +271,10 @@ function TC_SellWindow:stageItems(items)
 
     self:refreshList()
 
+    -- If the prune threw anything out during that refresh, its warning is the more
+    -- important message and must not be overwritten by a success line.
+    if self.prunedLast then return end
+
     if added > 0 and refused == 0 then
         self:setMessage(getText("IGUI_TC_Staged", added), false)
     elseif added > 0 then
@@ -283,31 +287,73 @@ end
 --[[ Drop anything that has left the world behind our back -- eaten, dropped on the
      floor, moved into a container we can no longer see. Called before every render
      path that reads self.staged, so a stale reference never reaches the sale. ]]
---[[ Is this item still somewhere the player could actually hand it over?
+--[[ Every container the player can reach right now.
 
-     Having a container is not enough. A staged item can be dropped on the floor, put
-     in a car boot or left in a crate three rooms away and it keeps a perfectly valid
-     container the whole time -- the reference stays alive and the sale would go
-     through from across the map.
+     The two inventory pages -- their own inventory, and the loot side -- each keep a
+     `backpacks` list of the containers currently on offer, which is precisely the
+     game's own answer to "what can this player touch from where they are standing". A
+     briefcase inside a vehicle boot is in that list the moment both are open, which is
+     the case that matters here.
 
-     getOutermostContainer walks up to the top of the nesting, so a wallet inside a
-     backpack still answers "the player's inventory". This is the same test
-     ISInventoryTransferAction uses to decide whether a transfer needs walking to. ]]
-local function isReachable(player, item)
+     Rebuilt per check rather than cached: the player opens and closes containers
+     constantly, and the list is a handful of entries. ]]
+local function collectBackpacks(page, set)
+    if not page then return end
+    if page.inventory then set[page.inventory] = true end
+
+    -- Vanilla reaches this list two different ways -- page.backpacks directly, and
+    -- page.inventoryPane.inventoryPage.backpacks, which loops back to the same page.
+    -- Both are read here rather than betting on which one is the intended path.
+    local lists = { page.backpacks }
+    if page.inventoryPane and page.inventoryPane.inventoryPage then
+        table.insert(lists, page.inventoryPane.inventoryPage.backpacks)
+    end
+
+    for _, list in ipairs(lists) do
+        if list then
+            for _, cb in ipairs(list) do
+                if cb.inventory then set[cb.inventory] = true end
+            end
+        end
+    end
+end
+
+local function reachableInventories(playerNum)
+    local set = {}
+    collectBackpacks(getPlayerInventory(playerNum), set)
+    collectBackpacks(getPlayerLoot(playerNum), set)
+    return set
+end
+
+--[[ Is this item somewhere the player could actually hand it over?
+
+     Having a container is not enough on its own: a dropped item, or one left in a
+     crate three rooms away, keeps a perfectly valid container indefinitely, and the
+     sale would go through from across the map.
+
+     But requiring the player's OWN inventory was too strict and broke selling out of
+     any open container -- items staged from a boot or a crate were added and then
+     pruned on the same frame, which read as the drag doing nothing at all. Anything in
+     a container the player currently has open counts, at any nesting depth. ]]
+local function isReachable(player, playerNum, item)
     local ok, container = pcall(function() return item:getContainer() end)
     if not ok or not container then return false end
 
-    local playerInv = player:getInventory()
-    if container == playerInv then return true end
+    if container == player:getInventory() then return true end
+
+    local reachable = reachableInventories(playerNum)
+    if reachable[container] then return true end
 
     local okOut, outer = pcall(function() return container:getOutermostContainer() end)
-    return okOut and outer == playerInv
+    return okOut and outer ~= nil and reachable[outer] == true
 end
 
 function TC_SellWindow:pruneStaged()
     local kept = {}
     for _, item in ipairs(self.staged) do
-        if isReachable(self.player, item) then table.insert(kept, item) end
+        if isReachable(self.player, self.playerNum, item) then
+            table.insert(kept, item)
+        end
     end
     if #kept ~= #self.staged then
         local dropped = #self.staged - #kept
@@ -374,7 +420,10 @@ end
      the payout total just read the numbers back.
 ]]
 function TC_SellWindow:rebuildRows()
-    self:pruneStaged()
+    -- Recorded so stageItems can tell whether the staging it just did survived. It is
+    -- how "Added 9 item(s)" ended up printed in green over an empty list: the prune
+    -- ran first, dropped all nine, and the success message was written afterwards.
+    self.prunedLast = self:pruneStaged()
 
     local rows = {}
     local sorted = self:sortedStaged()
