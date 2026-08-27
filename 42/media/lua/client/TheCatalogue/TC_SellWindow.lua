@@ -298,6 +298,13 @@ function TC_SellWindow:canStage(item)
         return false, getText("IGUI_TC_RefuseFavorite")
     end
 
+    -- Same treatment as a favourite, and for the same reason: a star means "I care
+    -- about this", and honouring that only in some places would be worse than not
+    -- honouring it at all. See TC.rescueProtected for the container side.
+    if TC.isWished(self.player, item:getFullType()) then
+        return false, getText("IGUI_TC_RefuseWishlisted")
+    end
+
     if isInUse(self.player, item) then
         return false, getText("IGUI_TC_RefuseEquipped")
     end
@@ -555,9 +562,15 @@ function TC_SellWindow:rebuildRows()
             local sub = items:get(i)
             local value = TC.getSellPriceRounded(sub)
 
+            -- Must agree exactly with what TC.rescueProtected will actually keep,
+            -- including the wishlist, or the tree tells the player one thing and the
+            -- sale does another.
             local kept = false
             local okFav, fav = pcall(function() return sub:isFavorite() end)
-            if (okFav and fav) or sub:getFullType() == TC.ITEM_FULL or not value then
+            if (okFav and fav)
+               or TC.isWished(self.player, sub:getFullType())
+               or sub:getFullType() == TC.ITEM_FULL
+               or not value then
                 kept = true
             end
 
