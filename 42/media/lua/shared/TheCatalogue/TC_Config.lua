@@ -27,6 +27,8 @@ local DEFAULTS = {
     SellContainerContents      = true,
     MinConditionToSell         = 0.0,
     RequireCatalogueOnPerson   = true,
+    CatalogueLootMultiplier    = 1.0,
+    OrderSeconds               = 2.0,
 }
 
 function TC.opt(name)

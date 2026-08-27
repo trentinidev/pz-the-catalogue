@@ -27,6 +27,10 @@ local function onSell(playerNum, item)
     TC.openSellWindow(playerNum, item)
 end
 
+local function onHistory(playerNum, item)
+    TC.openHistoryWindow(playerNum)
+end
+
 --[[ Every real item in the right-clicked selection, stacks flattened. ]]
 local function allRealItems(items)
     local out = {}
@@ -65,6 +69,9 @@ local function addOptions(playerNum, context, items)
 
         local sell = context:addOption(getText("ContextMenu_TC_Sell"), playerNum, onSell, catalogue)
         if sell and tex then sell.iconTexture = tex end
+
+        local hist = context:addOption(getText("ContextMenu_TC_History"), playerNum, onHistory, catalogue)
+        if hist and tex then hist.iconTexture = tex end
     end
 
     --[[ A keyboard-and-menu route into the sell box, offered only while the window

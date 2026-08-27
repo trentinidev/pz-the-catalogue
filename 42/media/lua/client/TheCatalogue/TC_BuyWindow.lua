@@ -118,9 +118,10 @@ function TC_BuyWindow:new(x, y, w, h, playerNum)
     o.dragCol = nil
     o.sortKey = "name"                       -- name | cat | mid (weight) | price
     o.sortAsc = true
+    o.cart = {}
     o:setResizable(true)
     o.minimumWidth = 900
-    o.minimumHeight = 640
+    o.minimumHeight = 700
     return o
 end
 
@@ -202,6 +203,20 @@ function TC_BuyWindow:createChildren()
     self.wishBtn:initialise(); self.wishBtn:instantiate()
     self:addChild(self.wishBtn)
 
+    -- Middle row: the two ways to spend that are not "buy this one now".
+    local half = (DETAIL_W - PAD * 2 - PAD) / 2
+    local midY = by - (BUTTON_HGT + PAD) * 2
+
+    self.cartAddBtn = ISButton:new(dx + PAD, midY, half, BUTTON_HGT,
+                                   getText("IGUI_TC_AddToCart"), self, TC_BuyWindow.onAddToCart)
+    self.cartAddBtn:initialise(); self.cartAddBtn:instantiate()
+    self:addChild(self.cartAddBtn)
+
+    self.cartBtn = ISButton:new(dx + PAD + half + PAD, midY, half, BUTTON_HGT,
+                                getText("IGUI_TC_OpenCart"), self, TC_BuyWindow.onOpenCart)
+    self.cartBtn:initialise(); self.cartBtn:instantiate()
+    self:addChild(self.cartBtn)
+
     self.buyBtn = ISButton:new(dx + PAD, by, DETAIL_W - PAD * 2, BUTTON_HGT,
                                getText("IGUI_TC_Buy"), self, TC_BuyWindow.onBuy)
     self.buyBtn:initialise(); self.buyBtn:instantiate()
@@ -209,6 +224,53 @@ function TC_BuyWindow:createChildren()
 
     self:populateCategories()
     self:refreshList()
+end
+
+-- ---------------------------------------------------------------------------
+-- Cart
+-- ---------------------------------------------------------------------------
+
+--[[ Add the current selection and quantity as a cart line.
+
+     Lines are merged by fullType so adding five nails twice reads as ten nails on one
+     line rather than as two lines to reconcile at checkout. Only the fullType, the
+     display name and the weight are kept -- the PRICE is deliberately not stored, so
+     the cart cannot lock in a stale rate if a sandbox multiplier changes underneath it.
+]]
+function TC_BuyWindow:onAddToCart()
+    local entry = self.selectedEntry
+    if not entry then
+        self:setMessage(getText("IGUI_TC_SelectAnItem"), true)
+        return
+    end
+
+    for _, line in ipairs(self.cart) do
+        if line.fullType == entry.fullType then
+            line.qty = line.qty + self.quantity
+            self:setMessage(getText("IGUI_TC_AddedToCart", self.quantity, entry.name), false)
+            self:syncCart()
+            return
+        end
+    end
+
+    table.insert(self.cart, {
+        fullType = entry.fullType,
+        name     = entry.name,
+        weight   = entry.weight or 0,
+        qty      = self.quantity,
+    })
+    self:setMessage(getText("IGUI_TC_AddedToCart", self.quantity, entry.name), false)
+    self:syncCart()
+end
+
+function TC_BuyWindow:onOpenCart()
+    TC.openCartWindow(self.playerNum, self)
+end
+
+-- Keep an open cart window in step with a line added from here.
+function TC_BuyWindow:syncCart()
+    local win = TC_CartWindow and TC_CartWindow.instances[self.playerNum]
+    if win then win:refreshList() end
 end
 
 --[[ Fill the filter dropdown with the item categories, then the source mods.
@@ -408,26 +470,66 @@ end
 -- Buying
 -- ---------------------------------------------------------------------------
 
+--[[ Pressing Buy no longer resolves on the spot.
+
+     Ordering used to complete the instant the button went down, so a player could kit
+     themselves out mid-horde without ever lowering their guard. When the sandbox gives
+     the order a duration, this queues a short interruptible action and the real work
+     happens in onOrderComplete.
+
+     Everything that could REFUSE the order is checked here, before the action starts,
+     so the player is told immediately rather than after standing still for three
+     seconds. Nothing is charged until the action completes. ]]
 function TC_BuyWindow:onBuy()
     local entry = self.selectedEntry
     if not entry then
         self:setMessage(getText("IGUI_TC_SelectAnItem"), true)
         return
     end
+    if not self.player then return end
+
+    local unit  = TC.getBuyPrice(entry.fullType) or 0
+    local total = unit * self.quantity
+
+    if not getScriptManager():FindItem(entry.fullType) then
+        print("[TheCatalogue] refused purchase: unknown item " .. tostring(entry.fullType))
+        self:setMessage(getText("IGUI_TC_ItemUnavailable"), true)
+        return
+    end
+    if TC.getBalance(self.player) < total then
+        self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
+        return
+    end
+
+    local seconds = TC.opt("OrderSeconds")
+    if type(seconds) ~= "number" or seconds <= 0 then
+        self:onOrderComplete({ entry = entry, qty = self.quantity })
+        return
+    end
+
+    self:setMessage(getText("IGUI_TC_Ordering"), false)
+    ISTimedActionQueue.add(TC_OrderAction:new(self.player, self,
+                                              { entry = entry, qty = self.quantity }, seconds))
+end
+
+function TC_BuyWindow:onOrderCancelled()
+    self:setMessage(getText("IGUI_TC_OrderCancelled"), true)
+end
+
+function TC_BuyWindow:onOrderComplete(payload)
+    local entry = payload and payload.entry
+    if not entry then return end
 
     local player = self.player
     if not player then return end
 
     local unit  = TC.getBuyPrice(entry.fullType) or 0
-    local qty   = self.quantity
+    local qty   = payload.qty or 1
     local total = unit * qty
 
-    -- Prove the item can actually be made BEFORE any money moves. A fullType can go
-    -- stale between indexing and checkout -- a mod unloaded, an item retired by a
-    -- patch -- and the old order of operations took the cash first, so a failed
-    -- AddItem left the player charged and empty-handed.
+    -- Re-checked rather than trusted from before the action: seconds passed, and the
+    -- player may have spent or dropped money in the meantime.
     if not getScriptManager():FindItem(entry.fullType) then
-        print("[TheCatalogue] refused purchase: unknown item " .. tostring(entry.fullType))
         self:setMessage(getText("IGUI_TC_ItemUnavailable"), true)
         return
     end
@@ -465,6 +567,8 @@ function TC_BuyWindow:onBuy()
         end
         qty = delivered
     end
+
+    TC.logTransaction(player, "buy", { { name = entry.name, qty = qty } }, total)
 
     -- Deliver regardless of capacity, then say so. Being overloaded is a vanilla-legal
     -- state -- looting a hardware store does it too -- and silently refusing a purchase
@@ -702,7 +806,7 @@ function TC_BuyWindow:prerender()
         -- The detail block flows downward while the cash block below it is pinned to
         -- the bottom of the panel. On a short window the two would meet, so lines stop
         -- rather than print over it. Losing the last line beats an unreadable overlap.
-        local detailFloor = self.height - BOTTOM_PAD - BUTTON_HGT * 2 - PAD
+        local detailFloor = self.height - BOTTOM_PAD - BUTTON_HGT * 3 - PAD * 2
                             - FONT_HGT_LARGE - PAD - 4 - FONT_HGT_SMALL
 
         local function line(label, value, font, r, g, b)
@@ -762,7 +866,7 @@ function TC_BuyWindow:prerender()
 
     -- Balance and message live in a fixed block above the controls, so they never
     -- move as the detail above them grows or shrinks.
-    local blockY = self.height - BOTTOM_PAD - BUTTON_HGT * 2 - PAD - FONT_HGT_LARGE - PAD - 4
+    local blockY = self.height - BOTTOM_PAD - BUTTON_HGT * 3 - PAD * 2 - FONT_HGT_LARGE - PAD - 4
 
     self:drawText(getText("IGUI_TC_YourCash"), innerLeft, blockY + 4,
                   0.68, 0.68, 0.72, 1, UIFont.Small)
@@ -809,6 +913,10 @@ function TC_BuyWindow:onResize()
     self.buyBtn:setWidth(DETAIL_W - PAD * 2)
     self.wishBtn:setX(dx + PAD + 174);   self.wishBtn:setY(by - BUTTON_HGT - PAD)
     self.wishBtn:setWidth(DETAIL_W - PAD * 2 - 174)
+    local half = (DETAIL_W - PAD * 2 - PAD) / 2
+    local midY = by - (BUTTON_HGT + PAD) * 2
+    self.cartAddBtn:setX(dx + PAD);              self.cartAddBtn:setY(midY); self.cartAddBtn:setWidth(half)
+    self.cartBtn:setX(dx + PAD + half + PAD);    self.cartBtn:setY(midY);    self.cartBtn:setWidth(half)
 end
 
 function TC_BuyWindow:close()

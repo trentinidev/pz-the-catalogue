@@ -70,8 +70,40 @@ function TC_SellList:doDrawItem(y, item, alt)
     local textY  = y + (ROW_HGT - FONT_HGT_MEDIUM) / 2
     local smallY = y + (ROW_HGT - FONT_HGT_SMALL) / 2
 
-    self:drawText(TC.truncate(UIFont.Medium, row.name, c.nameW),
-                  c.nameLeft, textY, 1, 1, 1, 1, UIFont.Medium)
+    local depth  = row.depth or 0
+    local indent = depth * 18
+
+    -- Expand toggle, drawn from rects for the same reason as the sort arrows: no
+    -- bitmap-font glyph is guaranteed, and a missing one draws nothing at all.
+    if row.expandable then
+        local open = self.parentWindow and self.parentWindow.expanded
+                     and self.parentWindow.expanded[it]
+        local ax, ay = 3, y + ROW_HGT / 2 - 2
+        for i = 1, 4 do
+            if open then
+                self:drawRect(ax + (4 - i), ay + i - 1, i * 2 - 1, 1, 0.85, 0.8, 0.8, 0.86)
+            else
+                self:drawRect(ax + i - 1, ay - i + 1, 1, i * 2 - 1, 0.85, 0.8, 0.8, 0.86)
+            end
+        end
+    end
+
+    -- A child that will be kept is dimmed and struck through in colour, so "this stays
+    -- with you" reads without having to compare it against the value column.
+    local tr, tg, tb = 1, 1, 1
+    if depth > 0 then
+        if row.kept then tr, tg, tb = 0.62, 0.78, 0.95
+        else tr, tg, tb = 0.80, 0.80, 0.84 end
+    end
+
+    self:drawText(TC.truncate(UIFont.Medium, row.name, c.nameW - indent),
+                  c.nameLeft + indent, textY, tr, tg, tb, 1, UIFont.Medium)
+
+    if depth > 0 and row.kept then
+        TC.drawRight(self, getText("IGUI_TC_Kept"), c.priceRight, smallY,
+                     UIFont.Small, 0.62, 0.78, 0.95)
+        return y + ROW_HGT
+    end
 
     -- Condition, but only when the item actually models wear. Printing "100%" beside
     -- a nail is noise; the absence of a figure is itself the information.
@@ -92,6 +124,25 @@ function TC_SellList:doDrawItem(y, item, alt)
     end
 
     return y + ROW_HGT
+end
+
+--[[ A click on the left edge of a container row expands or collapses it.
+
+     Confined to the first 18 pixels so it cannot be hit by accident while selecting,
+     and handled before the base class so the click does not also change the selection. ]]
+function TC_SellList:onMouseDown(x, y)
+    if x < 18 and self.parentWindow then
+        local index = math.floor((y - self:getYScroll()) / ROW_HGT) + 1
+        local entry = self.items[index]
+        local row = entry and entry.item
+        if row and row.expandable then
+            local exp = self.parentWindow.expanded
+            exp[row.item] = (not exp[row.item]) or nil
+            self.parentWindow:rebuildRows()
+            return true
+        end
+    end
+    return ISScrollingListBox.onMouseDown(self, x, y)
 end
 
 --[[ The drop target. ISMouseDrag.dragging holds whatever the inventory pane picked
@@ -129,15 +180,16 @@ function TC_SellWindow:new(x, y, w, h, playerNum)
     o.dragCol = nil
     o.sortKey = "name"                       -- name | mid (condition) | price (value)
     o.sortAsc = true
+    o.expanded = {}
     o:setResizable(true)
     o.minimumWidth = 640
-    o.minimumHeight = 460
+    o.minimumHeight = 520
     return o
 end
 
 function TC_SellWindow:listGeometry()
     local listY = self:titleBarHeight() + PAD + HEADER_HGT
-    local listH = self.height - listY - FOOTER_HGT - BUTTON_HGT - PAD - BOTTOM_PAD
+    local listH = self.height - listY - FOOTER_HGT - (BUTTON_HGT + PAD) * 2 - BOTTOM_PAD
     return listY, listH
 end
 
@@ -154,6 +206,21 @@ function TC_SellWindow:createChildren()
     self.list.parentWindow = self
     self.list.target = self
     self:addChild(self.list)
+
+    -- Bulk staging sits on its own row above the confirm row, so "prepare a lot" and
+    -- "commit the sale" are never adjacent buttons.
+    local topRow = self.height - BOTTOM_PAD - (BUTTON_HGT + PAD) * 2
+    local halfW  = (self.width - PAD * 3) / 2
+
+    self.stageInvBtn = ISButton:new(PAD, topRow, halfW, BUTTON_HGT,
+                                    getText("IGUI_TC_StageInventory"), self, TC_SellWindow.onStageInventory)
+    self.stageInvBtn:initialise(); self.stageInvBtn:instantiate()
+    self:addChild(self.stageInvBtn)
+
+    self.stageContBtn = ISButton:new(PAD * 2 + halfW, topRow, halfW, BUTTON_HGT,
+                                     getText("IGUI_TC_StageContainer"), self, TC_SellWindow.onStageContainer)
+    self.stageContBtn:initialise(); self.stageContBtn:instantiate()
+    self:addChild(self.stageContBtn)
 
     local by    = self.height - BOTTOM_PAD - BUTTON_HGT
     local third = (self.width - PAD * 4) / 3
@@ -249,6 +316,47 @@ function TC_SellWindow:canStage(item)
     end
 
     return true
+end
+
+--[[ Stage everything eligible from a container, without removing anything.
+
+     A loot run leaves you with sixty things to sell and dragging them one stack at a
+     time is the tedious part. This walks a container and stages whatever passes the
+     ordinary rules -- so favourites, equipped gear, the catalogue itself, currency and
+     unlisted items are all skipped exactly as they would be by hand.
+
+     Nothing leaves the player's possession. The staged list is still just references,
+     and the sale still has to be confirmed, which is what makes a bulk action safe to
+     offer at all. ]]
+function TC_SellWindow:stageAllFrom(container, label)
+    if not container then return end
+
+    local found = {}
+    local items = container:getItems()
+    for i = 0, items:size() - 1 do
+        table.insert(found, items:get(i))
+    end
+
+    if #found == 0 then
+        self:setMessage(getText("IGUI_TC_NothingEligible", label or "?"), true)
+        return
+    end
+    self:stageItems(found)
+end
+
+function TC_SellWindow:onStageInventory()
+    self:stageAllFrom(self.player:getInventory(), getText("IGUI_TC_ScopeInventory"))
+end
+
+--[[ The container the loot window is currently showing -- a crate, a boot, a corpse. ]]
+function TC_SellWindow:onStageContainer()
+    local page = getPlayerLoot(self.playerNum)
+    local inv = page and page.inventoryPane and page.inventoryPane.inventory
+    if not inv then
+        self:setMessage(getText("IGUI_TC_NoContainerOpen"), true)
+        return
+    end
+    self:stageAllFrom(inv, getText("IGUI_TC_ScopeContainer"))
 end
 
 function TC_SellWindow:stageItems(items)
@@ -425,15 +533,58 @@ function TC_SellWindow:rebuildRows()
     -- ran first, dropped all nine, and the success message was written afterwards.
     self.prunedLast = self:pruneStaged()
 
+    self.expanded = self.expanded or {}
+
     local rows = {}
     local sorted = self:sortedStaged()
-    for i, item in ipairs(sorted) do
-        rows[i] = {
+
+    --[[ Child rows for an expanded container.
+
+         The point of this is honesty about what a sale actually removes. Selling a bag
+         takes everything in it; the money and favourites are rescued (see
+         TC.rescueProtected), but until you can SEE which is which you are trusting that
+         on faith. Expanding a bag lists its contents and marks each line as sold or
+         kept, using exactly the same test the sale itself uses. ]]
+    local function addChildren(container, depth, out)
+        if depth > 4 then return end
+        local ok, inv = pcall(function() return container:getInventory() end)
+        if not ok or not inv then return end
+
+        local items = inv:getItems()
+        for i = 0, items:size() - 1 do
+            local sub = items:get(i)
+            local value = TC.getSellPriceRounded(sub)
+
+            local kept = false
+            local okFav, fav = pcall(function() return sub:isFavorite() end)
+            if (okFav and fav) or sub:getFullType() == TC.ITEM_FULL or not value then
+                kept = true
+            end
+
+            table.insert(out, {
+                item = sub, name = sub:getDisplayName(),
+                ratio = TC.conditionRatio(sub),
+                value = value, depth = depth, kept = kept,
+            })
+
+            if self.expanded[sub] then addChildren(sub, depth + 1, out) end
+        end
+    end
+
+    for _, item in ipairs(sorted) do
+        local okInv, inv = pcall(function() return item:getInventory() end)
+        local hasKids = okInv and inv and inv:getItems():size() > 0
+
+        table.insert(rows, {
             item  = item,
             name  = item:getDisplayName(),
             ratio = TC.conditionRatio(item),
             value = TC.getSellPriceRounded(item),   -- per-line, for display only
-        }
+            depth = 0,
+            expandable = hasKids and true or false,
+        })
+
+        if hasKids and self.expanded[item] then addChildren(item, 1, rows) end
     end
 
     self.rows = rows
@@ -481,6 +632,14 @@ end
 function TC_SellWindow:onRemoveSelected()
     local sel = self.list.items[self.list.selected]
     if not sel then return end
+
+    -- Only whole staged entries can be removed. A child row is shown for information,
+    -- not as something to take out on its own -- to keep one item out of a bag, take
+    -- it out of the bag.
+    if (sel.item.depth or 0) > 0 then
+        self:setMessage(getText("IGUI_TC_CannotRemoveChild"), true)
+        return
+    end
 
     -- sel.item is a row record; the InventoryItem it stands for is row.item.
     local target = sel.item.item
@@ -547,6 +706,7 @@ function TC_SellWindow:onSell()
     self:refreshList()
 
     TC.giveCash(self.player, total)
+    TC.logTransaction(self.player, "sell", TC.summariseItems(going), total)
 
     if #rescued > 0 then
         self:setMessage(getText("IGUI_TC_SoldAndKept", sold, total, #rescued), false)
@@ -766,6 +926,11 @@ function TC_SellWindow:onResize()
     self.removeBtn:setX(PAD);               self.removeBtn:setY(by); self.removeBtn:setWidth(third)
     self.clearBtn:setX(PAD * 2 + third);    self.clearBtn:setY(by);  self.clearBtn:setWidth(third)
     self.sellBtn:setX(PAD * 3 + third * 2); self.sellBtn:setY(by);   self.sellBtn:setWidth(third)
+
+    local topRow = self.height - BOTTOM_PAD - (BUTTON_HGT + PAD) * 2
+    local halfW  = (self.width - PAD * 3) / 2
+    self.stageInvBtn:setX(PAD);              self.stageInvBtn:setY(topRow);  self.stageInvBtn:setWidth(halfW)
+    self.stageContBtn:setX(PAD * 2 + halfW); self.stageContBtn:setY(topRow); self.stageContBtn:setWidth(halfW)
 end
 
 function TC_SellWindow:close()

@@ -13,6 +13,12 @@
     "Sandbox_TheCatalogue_SellContainerContents": "Sell container contents",
     "Sandbox_TheCatalogue_SellContainerContents_tooltip": "When on, selling a bag or a loaded gun sells what is inside it too, at its own value. When off, the catalogue refuses non-empty containers.",
 
+    "Sandbox_TheCatalogue_OrderSeconds": "Seconds to place an order",
+    "Sandbox_TheCatalogue_OrderSeconds_tooltip": "How long the character spends filling in an order before it completes, as an interruptible action. Set to 0 for instant purchases.",
+
+    "Sandbox_TheCatalogue_CatalogueLootMultiplier": "Catalogue loot frequency",
+    "Sandbox_TheCatalogue_CatalogueLootMultiplier_tooltip": "How common the Shop Catalogue is in world loot -- post offices, desks, magazine racks. Set to 0 to remove it from loot and leave crafting as the only route.",
+
     "Sandbox_TheCatalogue_RequireCatalogueOnPerson": "Require the catalogue on you",
     "Sandbox_TheCatalogue_RequireCatalogueOnPerson_tooltip": "When on, both windows close if you no longer have a Shop Catalogue in your inventory or a bag. Turn it off for an arcade-style game where the catalogue is a menu rather than an object you carry.",
 

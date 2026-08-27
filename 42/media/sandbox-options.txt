@@ -62,6 +62,28 @@ option TheCatalogue.SellContainerContents
     translation = TheCatalogue_SellContainerContents,
 }
 
+/* Seconds spent placing an order before it completes, as an interruptible action.
+   0 makes buying instant, which is how the mod behaved before this existed. */
+option TheCatalogue.OrderSeconds
+{
+    type = double,
+    min = 0.0, max = 15.0,
+    default = 2.0,
+    page = TheCatalogue,
+    translation = TheCatalogue_OrderSeconds,
+}
+
+/* How common the Shop Catalogue is in world loot, relative to the built-in weights.
+   Set to 0 to remove it from loot entirely and leave crafting as the only route. */
+option TheCatalogue.CatalogueLootMultiplier
+{
+    type = double,
+    min = 0.0, max = 10.0,
+    default = 1.0,
+    page = TheCatalogue,
+    translation = TheCatalogue_CatalogueLootMultiplier,
+}
+
 /* When on, both windows close if the player no longer has a Shop Catalogue on them.
    Turn it off for an arcade-style game where the catalogue is a menu rather than an
    object you have to be carrying. */

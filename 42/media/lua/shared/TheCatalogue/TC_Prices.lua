@@ -105,7 +105,11 @@ local function priceFromFormula(scriptItem, fullType)
     local cat = scriptItem:getDisplayCategory()
     if cat and TC.EXCLUDED_CATEGORIES[cat] then return nil end
 
-    local base = (cat and CATEGORY_BASE[cat]) or DEFAULT_BASE
+    -- A base registered through the API wins, so a mod can name a sensible price for a
+    -- DisplayCategory this table has never heard of.
+    local base = (cat and TC.REGISTERED_BASES and TC.REGISTERED_BASES[cat])
+                 or (cat and CATEGORY_BASE[cat])
+                 or DEFAULT_BASE
 
     local ok, w = pcall(function() return scriptItem:getActualWeight() end)
     if not ok then w = 1 end
@@ -179,8 +183,12 @@ function TC.buildIndex()
                  formula         category and weight -- last resort, for an item that
                                  refuses to instantiate at all
             ]]
-            local price = overrides[fullType]
+            -- Full precedence, and why each layer sits where it does, is documented
+            -- at the top of TC_API.lua.
+            local price = (TC.REGISTERED_PRICES and TC.REGISTERED_PRICES[fullType])
+                          or overrides[fullType]
                           or (TC.PRICE_TABLE and TC.PRICE_TABLE[fullType])
+                          or (TC.runValueHandlers and TC.runValueHandlers(si, fullType))
                           or TC.priceUnknownItem(si, fullType)
                           or priceFromFormula(si, fullType)
 

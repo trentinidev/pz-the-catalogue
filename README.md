@@ -30,6 +30,28 @@ do not, or your wishlist. Star anything from the detail panel; the wishlist is s
 character and survives reloads. Click any column header to sort by it, click again to
 reverse, and drag the dividers to re-balance the widths.
 
+**Ordering** — add lines to a cart and settle the whole thing in one transaction, or buy
+a single line outright. Placing an order takes a couple of interruptible seconds by
+default, so you cannot kit yourself out mid-horde; set `OrderSeconds` to 0 for the
+instant behaviour. Every completed purchase and sale is written to a ledger you can open
+from the catalogue's right-click menu.
+
+**Selling in bulk** — stage everything eligible from your inventory or from an open
+container in one click. Nothing leaves your possession until you confirm. Expand any
+staged bag to see its contents line by line, each marked as sold or kept, using the same
+test the sale itself applies.
+
+**Finding a catalogue** — one spawns rarely in post office sorting racks, office desks,
+magazine racks and living rooms, so the mail-order company existed before you started
+writing your own. `CatalogueLootMultiplier` tunes how common, and 0 turns it off.
+
+## For other mod authors
+
+`TC_API.lua` exposes `registerPrice`, `excludeItem`, `registerCategoryBase` and
+`registerValueHandler`, so another mod can price its own items without editing anything
+in here. Precedence is documented at the top of that file; a registered price beats
+everything The Catalogue works out for itself.
+
 ## Installing
 
 Copy the `42/` folder into a folder named `TheCatalogue` inside your mods directory:
