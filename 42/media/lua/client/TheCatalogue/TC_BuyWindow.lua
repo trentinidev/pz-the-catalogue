@@ -182,24 +182,50 @@ function TC_BuyWindow:createChildren()
     self:refreshList()
 end
 
+--[[ Fill the filter dropdown with the item categories, then the source mods.
+
+     self.categoryList runs in step with the combo's options and holds a FILTER SPEC
+     per entry rather than a bare string, because the list now mixes two different
+     questions: what a thing is (Food, Clothing) and where it came from (which mod).
+     Keeping them in one dropdown was the deliberate choice -- one control, no extra
+     width in a header bar that is already full.
+]]
 function TC_BuyWindow:populateCategories()
     TC.buildIndex()
 
-    local seen, names = {}, {}
+    local seenCat, cats = {}, {}
+    local seenMod, mods = {}, {}
     for _, e in ipairs(TC.entries) do
-        if not seen[e.category] then
-            seen[e.category] = true
-            table.insert(names, e.category)
+        if not seenCat[e.category] then
+            seenCat[e.category] = true
+            table.insert(cats, e.category)
+        end
+        local m = e.module or "Base"
+        if m ~= "Base" and not seenMod[m] then
+            seenMod[m] = true
+            table.insert(mods, m)
         end
     end
-    table.sort(names)
+    table.sort(cats)
+    table.sort(mods)
 
-    self.categoryList = { "" }  -- empty string is the "all categories" sentinel
+    self.categoryList = { { kind = "all" } }
     self.categoryCombo:addOption(getText("IGUI_TC_AllCategories"))
-    for _, n in ipairs(names) do
-        self.categoryCombo:addOption(n)
-        table.insert(self.categoryList, n)
+
+    self.categoryCombo:addOption(getText("IGUI_TC_VanillaOnly"))
+    table.insert(self.categoryList, { kind = "module", value = "Base" })
+
+    for _, c in ipairs(cats) do
+        self.categoryCombo:addOption(c)
+        table.insert(self.categoryList, { kind = "category", value = c })
     end
+
+    -- Source mods last, so the categories a player uses constantly stay near the top.
+    for _, m in ipairs(mods) do
+        self.categoryCombo:addOption(getText("IGUI_TC_ModPrefix", m))
+        table.insert(self.categoryList, { kind = "module", value = m })
+    end
+
     self.categoryCombo.selected = 1
 end
 
@@ -225,18 +251,25 @@ function TC_BuyWindow:refreshList()
     local ordered = TC.sortedEntries(self.sortKey, self.sortAsc)
 
     local needle = string.lower(self.search:getInternalText() or "")
-    local cat = self.categoryList and self.categoryList[self.categoryCombo.selected] or ""
-    local filtering = (needle ~= "" or cat ~= "")
+    local spec = self.categoryList and self.categoryList[self.categoryCombo.selected]
+                 or { kind = "all" }
+    local filtering = (needle ~= "" or spec.kind ~= "all")
 
     local items, n = {}, 0
     for i = 1, #ordered do
         local e = ordered[i]
         local keep = true
         if filtering then
+            if spec.kind == "category" then
+                keep = (e.category == spec.value)
+            elseif spec.kind == "module" then
+                keep = ((e.module or "Base") == spec.value)
+            end
             -- entry.lower holds "display name  fulltype" pre-lowercased at index time,
             -- so typing matches either what the player sees or what a modder would type.
-            keep = (cat == "" or e.category == cat)
-                   and (needle == "" or string.find(e.lower, needle, 1, true) ~= nil)
+            if keep and needle ~= "" then
+                keep = string.find(e.lower, needle, 1, true) ~= nil
+            end
         end
         if keep then
             n = n + 1

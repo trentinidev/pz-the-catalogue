@@ -167,14 +167,28 @@ function TC.buildIndex()
                  formula         category and weight only -- reached in practice only
                                  by items from OTHER MODS, which the table never saw
             ]]
+            --[[ Four layers, most specific first.
+
+                 TC_Overrides    hand-set, 171 items whose price carries balance weight
+                 TC_PriceTable   generated, every vanilla item, priced from everything
+                                 the scripts declare (see tools/gen_prices.ps1)
+                 priceUnknownItem  modded items: one instance is built so the same
+                                 judgements can read BodyLocation, Calories, Capacity
+                                 and the rest, which live on InventoryItem and are not
+                                 reachable from the ScriptItem this loop walks
+                 formula         category and weight -- last resort, for an item that
+                                 refuses to instantiate at all
+            ]]
             local price = overrides[fullType]
                           or (TC.PRICE_TABLE and TC.PRICE_TABLE[fullType])
+                          or TC.priceUnknownItem(si, fullType)
                           or priceFromFormula(si, fullType)
 
             if price then
                 TC.priceByType[fullType] = price
 
                 local name = si:getDisplayName() or fullType
+                local module = si:getModuleName() or "Base"
                 n = n + 1
                 TC.entries[n] = {
                     fullType = fullType,
@@ -182,6 +196,7 @@ function TC.buildIndex()
                     lower    = string.lower(name .. " " .. fullType),
                     price    = price,
                     category = si:getDisplayCategory() or "Generic",
+                    module   = module,
                     weight   = si:getActualWeight() or 0,
                     -- NO icon here. Resolving getNormalTexture() for every item in the
                     -- game costs eleven thousand texture lookups at load, to draw about

@@ -5,6 +5,8 @@
     "IGUI_TC_Buy": "Buy",
     "IGUI_TC_Sell": "Sell",
     "IGUI_TC_AllCategories": "All categories",
+    "IGUI_TC_VanillaOnly": "Vanilla items only",
+    "IGUI_TC_ModPrefix": "Mod: %1",
     "IGUI_TC_SearchHint": "Search by name or ID",
     "IGUI_TC_SelectAnItem": "Select an item from the list",
     "IGUI_TC_ItemsListed": "%1 items listed",

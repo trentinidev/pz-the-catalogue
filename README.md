@@ -103,8 +103,22 @@ Three layers, most specific first, in `media/lua/shared/TheCatalogue/`:
   `BodyLocation` and the three defence ratings on clothing, `Capacity` and
   `WeightReduction` on bags, `SkillTrained` on books, and the precious-material tags on
   jewellery. Rules live in `tools/rules.ps1`.
-- **`TC_Prices.lua`** — the original category-and-weight formula, now only a fallback for
-  items the table has never seen, which in practice means items from other mods.
+- **`TC_ModPricing.lua`** — items from other mods, which the offline generator never saw.
+  The rich properties it needs (`BodyLocation`, `Calories`, `Capacity`, `ConditionMax`,
+  the defence ratings) live on `InventoryItem`, not on the `ScriptItem` the index walks,
+  so one instance of each unknown item is built at index time to read them. It encodes
+  the same judgements as `tools/rules.ps1` and the two should be changed together.
+- **`TC_Prices.lua`** — the original category-and-weight formula, now a last resort for
+  an item that refuses to instantiate at all.
+
+> **A note on load time.** With a lot of item mods installed, the first time you open the
+> Buy window in a session takes a few seconds while every modded item is priced. It is
+> instant on every open after that. This is the deliberate cost of pricing modded items
+> properly instead of guessing from their weight. Vanilla-only games never pay it, since
+> every vanilla price is precomputed.
+
+Modded items can be filtered by source: the category dropdown lists **Vanilla items only**
+and then each installed mod under `Mod: <name>`, below the ordinary item categories.
 
 Prices are set by **what a thing is**, with weight as a minor modifier — except for
 building materials, where weight is the honest signal, since a kilo of nails really is
