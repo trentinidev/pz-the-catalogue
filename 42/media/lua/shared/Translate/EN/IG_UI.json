@@ -87,6 +87,7 @@
     "IGUI_TC_StagedCount": "%1 items staged",
 
     "IGUI_TC_RefuseCatalogue": "The catalogue will not buy itself",
+    "IGUI_TC_RefuseWishlisted": "That item is on your wishlist",
     "IGUI_TC_RefuseFavorite": "That item is marked as a favourite",
     "IGUI_TC_RefuseEquipped": "Unequip that first",
     "IGUI_TC_RefuseCondition": "That item is in too poor a condition to sell",

@@ -160,6 +160,13 @@ end
      counted, and anything undelivered is refunded. A cart that fails halfway must not
      leave the player charged for goods they did not get.
 ]]
+--[[ Everything that can REFUSE the order is checked here, before the action starts,
+     so the player hears about it immediately rather than after standing still. The
+     charge and the delivery happen in onOrderComplete.
+
+     A cart order takes the same interruptible time as a single purchase. It used to
+     complete instantly, which made the cart the fast way to shop mid-fight and turned
+     the order action into a pointless tax on buying one thing at a time. ]]
 function TC_CartWindow:onCheckout()
     local cart = self:cart()
     if #cart == 0 then
@@ -175,6 +182,31 @@ function TC_CartWindow:onCheckout()
         end
     end
 
+    if TC.getBalance(self.player) < select(1, self:totals()) then
+        self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
+        return
+    end
+
+    local seconds = TC.opt("OrderSeconds")
+    if type(seconds) ~= "number" or seconds <= 0 then
+        self:onOrderComplete()
+        return
+    end
+
+    self:setMessage(getText("IGUI_TC_Ordering"), false)
+    ISTimedActionQueue.add(TC_OrderAction:new(self.player, self, nil, seconds))
+end
+
+function TC_CartWindow:onOrderCancelled()
+    self:setMessage(getText("IGUI_TC_OrderCancelled"), true)
+end
+
+function TC_CartWindow:onOrderComplete()
+    local cart = self:cart()
+    if #cart == 0 then return end
+
+    -- Re-priced and re-checked after the action: seconds passed, and the player may
+    -- have spent money or had the cart changed underneath them.
     local total = select(1, self:totals())
 
     if TC.getBalance(self.player) < total then

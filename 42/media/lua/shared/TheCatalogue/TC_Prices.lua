@@ -550,7 +550,14 @@ function TC.rescueProtected(item, player, out, guard)
         local okFav, fav = pcall(function() return sub:isFavorite() end)
         if okFav then favourite = fav end
 
-        if favourite or sub:getFullType() == TC.ITEM_FULL or not isPaidFor(sub) then
+        -- Wishlisted items are protected exactly like favourites. Strictly the
+        -- wishlist is a SHOPPING list, so protecting what you already own from being
+        -- sold is a stretch of its meaning -- but a player who put a star on something
+        -- reads that star as "I care about this", and a sale that ignores it is a
+        -- nasty surprise. Two ways to mark something, one behaviour.
+        local wished = TC.isWished(player, sub:getFullType())
+
+        if favourite or wished or sub:getFullType() == TC.ITEM_FULL or not isPaidFor(sub) then
             local c = sub:getContainer()
             if c then c:Remove(sub) end
             playerInv:AddItem(sub)

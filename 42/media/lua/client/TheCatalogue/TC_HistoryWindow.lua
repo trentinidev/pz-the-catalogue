@@ -17,6 +17,37 @@ local ROW_HGT    = 30
 local BUTTON_HGT = FONT_HGT_MEDIUM + 12
 local HEADER_HGT = FONT_HGT_SMALL + 12
 
+--[[ Column positions, measured rather than assumed.
+
+     These were hardcoded at 12 / 150 / 238, which held only at the font size I happened
+     to have. At a larger UI scale the timestamp ran straight through the Bought/Sold
+     label and that through the description: "1993-07-20 1B0o0ught1 x Apple".
+
+     Measured off the widest real content each column can hold -- a full timestamp, and
+     the longer of the two direction words -- so the columns cannot collide at any scale.
+
+     Worked out on FIRST USE, not at file load. One of the widths is measured from a
+     translated string, and translations are not guaranteed to be loaded at the moment
+     this file is read; measuring then would size the column against a raw key. Cached
+     after the first call, because the font does not change mid-session. ]]
+local stops
+local function columnStops()
+    if stops then return stops.when, stops.kind, stops.what end
+
+    local tm  = getTextManager()
+    local F   = UIFont.Small
+    local gap = 16
+
+    local whenW = tm:MeasureStringX(F, "1993-07-20 00:00")
+    local kindW = math.max(tm:MeasureStringX(F, getText("IGUI_TC_LedgerBought")),
+                           tm:MeasureStringX(F, getText("IGUI_TC_LedgerSold")))
+
+    stops = { when = 12 }
+    stops.kind = stops.when + whenW + gap
+    stops.what = stops.kind + kindW + gap
+    return stops.when, stops.kind, stops.what
+end
+
 TC_HistoryList = ISScrollingListBox:derive("TC_HistoryList")
 
 function TC_HistoryList:doDrawItem(y, item, alt)
@@ -29,6 +60,7 @@ function TC_HistoryList:doDrawItem(y, item, alt)
     self:drawRect(0, y + ROW_HGT - 1, w, 1, 0.22, 1, 1, 1)
 
     local ty = y + (ROW_HGT - FONT_HGT_SMALL) / 2
+    local whenX, kindX, whatX = columnStops()
 
     -- Bought and sold are told apart by colour and by the sign on the figure, not by a
     -- word, so the column stays narrow and the direction reads at a glance.
@@ -37,13 +69,14 @@ function TC_HistoryList:doDrawItem(y, item, alt)
     local sign = "-"
     if not isBuy then r, g, b = 0.72, 0.95, 0.76; sign = "+" end
 
-    self:drawText(e.when or "?", 12, ty, 0.6, 0.6, 0.64, 1, UIFont.Small)
+    self:drawText(e.when or "?", whenX, ty, 0.6, 0.6, 0.64, 1, UIFont.Small)
 
     local label = isBuy and getText("IGUI_TC_LedgerBought") or getText("IGUI_TC_LedgerSold")
-    self:drawText(label, 150, ty, 0.72, 0.72, 0.76, 1, UIFont.Small)
+    self:drawText(label, kindX, ty, 0.72, 0.72, 0.76, 1, UIFont.Small)
 
-    self:drawText(TC.truncate(UIFont.Small, e.summary or "", w - 340),
-                  238, ty, 0.86, 0.86, 0.9, 1, UIFont.Small)
+    -- The amount column is right-aligned, so the description stops short of it.
+    self:drawText(TC.truncate(UIFont.Small, e.summary or "", w - whatX - 90),
+                  whatX, ty, 0.86, 0.86, 0.9, 1, UIFont.Small)
 
     TC.drawRight(self, sign .. "$" .. (e.total or 0), w - 4, ty, UIFont.Small, r, g, b)
 
@@ -114,8 +147,9 @@ function TC_HistoryWindow:prerender()
 
     local hy = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
     local F = UIFont.Small
-    self:drawText(getText("IGUI_TC_LedgerWhen"), PAD + 12, hy, 0.72, 0.72, 0.76, 1, F)
-    self:drawText(getText("IGUI_TC_LedgerWhat"), PAD + 238, hy, 0.72, 0.72, 0.76, 1, F)
+    local whenX, _, whatX = columnStops()
+    self:drawText(getText("IGUI_TC_LedgerWhen"), PAD + whenX, hy, 0.72, 0.72, 0.76, 1, F)
+    self:drawText(getText("IGUI_TC_LedgerWhat"), PAD + whatX, hy, 0.72, 0.72, 0.76, 1, F)
 
     local amt = getText("IGUI_TC_LedgerAmount")
     local aw = getTextManager():MeasureStringX(F, amt)
