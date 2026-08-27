@@ -13,8 +13,8 @@
     "IGUI_TC_QuickOwned": "Already own",
     "IGUI_TC_QuickNotOwned": "Do not own",
     "IGUI_TC_QuickWishlist": "Wishlist",
-    "IGUI_TC_AddToWishlist": "Add to wishlist",
-    "IGUI_TC_RemoveFromWishlist": "On wishlist",
+    "IGUI_TC_AddToWishlist": "Wishlist",
+    "IGUI_TC_RemoveFromWishlist": "On list",
 
     "IGUI_TC_AddToCart": "Add to cart",
     "IGUI_TC_OpenCart": "Open cart",
@@ -46,7 +46,7 @@
     "IGUI_TC_LedgerEmpty": "Nothing bought or sold yet",
     "IGUI_TC_LedgerCount": "%1 transaction(s)",
     "IGUI_TC_SearchHint": "Search by name or ID",
-    "IGUI_TC_SelectAnItem": "Select an item from the list",
+    "IGUI_TC_SelectAnItem": "Select an item",
     "IGUI_TC_ItemsListed": "%1 items listed",
     "IGUI_TC_NoMatches": "No items match this search",
 

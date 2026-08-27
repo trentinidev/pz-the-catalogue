@@ -19,7 +19,11 @@ local FONT_HGT_LARGE  = getTextManager():getFontHeight(UIFont.Large)
 local PAD        = 14
 local ROW_HGT    = 34
 local ICON       = 26
-local DETAIL_W   = 340
+
+-- The spinner block: [-] [entry] [+]. Fixed, so the wishlist button beside it can
+-- take whatever is left rather than being squeezed to a width that clips its label.
+local SPINNER_W  = 164
+local DETAIL_W   = 386
 local BUTTON_HGT = FONT_HGT_MEDIUM + 12
 local HEADER_HGT = FONT_HGT_SMALL + 12
 
@@ -197,8 +201,8 @@ function TC_BuyWindow:createChildren()
     self.plusBtn:initialise(); self.plusBtn:instantiate()
     self:addChild(self.plusBtn)
 
-    self.wishBtn = ISButton:new(dx + PAD + 174, by - BUTTON_HGT - PAD,
-                                DETAIL_W - PAD * 2 - 174, BUTTON_HGT,
+    self.wishBtn = ISButton:new(dx + PAD + SPINNER_W + PAD, by - BUTTON_HGT - PAD,
+                                DETAIL_W - PAD * 3 - SPINNER_W, BUTTON_HGT,
                                 getText("IGUI_TC_AddToWishlist"), self, TC_BuyWindow.onToggleWish)
     self.wishBtn:initialise(); self.wishBtn:instantiate()
     self:addChild(self.wishBtn)
@@ -911,8 +915,8 @@ function TC_BuyWindow:onResize()
     self.plusBtn:setX(dx + PAD + 130);   self.plusBtn:setY(by - BUTTON_HGT - PAD)
     self.buyBtn:setX(dx + PAD);          self.buyBtn:setY(by)
     self.buyBtn:setWidth(DETAIL_W - PAD * 2)
-    self.wishBtn:setX(dx + PAD + 174);   self.wishBtn:setY(by - BUTTON_HGT - PAD)
-    self.wishBtn:setWidth(DETAIL_W - PAD * 2 - 174)
+    self.wishBtn:setX(dx + PAD + SPINNER_W + PAD); self.wishBtn:setY(by - BUTTON_HGT - PAD)
+    self.wishBtn:setWidth(DETAIL_W - PAD * 3 - SPINNER_W)
     local half = (DETAIL_W - PAD * 2 - PAD) / 2
     local midY = by - (BUTTON_HGT + PAD) * 2
     self.cartAddBtn:setX(dx + PAD);              self.cartAddBtn:setY(midY); self.cartAddBtn:setWidth(half)

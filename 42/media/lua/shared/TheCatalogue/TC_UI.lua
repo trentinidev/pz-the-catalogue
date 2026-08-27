@@ -26,12 +26,34 @@ TC.UI = {
 }
 
 --[[ Default widths for the resizable columns. Copied per window instance so a drag
-     in the buy window does not move the sell window's columns. ]]
+     in the buy window does not move the sell window's columns.
+
+     MEASURED, not guessed. The old fixed numbers assumed a font size, and on a larger
+     UI scale the header truncated to "Wei..." before the player had touched anything.
+     Each column now starts at least as wide as its own heading plus both cell
+     paddings and the space a sort arrow needs, so the table opens legible at any
+     scale and the fixed numbers are only floors. ]]
 function TC.defaultColumnWidths(kind)
-    if kind == "sell" then
-        return { cat = 0, mid = 108, price = 96 }
+    local tm = getTextManager()
+    local reserve = TC.UI.CELL_PAD * 2 + 14      -- both paddings, plus the sort arrow
+
+    local function need(key, floor)
+        local w = tm:MeasureStringX(UIFont.Small, getText(key)) + reserve
+        return math.max(floor, math.ceil(w))
     end
-    return { cat = 150, mid = 78, price = 96 }
+
+    if kind == "sell" then
+        return {
+            cat   = 0,
+            mid   = need("IGUI_TC_ColCondition", 108),
+            price = need("IGUI_TC_ColValue", 96),
+        }
+    end
+    return {
+        cat   = need("IGUI_TC_ColCategory", 150),
+        mid   = need("IGUI_TC_ColWeight", 78),
+        price = need("IGUI_TC_ColPrice", 96),
+    }
 end
 
 --[[ Cut text to fit a pixel width, with an ellipsis when it had to be cut.

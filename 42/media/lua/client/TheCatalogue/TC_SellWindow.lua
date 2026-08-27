@@ -309,8 +309,8 @@ function TC_SellWindow:canStage(item)
     end
 
     if not TC.opt("SellContainerContents") then
-        local okInv, inv = pcall(function() return item:getInventory() end)
-        if okInv and inv and inv:getItems():size() > 0 then
+        local inv = TC.contentsOf(item)
+        if inv and inv:getItems():size() > 0 then
             return false, getText("IGUI_TC_RefuseNotEmpty")
         end
     end
@@ -547,8 +547,8 @@ function TC_SellWindow:rebuildRows()
          kept, using exactly the same test the sale itself uses. ]]
     local function addChildren(container, depth, out)
         if depth > 4 then return end
-        local ok, inv = pcall(function() return container:getInventory() end)
-        if not ok or not inv then return end
+        local inv = TC.contentsOf(container)
+        if not inv then return end
 
         local items = inv:getItems()
         for i = 0, items:size() - 1 do
@@ -572,8 +572,8 @@ function TC_SellWindow:rebuildRows()
     end
 
     for _, item in ipairs(sorted) do
-        local okInv, inv = pcall(function() return item:getInventory() end)
-        local hasKids = okInv and inv and inv:getItems():size() > 0
+        local inv = TC.contentsOf(item)
+        local hasKids = inv and inv:getItems():size() > 0
 
         table.insert(rows, {
             item  = item,

@@ -163,14 +163,6 @@ function TC.buildIndex()
         if fullType and not TC.EXCLUDED_ITEMS[fullType]
            and not si:getObsolete() and not si:isHidden() then
 
-            --[[ Three layers, most specific first.
-
-                 TC_Overrides    hand-set, 171 items whose price carries balance weight
-                 TC_PriceTable   generated, every vanilla item, priced from everything
-                                 the scripts declare (see tools/gen_prices.ps1)
-                 formula         category and weight only -- reached in practice only
-                                 by items from OTHER MODS, which the table never saw
-            ]]
             --[[ Four layers, most specific first.
 
                  TC_Overrides    hand-set, 171 items whose price carries balance weight
@@ -454,8 +446,8 @@ local function rawValue(item, visited)
     -- Contents, when the sandbox allows it. A rifle case full of rifles is worth
     -- the case plus the rifles; this is what makes "sell everything" workable.
     if TC.opt("SellContainerContents") then
-        local ok, inv = pcall(function() return item:getInventory() end)
-        if ok and inv then
+        local inv = TC.contentsOf(item)
+        if inv then
             local items = inv:getItems()
             for i = 0, items:size() - 1 do
                 local subValue = rawValue(items:get(i), visited)
@@ -538,8 +530,8 @@ function TC.rescueProtected(item, player, out, guard)
     guard = (guard or 0) + 1
     if guard > 16 then return out end          -- pathological nesting or a cycle
 
-    local ok, inv = pcall(function() return item:getInventory() end)
-    if not ok or not inv then return out end
+    local inv = TC.contentsOf(item)
+    if not inv then return out end
 
     local playerInv = player:getInventory()
     local contents = inv:getItems()

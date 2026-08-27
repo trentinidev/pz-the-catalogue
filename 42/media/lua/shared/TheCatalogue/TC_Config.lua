@@ -70,6 +70,22 @@ TC.EXCLUDED_ITEMS = {
     ["Base.BareHands"]   = true,
 }
 
+--[[ The container inside an item, or nil if it is not a container.
+
+     ASK WHAT IT IS, NEVER pcall THE GETTER. getInventory() exists on
+     InventoryContainer and on nothing else, so calling it on a can of beans throws.
+     Wrapping that in pcall does catch it -- but the game still writes the failure to
+     the log, so a single pass over an eleven-item inventory produced eleven logged
+     errors and the mod looked broken while behaving correctly.
+
+     One helper so this can never be got wrong in one place and right in another; there
+     were six copies of the pcall version before this existed. ]]
+function TC.contentsOf(item)
+    if not item then return nil end
+    if not instanceof(item, "InventoryContainer") then return nil end
+    return item:getInventory()
+end
+
 -- ---------------------------------------------------------------------------
 -- Wishlist
 -- ---------------------------------------------------------------------------
@@ -118,8 +134,8 @@ function TC.ownedTypes(player, out, container, guard)
     for i = 0, items:size() - 1 do
         local it = items:get(i)
         out[it:getFullType()] = (out[it:getFullType()] or 0) + 1
-        local ok, inv = pcall(function() return it:getInventory() end)
-        if ok and inv then TC.ownedTypes(player, out, inv, guard) end
+        local inv = TC.contentsOf(it)
+        if inv then TC.ownedTypes(player, out, inv, guard) end
     end
     return out
 end
