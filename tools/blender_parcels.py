@@ -124,19 +124,19 @@ def assign_uvs(mesh_obj, forced_cell):
     bm.free()
 
 
-# Vanilla's extra-large parcel, in RAW FBX VERTEX UNITS: Parcel_Present_1 measures 17.664
-# across in the file, and its model block scales that by 0.2.
+# Vanilla's extra-large parcel is 0.4487 across ONCE ITS UNIT CONVERSION IS APPLIED, and
+# its model block scales that by 0.2.
 #
-# Raw units, not what Blender shows after import, and that distinction cost a version.
-# Vanilla's FBX declares its units as inches, so Blender helpfully multiplies by 0.0254
-# and reports 0.449 -- but the game does not: it reads the vertex data and applies only
-# the model block's scale. Building against Blender's 0.449 made parcels eight times too
-# small, which is exactly what came back from testing.
+# Which of vanilla's two numbers to build against -- the 17.664 in its vertex data or the
+# 0.4487 after the file's inch-to-metre conversion -- took three tries and a screenshot to
+# settle. Matching the raw 17.664 shipped parcels that filled the screen, which rules out
+# the game reading raw vertices: it must be applying vanilla's conversion, and ignoring
+# ours because ours lived in unit metadata rather than in the node transform.
 #
-# So everything here is a multiple of 17.664, and the export below writes the file in
-# vanilla's own unit convention (see the export function) so that the two are read the
-# same way whichever way the game reads them.
-XL = 17.664
+# So the conversion is BAKED INTO THE GEOMETRY here. The vertices are the final numbers,
+# the node scale is 1.0, and there is no metadata left for anything to interpret
+# differently. Whatever the game does with unit information, it has none of ours to use.
+XL = 0.4487
 SCALE = 0.2
 
 # How big each tier is, as a multiple of vanilla's extra large. THIS IS THE TUNING KNOB:
@@ -266,9 +266,8 @@ def build_parcel100():
 
 
 def export(obj, name):
-    # Inches, like vanilla's files. Set here rather than at the top because it only
-    # affects what the exporter writes, never the numbers modelled above.
-    bpy.context.scene.unit_settings.scale_length = 0.0254
+    # Left at metres and the conversion baked into the vertices instead: see XL above.
+    bpy.context.scene.unit_settings.scale_length = 1.0
 
     os.makedirs(BLEND_DIR, exist_ok=True)
     os.makedirs(FBX_DIR, exist_ok=True)
@@ -285,14 +284,12 @@ def export(obj, name):
         # is what vanilla's meshes use and what the game expects.
         axis_forward="-Z",
         axis_up="Y",
-        # Matches vanilla's unit convention exactly. Found by exporting a known cube under
-        # several configurations and re-importing each: only this one comes back as
-        # raw 17.664 with an object scale of 0.0254, which is what Parcel_Present_1.fbx
-        # does. With the convention matched it no longer matters how the game reads the
-        # unit metadata -- ours and vanilla's are read the same way, so `scale = 0.2`
-        # means the same thing for both, and the tier ratios hold either way.
+        # No unit conversion at all: the vertices already ARE the final numbers, so the
+        # file carries a node scale of 1.0 and no unit factor worth applying. That is the
+        # point -- the game cannot read our unit information differently from vanilla's if
+        # we do not give it any.
         global_scale=1.0,
-        apply_unit_scale=True,
+        apply_unit_scale=False,
         apply_scale_options="FBX_SCALE_NONE",
         bake_space_transform=False,
         use_mesh_modifiers=True,

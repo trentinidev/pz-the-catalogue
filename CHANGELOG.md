@@ -11,6 +11,22 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.8.4-alpha — 2026-08-28
+
+### Fixed
+- **The unit conversion is baked into the vertices**, which is what the parcels needed all
+  along. Vanilla's FBX carries two numbers — 17.664 in its vertex data and 0.4487 after the
+  file's inch-to-metre conversion — and everything turned on which one the game reads.
+  Building against the raw 17.664 shipped parcels that filled the screen, which rules that
+  reading out: the game applies vanilla's conversion, and ignored ours because ours lived
+  in unit metadata rather than in the node transform.
+  The meshes now ship with their vertices already at the final numbers and a node scale of
+  1.0, so there is no unit information left for anything to interpret differently.
+  Measured: 1.45×, 2.05× and 2.75× the extra large.
+
+---
+
+
 ## 0.8.3-alpha — 2026-08-28
 
 ### Changed
