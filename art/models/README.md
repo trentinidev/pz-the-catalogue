@@ -32,8 +32,18 @@ ASCII `.x` models (a canteen 0.122 tall). Those are hand-held models and share n
 with `WorldStaticModel`. The second built against Blender's post-import 0.449, and shipped
 parcels eight times too small.
 
-So every size here is a multiple of 17.664, the export writes raw coordinates with
-`apply_unit_scale=False`, and the model blocks use vanilla's own `scale = 0.2`:
+And then the FBX has to be written in vanilla's convention, not just at vanilla's
+numbers. Ours previously declared its units as metres while vanilla declares inches — a
+factor of 39.4 that shows up under one reading of the file and not the other, which is
+exactly how you get one tier tiny and another enormous.
+
+The export configuration was found by exporting a known cube several ways and re-importing
+each. Only `scale_length = 0.0254` with `apply_unit_scale=True` comes back as vanilla does:
+raw 17.664 with an object scale of 0.0254. With the convention matched, `scale = 0.2` means
+the same thing for both files however the game reads them, and the tier ratios hold either
+way.
+
+So every size here is a multiple of 17.664, and the model blocks use vanilla's `scale = 0.2`:
 
 | tier | raw | in game | |
 |---|---|---|---|
