@@ -103,7 +103,8 @@ function TC_HistoryList:doDrawItem(y, item, alt)
     -- A pending row shows a live countdown; a completed one shows when it happened.
     local when = e.when or "?"
     if e.pending and e.order then
-        when = getText("IGUI_TC_LedgerEta", math.floor(TC.hoursLeft(e.order) + 0.5))
+        when = e.order.arrived and getText("IGUI_TC_LedgerReady")
+                                or TC.etaShort(TC.hoursLeft(e.order))
     end
     self:drawText(when, c.when, ty, 0.6, 0.6, 0.64, 1, UIFont.Small)
 

@@ -69,31 +69,77 @@ end
 
 --[[ How long an order takes, in game hours.
 
-     Weight dominates, because a lorry full of planks is a different job from an
-     envelope of nails, and value contributes a little so that the rare and expensive
-     things are also the ones worth planning around. Both are sub-linear: a hundred
-     hammers should take longer than one, but not a hundred times longer.
+     The first cut had a five-hour base and a sub-linear weight term, which meant a
+     single pistol round took six hours to arrive -- the same six hours as a chest of
+     tools, because the base swamped everything else. The lead time carried no
+     information: it was a flat tax on shopping rather than a reason to think about
+     what you were shopping for.
 
-     Clamped at both ends. The floor stops a single tin of beans arriving before the
-     player has walked away from the catalogue, which would make the whole system feel
-     pointless; the ceiling stops a bulk order effectively never arriving.
+     So the base is nearly nothing and BULK is what costs time. The weight term is
+     SUPER-linear, which is the one counter-intuitive choice here and the one that
+     makes the curve read correctly: doubling the size of a load more than doubles the
+     job, because it stops being something a van drops off on its round and starts
+     being a delivery of its own. One round is a padded envelope; a hundred rounds is a
+     box; a crate of medical supplies is a morning's work.
+
+     Value is deliberately a WEAK term. It is there so that something small and
+     precious is handled a little more carefully than something small and cheap, not so
+     that money buys delay -- an expensive light thing should still turn up quickly.
+     The per-unit term does the same job for count, and covers items the game gives no
+     weight at all, where quantity would otherwise be free.
+
+     Roughly, at the default multiplier:
+
+         1 pistol round            ~20 minutes
+         100 pistol rounds         ~2.5 hours
+         a bandage                 ~20 minutes
+         a crate of medical stock  ~4-5 hours
+         a generator               days
+
+     Clamped at both ends: a floor so nothing is instant (that is what Rush is for and
+     what the player pays a premium for), and a ceiling so a bulk order still arrives.
+     Returns FRACTIONAL hours -- rounding here would collapse every quick delivery to
+     the same value, and the display rounds anyway.
 ]]
 function TC.orderEta(lines)
-    local weight, value = 0, 0
+    local weight, value, count = 0, 0, 0
     for _, l in ipairs(lines) do
-        weight = weight + (l.weight or 0) * l.qty
-        value  = value + (l.unit or 0) * l.qty
+        local qty = l.qty or 1
+        weight = weight + (l.weight or 0) * qty
+        value  = value  + (l.unit or 0) * qty
+        count  = count  + qty
     end
 
-    local hours = 5
-                  + (weight ^ 0.7) * 1.6
-                  + (value  ^ 0.5) * 0.35
+    local hours = 0.25
+                  + (weight ^ 1.3) * 1.5    -- bulk, and it compounds
+                  + (value  ^ 0.5) * 0.03   -- a little more care for a little more worth
+                  + (count  ^ 0.5) * 0.04   -- handling, even for weightless goods
 
     hours = hours * (TC.opt("DeliveryHoursMultiplier") or 1.0)
 
-    if hours < 4 then hours = 4 end
+    if hours < 0.25 then hours = 0.25 end
     if hours > 96 then hours = 96 end
-    return math.floor(hours + 0.5)
+    return hours
+end
+
+--[[ How a wait is put into words.
+
+     Two forms, because the two places that show one have very different room. The
+     phrase goes in a sentence ("arriving within the hour"); the short form goes in the
+     ledger's When column beside timestamps.
+
+     Neither is ever exact. A delivery is somebody else's schedule, and "in about three
+     hours" is both what a real one would tell you and what stops the player watching a
+     clock instead of playing.
+]]
+function TC.etaPhrase(hours)
+    if hours < 1 then return getText("IGUI_TC_EtaSoon") end
+    return getText("IGUI_TC_EtaHours", math.floor(hours + 0.5))
+end
+
+function TC.etaShort(hours)
+    if hours < 1 then return getText("IGUI_TC_LedgerSoon") end
+    return getText("IGUI_TC_LedgerEta", math.floor(hours + 0.5))
 end
 
 --[[ What paying to skip the wait costs, on top of the order. ]]
@@ -227,10 +273,21 @@ end
 -- Delivery
 -- ---------------------------------------------------------------------------
 
---[[ Deliver everything that is due, and refund anything that cannot be delivered.
+--[[ Mark everything whose time is up as ARRIVED, and refund anything undeliverable.
 
-     Called on a timer while the player is in the world. Returns the number delivered
-     and the number refunded so the caller can tell them.
+     Arriving and receiving are two steps, not one. Goods used to appear at the
+     player's feet the moment the clock ran out, which meant a delivery could land
+     while they were fighting, swimming, or halfway up a rope, and the first they knew
+     of it was a parcel left somewhere they were no longer standing. Now the van turns
+     up and waits: the order is flagged, the player is told, and the goods are put down
+     only when they say so.
+
+     An arrived order STAYS in the list until it is collected, which is what makes it
+     safe. The list lives on modData and survives a save, so a delivery that lands two
+     minutes before someone quits is still there when they come back. Nothing is spawned
+     until TC.collectOrders, and nothing is removed until it has been.
+
+     Returns the number that arrived on this pass and the number refunded.
 
      Refunds are always in full. The player did not choose for a delivery to fail, and
      charging them a cancellation fee for the mod's own inability to spawn an item
@@ -243,15 +300,23 @@ function TC.deliverDueOrders(player)
     if #orders == 0 then return 0, 0 end
 
     local now = worldHours()
-    local delivered, refunded = 0, 0
+    local arrived, refunded = 0, 0
     local kept = {}
 
     for _, order in ipairs(orders) do
-        if (order.due or 0) > now then
+        if order.arrived then
+            -- Already waiting to be collected. Nothing to do until the player says so.
             table.insert(kept, order)
+
+        elseif (order.due or 0) > now then
+            table.insert(kept, order)
+
         else
-            -- Prove every line can still be made before anything is spawned, so a
-            -- delivery is all or nothing rather than half a parcel and a refund.
+            -- Prove every line can still be made before the player is told anything,
+            -- so a delivery is all or nothing rather than half a parcel and a refund.
+            -- Checked here rather than at collection because a refund the player has
+            -- to click a button to receive is a worse experience than one that simply
+            -- appears with an explanation.
             local ok = true
             for _, l in ipairs(order.lines or {}) do
                 if not getScriptManager():FindItem(l.fullType) then
@@ -259,20 +324,16 @@ function TC.deliverDueOrders(player)
                 end
             end
 
-            if ok and player:getSquare() then
-                local parcels, loose = TC.packAndDrop(player, order.lines)
-                TC.logTransaction(player, "buy", order.lines, order.paid or 0)
-                TC.log("delivered order %s as %d parcel(s), %d loose",
-                       tostring(order.id), parcels, loose)
-                delivered = delivered + 1
-            elseif not ok then
+            if ok then
+                order.arrived = true
+                arrived = arrived + 1
+                table.insert(kept, order)
+                TC.log("order %s arrived, awaiting collection", tostring(order.id))
+            else
                 TC.giveCash(player, order.paid or 0)
                 TC.warn("order %s could not be delivered, refunded $%d",
                         tostring(order.id), order.paid or 0)
                 refunded = refunded + 1
-            else
-                -- No square yet: the player is mid-load. Try again on the next tick.
-                table.insert(kept, order)
             end
         end
     end
@@ -280,5 +341,48 @@ function TC.deliverDueOrders(player)
     local md = player:getModData()
     md[ORDERS_KEY] = kept
 
-    return delivered, refunded
+    return arrived, refunded
+end
+
+--[[ The orders standing at the door, in the order they arrived. ]]
+function TC.arrivedOrders(player)
+    local out = {}
+    for _, order in ipairs(TC.orders(player)) do
+        if order.arrived then table.insert(out, order) end
+    end
+    return out
+end
+
+function TC.arrivedCount(player)
+    return #TC.arrivedOrders(player)
+end
+
+--[[ Take delivery: pack everything waiting and set it down at the player's feet.
+
+     Returns the number of orders collected and the number of parcels put down, or
+     nil when there is nowhere to put them. An order is removed only after its goods
+     have actually been spawned, so a failure here loses nothing -- the delivery is
+     still waiting on the next attempt.
+]]
+function TC.collectOrders(player)
+    if not player or not player:getSquare() then return nil end
+
+    local orders = TC.orders(player)
+    local kept, collected, parcels = {}, 0, 0
+
+    for _, order in ipairs(orders) do
+        if not order.arrived then
+            table.insert(kept, order)
+        else
+            local boxes, loose = TC.packAndDrop(player, order.lines)
+            TC.logTransaction(player, "buy", order.lines, order.paid or 0)
+            TC.log("collected order %s as %d parcel(s), %d loose",
+                   tostring(order.id), boxes, loose)
+            collected = collected + 1
+            parcels = parcels + boxes + loose
+        end
+    end
+
+    player:getModData()[ORDERS_KEY] = kept
+    return collected, parcels
 end

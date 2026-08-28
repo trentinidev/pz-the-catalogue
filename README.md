@@ -41,12 +41,19 @@ reverse, and drag the dividers to re-balance the widths.
 order a single line outright. Placing an order takes a couple of interruptible seconds,
 so you cannot kit yourself out mid-horde.
 
-**Delivery** — paying and receiving are separate. An order is booked, the money leaves
-immediately, and the goods turn up hours later in a parcel dropped at your feet,
-wherever you happen to be. How long depends on the weight and value of the order: a tin
-of beans is a few hours, a generator most of a day. **Rush** delivery skips the wait for
-a surcharge. Pending orders and completed ones share one ledger, opened from the
-catalogue's right-click menu.
+**Delivery** — paying and receiving are separate. An order is booked and the money
+leaves immediately; when the lead time is up a window opens to say what has turned up,
+and the parcels are set down at your feet only when you press **Receive**. Closing that
+window is not refusing the delivery — it waits, through a save and a reload, until you
+collect it from the catalogue's right-click menu.
+
+How long an order takes is mostly about **bulk**, and bulk compounds: one pistol round
+is about twenty minutes, a hundred of them about two and a half hours, a crate of
+medical supplies most of a morning, a generator several days. Value counts for a little
+and sheer item count for a little, so something small and precious is handled slightly
+more carefully than something small and cheap. **Rush** delivery skips the wait for a
+surcharge and hands the goods straight across the counter. Pending orders and completed
+ones share one ledger, opened from the catalogue's right-click menu.
 
 **Selling in bulk** — stage everything eligible from your inventory or from an open
 container in one click. Nothing leaves your possession until you confirm. Expand any
@@ -135,6 +142,19 @@ containers and only removes them when the sale is confirmed. Closing, dying, cra
 or quitting all cost nothing. The tradeoff is that staged loot still weighs on you
 until it sells.
 
+
+### A delivery waits to be received
+
+Goods used to appear at your feet the moment the clock ran out — which could be mid-
+fight, mid-swim, or halfway up a rope. The parcel went down at that spot and the only
+notice was a line of halo text, by which point you were usually somewhere else.
+
+So the van waits. Arrival flags the order and opens a window listing what is on it;
+nothing is spawned until you press Receive. The order stays in the pending list on
+`modData` the whole time, which is what makes it safe — it survives a save, a crash and
+a quit, and the goods cannot be lost by not being ready for them. This is the same
+reasoning as the sell window: **spawn late, remove late, and keep the authoritative
+record in the one place the game will persist for you.**
 
 ### Delivery packaging is worth nothing
 

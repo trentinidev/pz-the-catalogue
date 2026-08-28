@@ -11,6 +11,33 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.7.0-alpha — 2026-08-27
+
+### Added
+- **A delivery now waits to be received.** When an order arrives, a window opens listing
+  what is on the van, and the parcels are set down at your feet only when you press
+  Receive. Goods used to appear the instant the clock ran out — which could be mid-fight,
+  mid-swim, or halfway up a rope — and the parcel went down at that spot whether you were
+  ready for it or not. Closing the window is not refusing the delivery: the order stays
+  in the pending list, survives a save and a reload, and the catalogue's right-click menu
+  grows a **Collect delivery** entry for as long as something is waiting. The ledger shows
+  a waiting order as `ready to collect`.
+
+### Changed
+- **Lead times rebalanced around bulk.** The old formula had a five-hour base, so a single
+  pistol round took the same six hours as a chest of tools and the number carried no
+  information. The base is now almost nothing and weight is *super-linear* — doubling a
+  load more than doubles the job, because it stops being something a van drops off on its
+  round. Roughly: one round twenty minutes, a hundred rounds two and a half hours, a
+  bandage twenty minutes, a crate of medical stock four to five hours, a generator several
+  days. Value and item count contribute a little, so something small and precious is
+  handled slightly more carefully than something small and cheap.
+- Waits under an hour are said in words (`within the hour`, `under 1h`) rather than
+  rounded to `~0h`.
+
+---
+
+
 ## 0.6.5-alpha — 2026-08-27
 
 ### Fixed
