@@ -11,6 +11,22 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.9.0-alpha — 2026-08-28
+
+### Removed
+- **The custom parcel meshes.** Three were built — a framed crate, a tarped load on a
+  pallet — and every one rendered at the wrong size in game. Four readings of how Project
+  Zomboid scales an FBX were tried and measured, and none survived contact with the box on
+  the tile. They are gone rather than left half-working, along with their world textures,
+  the Blender build script and the UV tooling.
+- The parcels wear **vanilla's extra-large model** on the ground. Capacity, weight, sound
+  and icon are still per tier; only the thing on the ground is shared, and it is a parcel,
+  which is what it should look like. The tiers are told apart by their inventory icons,
+  which is where the difference was always going to be read.
+
+---
+
+
 ## 0.8.5-alpha — 2026-08-28
 
 ### Added
