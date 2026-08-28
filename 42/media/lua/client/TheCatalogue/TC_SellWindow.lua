@@ -729,6 +729,10 @@ function TC_SellWindow:onSell()
     self.staged = {}
     self:refreshList()
 
+    -- Selling has no timed action to hang the paperwork on, so the pen lands here,
+    -- just before the register, and a sale sounds like the purchase it mirrors.
+    TC.playSound(self.player, "orderSign")
+
     TC.giveCash(self.player, total)
     TC.logTransaction(self.player, "sell", TC.summariseItems(going), total)
 

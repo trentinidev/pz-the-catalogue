@@ -11,6 +11,28 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.7.5-alpha — 2026-08-27
+
+### Added
+- **Buying and selling have sounds, in two stages.** Placing an order is paperwork and
+  sounds like it — the catalogue opens, a page turns partway through, a pen goes down
+  when the order is written. Cash changing hands is a separate instant and gets the shop
+  register. The register lives in `takeCash`/`giveCash`, the one place in the mod that
+  knows money moved, so it covers buying, the cart, rush, selling and refunds without a
+  single call site having to remember. All clips are vanilla sound scripts; nothing ships
+  with the mod.
+- Selling has no timed action to hang the paperwork on, so the pen sounds at the moment
+  the sale completes and a sale sounds like the purchase it mirrors.
+
+### Changed
+- **Placing an order plays the reading animation, not the looting one.** It was a
+  crouched rummage through a container, which is what your character does to a corpse —
+  not to a mail-order catalogue. `Read` is what vanilla uses for a book or for writing a
+  note, which is exactly what placing an order is.
+
+---
+
+
 ## 0.7.4-alpha — 2026-08-27
 
 ### Added
