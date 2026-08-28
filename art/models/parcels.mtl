@@ -1,0 +1,21 @@
+# The Catalogue -- placeholder materials for the base meshes.
+# Flat colours on purpose: the shipped textures are laid out for vanilla's UV atlas,
+# not for this unwrap, and hanging one here would look nearly right and be wrong.
+
+newmtl cardboard
+Kd 0.66 0.47 0.29
+Ka 0.1 0.1 0.1
+d 1.0
+illum 1
+
+newmtl timber
+Kd 0.60 0.40 0.21
+Ka 0.1 0.1 0.1
+d 1.0
+illum 1
+
+newmtl canvas
+Kd 0.35 0.36 0.20
+Ka 0.1 0.1 0.1
+d 1.0
+illum 1

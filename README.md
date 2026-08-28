@@ -229,6 +229,24 @@ Money, MoneyBundle and BareHands are excluded from the catalogue: a currency tha
 bought and sold at any spread other than exactly 1.0 is an arbitrage loop. Corpses,
 body parts, wound items and live-animal categories are excluded too.
 
+## Art
+
+`art/` holds the source renders, so the generated assets can be rebuilt from a clean
+clone rather than from whatever happens to be in someone's Downloads folder.
+
+```sh
+powershell -ExecutionPolicy Bypass -File tools\gen_art.ps1          # the catalogue
+powershell -ExecutionPolicy Bypass -File tools\gen_parcel_art.ps1   # the three parcels
+powershell -ExecutionPolicy Bypass -File tools\gen_base_models.ps1  # meshes for Blender
+```
+
+`art/models/` holds base meshes for the parcel tiers — starting points to open in
+Blender, not shipped assets. See [its README](art/models/README.md) for the scale
+(one unit is one metre, Y up, measured off vanilla's remaining ASCII models), the UV
+layout, and the export settings. They exist because the current world models are
+vanilla's box wearing a new coat: a real mesh is what gets the crate its corner
+brackets, the pallet load its pallet, and the face art a layout we chose.
+
 ## Checks
 
 `tools/check.sh` runs everything that can be verified without launching the game: Lua
