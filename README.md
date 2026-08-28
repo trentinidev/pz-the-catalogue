@@ -2,7 +2,7 @@
 
 A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
-> **Alpha — 0.8.5.** Not released, and the version number says so deliberately. It works
+> **Alpha — 0.9.0.** Not released, and the version number says so deliberately. It works
 > and it is played, but parts of it have never been exercised.
 > **Single-player only.** All transaction logic runs client-side, so on a dedicated
 > server it is trivially cheatable; server authority is deliberately deferred until
@@ -237,16 +237,13 @@ clone rather than from whatever happens to be in someone's Downloads folder.
 ```sh
 powershell -ExecutionPolicy Bypass -File tools\gen_art.ps1          # the catalogue
 powershell -ExecutionPolicy Bypass -File tools\gen_parcel_art.ps1   # the three parcels
-powershell -ExecutionPolicy Bypass -File tools\gen_uv_guide.ps1      # the UV guide
-blender --background --factory-startup --python tools/blender_parcels.py   # the meshes
 ```
 
-`art/models/` holds the parcel meshes as editable `.blend` files, built headless by
-Blender from `tools/blender_parcels.py`, which also writes the FBX the game loads. See
-[its README](art/models/README.md) for the scale (one unit is one metre, Y up, measured
-off vanilla's remaining ASCII models), the UV grid, and how to edit them. Owning the
-mesh is what gives the crate its corner frame, the pallet load its pallet, and the
-texture a layout we chose rather than one locked inside a binary FBX.
+**No custom meshes.** Three were built for the parcel tiers -- a framed crate, a tarped
+load on a pallet -- and every one rendered at the wrong size in game. Four readings of how
+Project Zomboid scales an FBX were tried and measured; none survived contact with the box
+on the tile. The parcels wear vanilla's extra-large model and are told apart by their
+icons.
 
 ## Checks
 

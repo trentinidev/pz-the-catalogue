@@ -46,55 +46,21 @@ module Catalogue
        catalogue sells. Rather than dropping heavy goods loose on the ground and
        calling it a delivery, the company packs them in bigger crates.
 
-       THREE TIERS, THREE MATERIALS. They used to be one cardboard box drawn three
-       times, which made the capacity the only thing telling them apart -- and capacity
-       is a number in a tooltip, not something you can see on the ground. Now the step
-       up in size is a step up in packaging: a taped carton, a strapped wooden crate, a
-       tarped pallet load. That is legible at a glance and it is also just what a real
-       freight company would do.
-
        Sound stays vanilla's largest parcel throughout, and weight stays at 1.0 like
        every vanilla parcel, so the box itself never becomes the reason a delivery is
-       too heavy. */
-    /* Three meshes of our own, built by tools/blender_parcels.py and editable in
-       art/models/*.blend.
+       too heavy.
 
-       These used to re-skin vanilla's parcel mesh, which meant the crate had no corner
-       frame and the pallet load had no pallet: silhouette is shape, and no texture fakes
-       it at the angle the game draws items from. It also meant the texture had to be a
-       re-materialised copy of vanilla's atlas, because that atlas's UV layout lives
-       inside a binary FBX -- paint a label onto it and you learn where it went by
-       dropping a parcel and walking around it.
+       All three use vanilla's extra-large parcel on the ground.
 
-       Owning the mesh settles both. The frame and the pallet are real geometry, and the
-       unwrap is a grid we chose and wrote down, so a pixel in the FRONT cell comes out on
-       the front. See art/models/README.md and art/models/uv_layout.png.
+       Custom meshes were built for these -- a framed crate, a tarped load on a pallet --
+       and every one of them rendered at the wrong size in game. Four different readings of
+       how Project Zomboid scales an FBX were tried and measured, and none of them held up
+       in front of the actual box on the actual tile. The meshes are gone rather than left
+       in half-working; the tiers tell themselves apart by their inventory icons, which are
+       the tier's own art and are where the difference is read anyway.
 
-       scale = 0.2, vanilla's own, because the sizes are defined against vanilla's extra
-       large rather than against a metre. Measured by importing Parcel_Present_1.fbx: it is
-       0.449 across and its model block scales it by 0.2. The tiers come out at 1.2x, 2.5x
-       and 4.8x that -- each roughly double the one below, the largest about a tile. */
-    model Parcel25World
-    {
-        mesh = WorldItems/parcel25,
-        texture = TheCatalogue/Parcel25World,
-        scale = 0.2,
-    }
-
-    model Parcel50World
-    {
-        mesh = WorldItems/parcel50,
-        texture = TheCatalogue/Parcel50World,
-        scale = 0.2,
-    }
-
-    model Parcel100World
-    {
-        mesh = WorldItems/parcel100,
-        texture = TheCatalogue/Parcel100World,
-        scale = 0.2,
-    }
-
+       Capacity, weight, sound and icon are still per tier. Only the thing on the ground is
+       shared, and it is a parcel, which is what it should look like. */
     item Parcel_XXL
     {
         DisplayCategory = Container,
@@ -105,7 +71,7 @@ module Catalogue
         CloseSound = CloseParcelLarge,
         OpenSound = OpenParcelLarge,
         PutInSound = StoreItemParcelLarge,
-        WorldStaticModel = Parcel25World,
+        WorldStaticModel = Base.Parcel_ExtraLarge,
         Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
     }
 
@@ -119,7 +85,7 @@ module Catalogue
         CloseSound = CloseParcelLarge,
         OpenSound = OpenParcelLarge,
         PutInSound = StoreItemParcelLarge,
-        WorldStaticModel = Parcel50World,
+        WorldStaticModel = Base.Parcel_ExtraLarge,
         Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
     }
 
@@ -133,7 +99,7 @@ module Catalogue
         CloseSound = CloseParcelLarge,
         OpenSound = OpenParcelLarge,
         PutInSound = StoreItemParcelLarge,
-        WorldStaticModel = Parcel100World,
+        WorldStaticModel = Base.Parcel_ExtraLarge,
         Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
     }
 
