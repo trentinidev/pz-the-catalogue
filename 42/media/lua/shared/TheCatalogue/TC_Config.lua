@@ -47,6 +47,8 @@ local DEFAULTS = {
     CatalogueLootMultiplier    = 1.0,
     OrderSeconds               = 2.0,
     DebugLogging               = false,
+    DeliveryHoursMultiplier    = 1.0,
+    RushFeePercent             = 20,
 }
 
 function TC.opt(name)
@@ -86,6 +88,13 @@ TC.EXCLUDED_ITEMS = {
     ["Base.Money"]       = true,
     ["Base.MoneyBundle"] = true,
     ["Base.BareHands"]   = true,
+
+    -- Our oversized parcels are packaging, not merchandise. Listing them would put a
+    -- 100-capacity container on the shelf for pocket change, which is a far better
+    -- deal than anything else in the catalogue.
+    ["Catalogue.Parcel_XXL"]  = true,
+    ["Catalogue.Parcel_5XL"]  = true,
+    ["Catalogue.Parcel_10XL"] = true,
 }
 
 -- ---------------------------------------------------------------------------

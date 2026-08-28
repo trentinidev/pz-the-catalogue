@@ -11,6 +11,35 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.6.0-alpha — 2026-08-27
+
+Orders. The catalogue stops being a vending machine.
+
+### Added
+- **Deliveries take time.** Paying and receiving are now separate. An order is booked,
+  the money leaves immediately, and the goods turn up hours later in a parcel dropped
+  at your feet, wherever you happen to be. Lead time grows with the weight and value of
+  the order -- a tin of beans is a few hours, a generator most of a day.
+- **Rush delivery** for a surcharge, default 20%, keeps the old across-the-counter
+  behaviour as a paid choice rather than a setting. Both the buy panel and the cart
+  offer it beside the ordinary order button.
+- **Oversized parcels** at 25, 50 and 100 capacity. Vanilla tops out at 20 and a single
+  generator weighs 40, so the largest box the game ships could not hold one item the
+  catalogue sells. Same art and sounds as vanilla's largest parcel.
+- **Pending orders in the ledger**, above the completed history, marked as ordered and
+  carrying an ETA rather than a timestamp.
+- `DeliveryHoursMultiplier` and `RushFeePercent` sandbox options.
+
+### Notes
+- An order is the only state in this mod that has to survive a save, so it lives on the
+  player's modData beside the wishlist and the ledger. Time is measured with
+  getWorldAgeHours, not wall clock: an order placed at dusk should arrive after a
+  night's sleep, not after the player has been away from their desk.
+- A delivery that cannot be made -- an item retired by a patch, a mod unloaded -- is
+  refunded in full. The player did not choose for it to fail.
+
+---
+
 ## 0.5.0-alpha — 2026-08-27
 
 Ordering, record-keeping, and the maintenance work that had been accumulating.
