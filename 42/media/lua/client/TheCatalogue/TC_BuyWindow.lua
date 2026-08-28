@@ -734,7 +734,17 @@ function TC_BuyWindow:prerender()
         self:drawText(TC.truncate(UIFont.Small, entry.fullType, nameW),
                       textLeft, y + 10 + FONT_HGT_LARGE, 0.55, 0.55, 0.6, 1, UIFont.Small)
 
-        y = y + 64 + PAD + 8
+        --[[ The rule goes under whichever is taller, the icon or the two lines of text
+             beside it.
+
+             It used to be pinned to the icon alone -- 64 plus padding -- on the
+             assumption that the name and the fullType under it would always fit in
+             that. At a larger UI scale they do not, and the fullType was drawn
+             straight through the separator. Measured from both, so the header block
+             owns whatever height it actually needs. ]]
+        local iconBottom = y + 64
+        local textBottom = y + 10 + FONT_HGT_LARGE + FONT_HGT_SMALL
+        y = math.max(iconBottom, textBottom) + PAD + 8
 
         self:drawRect(innerLeft, y, DETAIL_W - PAD * 2, 1, 0.35, 1, 1, 1)
         y = y + PAD

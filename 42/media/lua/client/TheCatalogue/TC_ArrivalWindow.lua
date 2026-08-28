@@ -31,9 +31,13 @@ local FONT_HGT_MEDIUM = getTextManager():getFontHeight(UIFont.Medium)
 
 local PAD        = 14
 local BOTTOM_PAD = PAD * 2
-local ROW_HGT    = 28
 local BUTTON_HGT = FONT_HGT_MEDIUM + 12
 local HEADER_HGT = FONT_HGT_SMALL + 12
+
+-- The same row height and icon size as the catalogue, so a delivery reads as a page
+-- from the same book rather than a different widget that happens to list items.
+local ROW_HGT = TC.UI.ROW_HGT
+local ICON    = TC.UI.ICON
 
 -- Equal on both sides of the table, so the columns sit inside a symmetric frame. The
 -- right-hand one has to clear the scrollbar, so the left one matches it rather than
@@ -58,14 +62,30 @@ end
      header and by every row, so a heading cannot drift away from the values under it. ]]
 local function columns(listW)
     local qty = quantityWidth()
-    local qtyLeft = listW - INSET - qty
+    local qtyLeft  = listW - INSET - qty
+    local nameLeft = INSET + ICON + TC.UI.CELL_PAD
     return {
-        nameLeft  = INSET,
-        nameW     = qtyLeft - INSET - TC.UI.CELL_PAD,
+        iconLeft  = INSET,
+        nameLeft  = nameLeft,
+        nameW     = qtyLeft - nameLeft - TC.UI.CELL_PAD,
         qtyLeft   = qtyLeft,
         qtyW      = qty,
-        ruleX     = qtyLeft - TC.UI.CELL_PAD / 2,
+        ruleX     = math.floor(qtyLeft - TC.UI.CELL_PAD / 2),
     }
+end
+
+--[[ The item's own icon, resolved once per line and remembered.
+
+     Same trick as TC.entryIcon: a failed lookup is stored as FALSE rather than left
+     nil, so a modded item whose texture cannot be found is asked about once instead of
+     once per frame for as long as the window is open. ]]
+local function lineIcon(line)
+    if line.icon == nil then
+        local script = line.fullType and getScriptManager():FindItem(line.fullType)
+        line.icon = (script and script:getNormalTexture()) or false
+    end
+    if line.icon == false then return nil end
+    return line.icon
 end
 
 -- ---------------------------------------------------------------------------
@@ -74,11 +94,20 @@ TC_ArrivalList = ISScrollingListBox:derive("TC_ArrivalList")
 
 function TC_ArrivalList:doDrawItem(y, item, alt)
     local line = item.item
-    local c = columns(self:getWidth())
+    local w = self:getWidth()
+    local c = columns(w)
     local ty = y + (ROW_HGT - FONT_HGT_SMALL) / 2
 
-    self:drawRect(0, y + ROW_HGT - 1, self:getWidth(), 1, 0.25, 1, 1, 1)
+    -- A rail under the row and a rule between the columns, the same grid the catalogue
+    -- and the ledger use, so a record reads across and a column reads down.
+    self:drawRect(0, y + ROW_HGT - 1, w, 1, 0.25, 1, 1, 1)
     self:drawRect(c.ruleX, y, 1, ROW_HGT - 1, 0.22, 1, 1, 1)
+
+    local icon = lineIcon(line)
+    if icon then
+        self:drawTextureScaledAspect(icon, c.iconLeft, y + (ROW_HGT - ICON) / 2,
+                                     ICON, ICON, 1, 1, 1, 1)
+    end
 
     self:drawText(TC.truncate(UIFont.Small, line.name or "?", c.nameW),
                   c.nameLeft, ty, 0.92, 0.92, 0.95, 1, UIFont.Small)
@@ -100,7 +129,10 @@ function TC_ArrivalWindow:new(x, y, w, h, playerNum)
     o.playerNum = playerNum
     o.player = getSpecificPlayer(playerNum)
     o:setResizable(true)
-    o.minimumWidth = math.max(440, PAD * 2 + INSET * 2 + 200 + quantityWidth())
+    -- Both margins, the icon column, a readable stretch of name and the quantity: the
+    -- window cannot be dragged narrower than the table it frames.
+    o.minimumWidth = math.max(440, PAD * 2 + INSET * 2 + ICON + TC.UI.CELL_PAD
+                                   + 200 + quantityWidth())
     o.minimumHeight = 320
     return o
 end
@@ -171,7 +203,8 @@ function TC_ArrivalWindow:refreshList()
             if seen[key] then
                 seen[key].qty = seen[key].qty + (l.qty or 1)
             else
-                seen[key] = { name = l.name, qty = l.qty or 1, weight = l.weight or 0 }
+                seen[key] = { fullType = l.fullType, name = l.name,
+                              qty = l.qty or 1, weight = l.weight or 0 }
                 table.insert(merged, seen[key])
             end
         end
@@ -236,6 +269,8 @@ function TC_ArrivalWindow:prerender()
 
     local hy = L.headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
     self:drawRect(L.listX + c.ruleX, L.headerY, 1, HEADER_HGT, 0.4, 1, 1, 1)
+    -- Over the NAMES, not over the icon column, so the heading marks the column it
+    -- actually labels.
     self:drawText(getText("IGUI_TC_ColItem"), L.listX + c.nameLeft, hy,
                   0.72, 0.72, 0.76, 1, F)
     TC.drawCentred(self, getText("IGUI_TC_Quantity"), L.listX + c.qtyLeft, c.qtyW, hy,
