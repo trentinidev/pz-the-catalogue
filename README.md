@@ -2,7 +2,7 @@
 
 A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
-> **Alpha — 0.6.0.** Not released, and the version number says so deliberately. It works
+> **Alpha — 0.6.1.** Not released, and the version number says so deliberately. It works
 > and it is played, but multiplayer is unsafe (all transaction logic runs client-side)
 > and parts of it have never been exercised. 1.0.0 is reserved for the first build that
 > has been played end to end and is safe on a dedicated server.

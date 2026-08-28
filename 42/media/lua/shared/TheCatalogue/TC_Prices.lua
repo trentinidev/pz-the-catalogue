@@ -160,7 +160,19 @@ function TC.buildIndex()
         -- to guard a getter that does not throw.
         local fullType = si:getFullName()
 
+        --[[ Category exclusions belong HERE, not inside the formula.
+
+             They used to be checked only by priceFromFormula, which is the last layer
+             of four -- so anything the generated table or the modded-item pricer
+             answered first slipped straight past them. That is how "Animal Corpse"
+             ended up on the shelf: excluded from the generated table by the offline
+             generator, then priced anyway by the runtime pricer, which never asked.
+
+             One gate, before any pricing is attempted, so every layer obeys it. ]]
+        local category = si:getDisplayCategory()
+
         if fullType and not TC.EXCLUDED_ITEMS[fullType]
+           and not (category and TC.EXCLUDED_CATEGORIES[category])
            and not si:getObsolete() and not si:isHidden() then
 
             --[[ Four layers, most specific first.
@@ -195,7 +207,7 @@ function TC.buildIndex()
                     name     = name,
                     lower    = string.lower(name .. " " .. fullType),
                     price    = price,
-                    category = si:getDisplayCategory() or "Generic",
+                    category = category or "Generic",
                     module   = module,
                     weight   = si:getActualWeight() or 0,
                     -- NO icon here. Resolving getNormalTexture() for every item in the

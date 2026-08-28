@@ -166,11 +166,12 @@ end
      A cart order takes the same interruptible time as a single purchase. It used to
      complete instantly, which made the cart the fast way to shop mid-fight and turned
      the order action into a pointless tax on buying one thing at a time. ]]
-function TC_CartWindow:onRush()
-    self:onCheckout(true)
-end
+-- Same reason as TC_BuyWindow: the button arrives as the first argument, so the flag
+-- cannot ride in that slot.
+function TC_CartWindow:onCheckout() self:startCheckout(false) end
+function TC_CartWindow:onRush()     self:startCheckout(true)  end
 
-function TC_CartWindow:onCheckout(rush)
+function TC_CartWindow:startCheckout(rush)
     local cart = self:cart()
     if #cart == 0 then
         self:setMessage(getText("IGUI_TC_CartEmpty"), true)
