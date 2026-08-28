@@ -56,40 +56,41 @@ module Catalogue
        Sound stays vanilla's largest parcel throughout, and weight stays at 1.0 like
        every vanilla parcel, so the box itself never becomes the reason a delivery is
        too heavy. */
-    /* All three wear vanilla's parcel MESH with a texture of their own. Same reasoning
-       as the catalogue cover -- a new mesh is not worth it for a box-shaped thing -- but
-       here the texture could not be painted from the art either: the mesh's UV layout
-       lives in a binary FBX, and guessing which rectangle is which face is how you wrap
-       a shipping label around a corner.
+    /* Three meshes of our own, built by tools/blender_parcels.py and editable in
+       art/models/*.blend.
 
-       So tools/gen_parcel_art.ps1 never touches the layout. It re-materialises vanilla's
-       own atlas, which is already correct for this mesh: the tier's material underneath,
-       vanilla's per-face shading kept so the box still reads as lit, and vanilla's tape
-       -- the brightest thing in the atlas -- repainted as that tier's banding. The bands
-       land correctly on the mesh precisely because they ARE vanilla's tape.
+       These used to re-skin vanilla's parcel mesh, which meant the crate had no corner
+       frame and the pallet load had no pallet: silhouette is shape, and no texture fakes
+       it at the angle the game draws items from. It also meant the texture had to be a
+       re-materialised copy of vanilla's atlas, because that atlas's UV layout lives
+       inside a binary FBX -- paint a label onto it and you learn where it went by
+       dropping a parcel and walking around it.
 
-       The silhouette is the one thing this cannot give: no corner brackets on the crate,
-       no pallet under the tarp. Those are shape, not texture. The icons have all of it,
-       and the icon is where the difference is actually read. */
+       Owning the mesh settles both. The frame and the pallet are real geometry, and the
+       unwrap is a grid we chose and wrote down, so a pixel in the FRONT cell comes out on
+       the front. See art/models/README.md and art/models/uv_layout.png.
+
+       scale = 1.0 because these are modelled life-size: vanilla's remaining ASCII .x
+       models measure like real objects at scale 1.0, so a metre here is a metre there. */
     model Parcel25World
     {
-        mesh = WorldItems/Parcel_Present_1,
+        mesh = WorldItems/parcel25,
         texture = TheCatalogue/Parcel25World,
-        scale = 0.2,
+        scale = 1.0,
     }
 
     model Parcel50World
     {
-        mesh = WorldItems/Parcel_Present_1,
+        mesh = WorldItems/parcel50,
         texture = TheCatalogue/Parcel50World,
-        scale = 0.2,
+        scale = 1.0,
     }
 
     model Parcel100World
     {
-        mesh = WorldItems/Parcel_Present_1,
+        mesh = WorldItems/parcel100,
         texture = TheCatalogue/Parcel100World,
-        scale = 0.2,
+        scale = 1.0,
     }
 
     item Parcel_XXL

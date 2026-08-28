@@ -2,7 +2,7 @@
 
 A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
-> **Alpha — 0.7.3.** Not released, and the version number says so deliberately. It works
+> **Alpha — 0.8.0.** Not released, and the version number says so deliberately. It works
 > and it is played, but parts of it have never been exercised.
 > **Single-player only.** All transaction logic runs client-side, so on a dedicated
 > server it is trivially cheatable; server authority is deliberately deferred until
@@ -237,15 +237,16 @@ clone rather than from whatever happens to be in someone's Downloads folder.
 ```sh
 powershell -ExecutionPolicy Bypass -File tools\gen_art.ps1          # the catalogue
 powershell -ExecutionPolicy Bypass -File tools\gen_parcel_art.ps1   # the three parcels
-powershell -ExecutionPolicy Bypass -File tools\gen_base_models.ps1  # meshes for Blender
+powershell -ExecutionPolicy Bypass -File tools\gen_uv_guide.ps1      # the UV guide
+blender --background --factory-startup --python tools/blender_parcels.py   # the meshes
 ```
 
-`art/models/` holds base meshes for the parcel tiers — starting points to open in
-Blender, not shipped assets. See [its README](art/models/README.md) for the scale
-(one unit is one metre, Y up, measured off vanilla's remaining ASCII models), the UV
-layout, and the export settings. They exist because the current world models are
-vanilla's box wearing a new coat: a real mesh is what gets the crate its corner
-brackets, the pallet load its pallet, and the face art a layout we chose.
+`art/models/` holds the parcel meshes as editable `.blend` files, built headless by
+Blender from `tools/blender_parcels.py`, which also writes the FBX the game loads. See
+[its README](art/models/README.md) for the scale (one unit is one metre, Y up, measured
+off vanilla's remaining ASCII models), the UV grid, and how to edit them. Owning the
+mesh is what gives the crate its corner frame, the pallet load its pallet, and the
+texture a layout we chose rather than one locked inside a binary FBX.
 
 ## Checks
 

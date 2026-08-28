@@ -1,6 +1,3 @@
-# Project Zomboid writes nothing into a mod folder, so this is mostly OS noise.
-Thumbs.db
-desktop.ini
-.DS_Store
-*.bak
-*.tmp
+# Blender writes a .blend1 alongside every save. It is the previous version, not a
+# source file, and committing it doubles the repo's binary churn for nothing.
+*.blend1

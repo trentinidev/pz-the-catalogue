@@ -11,6 +11,38 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.8.0-alpha — 2026-08-28
+
+### Added
+- **The parcels have meshes of their own**, built in Blender and shipped as FBX. The crate
+  has a real corner-post frame with rails; the pallet load has a real pallet, blocks and
+  deck boards, under a tarp that tapers the way fabric over a stack does. Silhouette is
+  shape, and no texture was ever going to fake it at the angle the game draws items from.
+- **`tools/blender_parcels.py`** builds all three headless — `blender --background
+  --factory-startup --python` — and writes both the editable `.blend` and the FBX the game
+  loads. Editing is now opening a file, not reconstructing one.
+- Every box gets a two-segment edge bevel. Under the game's flat lighting a sharp cube
+  reads as a placeholder; the bevel is most of what makes it read as an object.
+
+### Changed
+- **The world textures are painted into our own UV grid.** That grid was the whole point
+  of owning the mesh: vanilla's layout lives inside a binary FBX, so until now the
+  textures had to be re-materialised copies of its atlas. A pixel in the FRONT cell now
+  comes out on the front.
+- `scale = 1.0`, because the meshes are modelled life-size. Vanilla's remaining ASCII `.x`
+  models settle the question — a canteen is 0.122 tall at scale 1.0 — and both our FBX and
+  vanilla's carry `UpAxis = 1`.
+- The hand-written OBJ generator is retired; `.blend` is a better source in every way now
+  that the whole pipeline runs headless. The UV guide survives as
+  `tools/gen_uv_guide.ps1`, drawing from the cell table the Blender script writes rather
+  than from a second copy of the numbers.
+- `tools/check.sh` also verifies that **every mesh a model block names exists** — ours in
+  the repo, vanilla's against the game install when there is one, and reported as
+  unverified when there is not.
+
+---
+
+
 ## 0.7.9-alpha — 2026-08-28
 
 ### Added
