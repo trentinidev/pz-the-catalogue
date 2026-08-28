@@ -15,6 +15,13 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 Ordering, record-keeping, and the maintenance work that had been accumulating.
 
+### Balance
+- **Buy prices scaled 1.75x and the sell ratio cut from 0.9 to 0.30.** The catalogue
+  was too generous in both directions at once: buying was cheap and selling converted
+  loot to cash almost losslessly, so a modest pile of found money bought most of what
+  mattered. Together these drop the purchasing power of looted goods by about 5.8x --
+  an axe used to cost 1.1 axes sold, and now costs 3.3. Both are sandbox-tunable.
+
 ### Added
 - **Cart.** Collect lines and settle them in one transaction instead of a dozen
   separate withdrawals. Prices are re-read at checkout rather than remembered, so a

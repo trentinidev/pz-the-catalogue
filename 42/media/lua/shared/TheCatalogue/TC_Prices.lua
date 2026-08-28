@@ -241,7 +241,7 @@ end
 --[[ Display price for an entry, straight off the stored base. Saves the fullType table
      lookup that getBuyPrice does, which matters when this is called per row per frame. ]]
 function TC.entryPrice(e)
-    return roundPrice(e.price * TC.opt("PriceMultiplier"))
+    return roundPrice(e.price * TC.PRICE_SCALE * TC.opt("PriceMultiplier"))
 end
 
 -- ---------------------------------------------------------------------------
@@ -323,7 +323,7 @@ function TC.getBuyPrice(fullType)
     TC.buildIndex()
     local base = TC.priceByType[fullType]
     if not base then return nil end
-    return roundPrice(base * TC.opt("PriceMultiplier"))
+    return roundPrice(base * TC.PRICE_SCALE * TC.opt("PriceMultiplier"))
 end
 
 --[[ How intact an item is, as a fraction of 1.
