@@ -175,7 +175,20 @@ function TC_HistoryWindow:refreshList()
          splitting them would mean checking two places to answer it. They are marked
          pending and carry an ETA instead of a timestamp, so they cannot be mistaken
          for something that already happened. ]]
-    for _, order in ipairs(TC.orders(self.player)) do
+    --[[ Soonest first, with anything already waiting at the very top.
+
+         They used to come out in the order they were placed, which put the order
+         FURTHEST from arriving at the head of the ledger and one that was ready to
+         collect below it -- so an old order sitting eight hours out read like the one
+         just placed. A queue should be ordered by when it will be dealt with. ]]
+    local pending = {}
+    for _, order in ipairs(TC.orders(self.player)) do table.insert(pending, order) end
+    table.sort(pending, function(a, b)
+        if (a.arrived and true) ~= (b.arrived and true) then return a.arrived and true or false end
+        return TC.hoursLeft(a) < TC.hoursLeft(b)
+    end)
+
+    for _, order in ipairs(pending) do
         local parts = {}
         for _, line in ipairs(order.lines or {}) do
             table.insert(parts, (line.qty or 1) .. " x " .. (line.name or "?"))

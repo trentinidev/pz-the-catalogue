@@ -11,6 +11,28 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.7.2-alpha — 2026-08-27
+
+### Changed
+- **The delivery window has no close button.** Every other window here is a tool you
+  open and dismiss; this one is a question, and the answer is Receive. It still
+  collapses out of the way from the arrow in its title bar. A window that can be
+  dismissed without answering leaves goods in limbo with no obvious way back to them.
+- **The delivery window is laid out on a centre line.** Headline, tally and button are
+  centred, the table sits in a symmetric frame with equal margins on both sides, and the
+  quantity column is centred under a centred heading instead of pushed against a rule.
+- **The ledger lists pending orders soonest-first**, with anything ready to collect at
+  the very top. They came out in the order they were placed, which put the order
+  *furthest* from arriving at the head of the list and one that was ready to collect
+  below it — so an old order eight hours out read like the one just placed.
+- **The quantity resets to 1 when you select a different item.** It used to carry over,
+  so typing 10 for one item and then clicking another row left the field reading 10
+  against something you had only just looked at — and Add to cart would take you at your
+  word. Clicking the same row twice still keeps what you typed.
+
+---
+
+
 ## 0.7.1-alpha — 2026-08-27
 
 ### Changed
