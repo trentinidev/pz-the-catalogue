@@ -24,10 +24,10 @@ script modelled at real freight sizes on the strength of vanilla's ASCII .x mode
 canteen 0.122 tall -- and shipped parcels four to nine times too big. Those .x files are
 hand-held models and do not share a scale with WorldStaticModel.
 
-The honest reference is the thing sitting next to it on the ground. Vanilla's extra-large
-parcel is Parcel_Present_1 at scale 0.2, and imported it measures 0.449 across: 0.090 in
-the game. Everything here is a multiple of that, at vanilla's own scale of 0.2, so the
-tiers sit in the same regime as the boxes they are compared to.
+The honest reference is the thing sitting next to it on the ground: vanilla's extra-large
+parcel, which holds 17.664 units of vertex data and is scaled by 0.2. Everything here is a
+multiple of that, at vanilla's own scale, so the tiers sit in the same regime as the boxes
+they are compared to.
 
 Y IS UP in the export, which vanilla's meshes confirm: both ours and Parcel_Present_1
 carry UpAxis = 1. These are modelled in Blender's native Z-up and written out Y-up.
@@ -133,10 +133,29 @@ def assign_uvs(mesh_obj, forced_cell):
 # the model block's scale. Building against Blender's 0.449 made parcels eight times too
 # small, which is exactly what came back from testing.
 #
-# So everything here is a multiple of 17.664, and the export below writes raw coordinates
-# with no unit conversion of its own.
+# So everything here is a multiple of 17.664, and the export below writes the file in
+# vanilla's own unit convention (see the export function) so that the two are read the
+# same way whichever way the game reads them.
 XL = 17.664
 SCALE = 0.2
+
+# How big each tier is, as a multiple of vanilla's extra large. THIS IS THE TUNING KNOB:
+# three numbers, nothing else to touch.
+#
+# The brief was "each one double the last", and a first pass took that literally --
+# 1.2x, 2.4x, 4.8x. On paper that is the capacity step; on screen it is absurd, because
+# doubling a linear dimension is eight times the volume and the biggest tier ended up
+# swallowing its tile.
+#
+# So the step is a doubling of BULK, not of width: about x1.4 linear each time, which is
+# what "twice the box" actually looks like when you put two of them side by side. The
+# smallest is also lifted well clear of vanilla's extra large, which it has to beat
+# visibly rather than by a hair.
+TIER = {
+    "parcel25":  1.45,
+    "parcel50":  2.00,
+    "parcel100": 2.75,
+}
 
 
 def add_box(name, cx, cy, bz, sx, sy, sz, cell=BODY):
@@ -186,7 +205,7 @@ def build_parcel25():
     not modelled. At the size this is drawn on the ground, geometry for a strip of tape
     would cost triangles and change nothing anyone can see.
     """
-    w = XL * 1.20
+    w = XL * TIER["parcel25"]
     add_box("carton", 0, 0, 0, w, w, w * 0.78)
     return join_all("parcel25")
 
@@ -198,7 +217,7 @@ def build_parcel50():
     changes the outline -- a crate is a frame with panels between it, and that reads from
     across a room where painted-on rails do not. The rails ARE painted.
     """
-    w = XL * 2.40
+    w = XL * TIER["parcel50"]
     h = w * 0.86
     post = w * 0.09
     proud = w * 0.012
@@ -220,7 +239,7 @@ def build_parcel100():
     boards are sub-pixel, and the silhouette that matters is "the load is standing on
     something", which three blocks give for twelve triangles each.
     """
-    pw = XL * 4.80
+    pw = XL * TIER["parcel100"]
     pd = pw * 0.75
     block_h = pw * 0.055
     deck_h = pw * 0.030

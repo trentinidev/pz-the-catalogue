@@ -11,6 +11,22 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.8.3-alpha — 2026-08-28
+
+### Changed
+- **The tier sizes step by bulk rather than by width.** "Each one double the last" taken
+  literally gave 1.2×, 2.4× and 4.8× the vanilla extra large — right for capacity, absurd
+  on screen, because doubling a linear dimension is eight times the volume and the biggest
+  tier swallowed its tile. The step is now about ×1.4 linear, which is what twice the box
+  looks like with two of them side by side: **1.45×, 2.00× and 2.75×** the extra large.
+  The smallest is also lifted clear of vanilla's extra large rather than beating it by a
+  hair.
+- The three multipliers are a `TIER` table at the top of `tools/blender_parcels.py` and are
+  the only numbers to touch.
+
+---
+
+
 ## 0.8.2-alpha — 2026-08-28
 
 ### Fixed
