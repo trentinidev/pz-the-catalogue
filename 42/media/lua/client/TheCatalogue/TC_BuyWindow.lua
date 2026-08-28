@@ -125,7 +125,7 @@ function TC_BuyWindow:new(x, y, w, h, playerNum)
     o.cart = {}
     o:setResizable(true)
     o.minimumWidth = 900
-    o.minimumHeight = 700
+    o.minimumHeight = 740
     return o
 end
 
@@ -141,6 +141,21 @@ end
      which heading belongs to which column slot. Everything else -- drawing, sorting,
      divider dragging, the status line -- comes from the mixin at the bottom of this
      file. ]]
+--[[ Where the cash figure and the status line start.
+
+     They sit ABOVE the three button rows, and the message needs room of its own under
+     the figure -- it carries the delivery estimate, which is the one thing a player
+     wants to read straight after ordering. Without counting that height in, the line
+     was drawn underneath the top button row and simply never seen: "Ordered 1 x Apple
+     - arriving in about 6 hours" rendered behind "Add to cart".
+
+     A method rather than an expression repeated in two places, because it already went
+     wrong once that way. ]]
+function TC_BuyWindow:cashBlockY()
+    return self.height - BOTTOM_PAD - BUTTON_HGT * 3 - PAD * 3
+           - FONT_HGT_LARGE - FONT_HGT_SMALL - 8
+end
+
 function TC_BuyWindow:tableGeometry()
     local _, listW, listY = self:listGeometry()
     return PAD, listY - HEADER_HGT, listW
@@ -495,11 +510,17 @@ end
      Everything that could REFUSE the order is checked here, before the action starts,
      so the player is told immediately rather than after standing still for three
      seconds. Nothing is charged until the action completes. ]]
-function TC_BuyWindow:onRush()
-    self:onBuy(true)
-end
+--[[ ISButton calls onclick(target, BUTTON, ...), so a handler wired straight to a
+     button receives the button as its first argument. Taking a "rush" flag there made
+     every ordinary purchase a rush purchase -- goods arrived instantly and in hand
+     instead of in a parcel, and the cart quietly added the surcharge and then refused
+     the order for insufficient funds.
 
-function TC_BuyWindow:onBuy(rush)
+     The two button callbacks are now thin and the flag is passed explicitly. ]]
+function TC_BuyWindow:onBuy()  self:startPurchase(false) end
+function TC_BuyWindow:onRush() self:startPurchase(true)  end
+
+function TC_BuyWindow:startPurchase(rush)
     local entry = self.selectedEntry
     if not entry then
         self:setMessage(getText("IGUI_TC_SelectAnItem"), true)
@@ -715,8 +736,7 @@ function TC_BuyWindow:prerender()
         -- The detail block flows downward while the cash block below it is pinned to
         -- the bottom of the panel. On a short window the two would meet, so lines stop
         -- rather than print over it. Losing the last line beats an unreadable overlap.
-        local detailFloor = self.height - BOTTOM_PAD - BUTTON_HGT * 3 - PAD * 2
-                            - FONT_HGT_LARGE - PAD - 4 - FONT_HGT_SMALL
+        local detailFloor = self:cashBlockY() - 4
 
         local function line(label, value, font, r, g, b)
             font = font or UIFont.Medium
@@ -775,7 +795,7 @@ function TC_BuyWindow:prerender()
 
     -- Balance and message live in a fixed block above the controls, so they never
     -- move as the detail above them grows or shrinks.
-    local blockY = self.height - BOTTOM_PAD - BUTTON_HGT * 3 - PAD * 2 - FONT_HGT_LARGE - PAD - 4
+    local blockY = self:cashBlockY()
 
     self:drawText(getText("IGUI_TC_YourCash"), innerLeft, blockY + 4,
                   0.68, 0.68, 0.72, 1, UIFont.Small)

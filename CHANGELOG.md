@@ -11,6 +11,27 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.6.1-alpha — 2026-08-27
+
+### Fixed
+- **Every purchase was a rush purchase.** ISButton calls its handler as
+  `onclick(target, BUTTON, ...)`, so a handler wired straight to a button gets the
+  button as its first argument -- and the rush flag was sitting in that slot. Goods
+  arrived instantly and in hand instead of in a parcel hours later, and the cart added
+  the 20% surcharge and then refused the order for insufficient funds on money the
+  player plainly had. One cause, four symptoms.
+- **Excluded categories were bypassed by three of the four pricing layers.** The check
+  lived inside the fallback formula, which runs last, so anything the generated table
+  or the modded-item pricer answered first went straight past it -- which is how
+  "Animal Corpse" ended up on the shelf. It is now one gate in the indexer, before any
+  pricing is attempted.
+- The cash figure and the status line were drawn underneath the button rows and never
+  seen, so the delivery estimate and the "added to cart" confirmation both vanished on
+  sight. Their position is now one method instead of the same expression written twice,
+  which is how it went wrong.
+
+---
+
 ## 0.6.0-alpha — 2026-08-27
 
 Orders. The catalogue stops being a vending machine.
