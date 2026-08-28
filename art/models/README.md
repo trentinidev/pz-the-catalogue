@@ -1,14 +1,4 @@
-| vanilla extra large | 17.66 | 3.53 | the reference |
-| `parcel25` | 25.61 | 5.12 | 1.45× the extra large |
-| `parcel50` | 36.18 | 7.24 | 1.38× the 25 |
-| `parcel100` | 48.58 | 9.72 | 1.38× the 50 |
-
-The step between tiers is a doubling of BULK, not of width. The brief was "each one double
-the last", and taking that literally gave 1.2x / 2.4x / 4.8x -- which is the capacity step,
-but on screen doubling a linear dimension is eight times the volume, and the largest tier
-swallowed its tile. About x1.4 linear is what "twice the box" looks like when two of them
-stand side by side. The three multipliers live in `TIER` at the top of the build script and
-are the only numbers to touch.# The parcel meshes
+# The parcel meshes
 
 The three oversized parcels have meshes of their own. They are built by
 [`tools/blender_parcels.py`](../../tools/blender_parcels.py), which runs Blender headless
@@ -58,9 +48,16 @@ So every size here is a multiple of 17.664, and the model blocks use vanilla's `
 | tier | raw | in game | |
 |---|---|---|---|
 | vanilla extra large | 17.66 | 3.53 | the reference |
-| `parcel25` | 21.20 | 4.24 | 1.20× the extra large |
-| `parcel50` | 43.41 | 8.68 | 2.05× the 25 |
-| `parcel100` | 84.79 | 16.96 | 1.95× the 50, about a tile |
+| `parcel25` | 25.61 | 5.12 | 1.45× the extra large |
+| `parcel50` | 36.18 | 7.24 | 1.38× the 25 |
+| `parcel100` | 48.58 | 9.72 | 1.38× the 50 |
+
+**The step between tiers is a doubling of bulk, not of width.** The brief was "each one
+double the last", and taking that literally gave 1.2× / 2.4× / 4.8× — right for capacity,
+wrong on screen, because doubling a linear dimension is eight times the volume and the
+largest tier swallowed its tile. About ×1.4 linear is what twice the box looks like with
+two of them side by side. The three multipliers live in `TIER` at the top of the build
+script and are the only numbers to touch.
 
 Y is up in the export, and vanilla confirms it: both ours and `Parcel_Present_1.fbx` carry
 `UpAxis = 1` in their headers. The origin sits **on the ground, centred on the footprint**,
