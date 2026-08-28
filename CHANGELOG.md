@@ -11,6 +11,19 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.6.5-alpha — 2026-08-27
+
+### Fixed
+- **The ledger threw on open.** Its column function has two exits -- one that computes
+  the widths and one that returns the cached copy -- and the Amount column added in
+  0.6.4 was only added to the first. Every call after the first handed back one value
+  short, so the arithmetic downstream ran against a nil: the window rendered empty the
+  first time and refused to open after that. It returns the table itself now, so a
+  fourth column cannot be added to one exit and forgotten at the other.
+
+---
+
+
 ## 0.6.4-alpha — 2026-08-27
 
 ### Fixed
