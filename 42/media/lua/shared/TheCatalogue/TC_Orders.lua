@@ -210,6 +210,11 @@ function TC.packAndDrop(player, lines)
                 i = i + 1
             end
 
+            -- Stamped as packaging so the catalogue will not buy its own box back. A
+            -- vanilla parcel is otherwise ordinary loot, so the mark goes on this
+            -- instance rather than on the type.
+            TC.markPackaging(parcel)
+
             square:AddWorldInventoryItem(parcel, 0, 0, 0)
             parcelCount = parcelCount + 1
         end

@@ -444,16 +444,27 @@ local function rawValue(item, visited)
     end
 
     local fullType = item:getFullType()
-    if TC.EXCLUDED_ITEMS[fullType] then return nil, "excluded" end
 
-    local unit = TC.getBuyPrice(fullType)
-    if not unit then return nil, "notlisted" end
+    --[[ Delivery packaging is a carrier worth nothing, but it is still a carrier: the
+         contents below are valued as usual and the box goes with the sale. Checked
+         before the exclusion list, because the oversized parcels are on that list to
+         keep them off the shelf and returning nil here would make a full crate
+         unsellable until the player emptied it by hand. ]]
+    local value
+    if TC.isPackaging(item) then
+        value = 0
+    else
+        if TC.EXCLUDED_ITEMS[fullType] then return nil, "excluded" end
 
-    local ratio = TC.conditionRatio(item)
-    local minCond = TC.opt("MinConditionToSell")
-    if minCond > 0 and ratio < minCond then return nil, "condition" end
+        local unit = TC.getBuyPrice(fullType)
+        if not unit then return nil, "notlisted" end
 
-    local value = unit * ratio
+        local ratio = TC.conditionRatio(item)
+        local minCond = TC.opt("MinConditionToSell")
+        if minCond > 0 and ratio < minCond then return nil, "condition" end
+
+        value = unit * ratio
+    end
 
     -- Contents, when the sandbox allows it. A rifle case full of rifles is worth
     -- the case plus the rifles; this is what makes "sell everything" workable.

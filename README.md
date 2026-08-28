@@ -135,6 +135,19 @@ containers and only removes them when the sale is confirmed. Closing, dying, cra
 or quitting all cost nothing. The tradeoff is that staged loot still weighs on you
 until it sells.
 
+
+### Delivery packaging is worth nothing
+
+Every order arrives in a parcel, and a parcel is an item the catalogue would otherwise
+buy back. That closed a loop: a $2 round shipped in a box worth $4, so the cheapest
+thing on the shelf turned a profit the moment it landed, and there was no bottom to it.
+
+Boxes the catalogue hands over are stamped as packaging on the way out and pay nothing.
+A parcel you found in a post office is ordinary loot and still sells for what it is
+worth, because the mark is on the instance, not on the type. Worthless is not the same
+as unsellable — a stamped parcel is still a carrier, so selling one sells everything
+inside it and the box goes along with the sale.
+
 ### The lists cull their own rows
 
 `ISScrollingListBox:prerender` walks every row every frame and calls `doDrawItem` on

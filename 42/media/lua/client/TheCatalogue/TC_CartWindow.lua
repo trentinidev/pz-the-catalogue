@@ -26,6 +26,42 @@ local HEADER_HGT = FONT_HGT_SMALL + 12
 
 -- ---------------------------------------------------------------------------
 
+--[[ Where the three numeric columns end, counted back from the right edge.
+
+     These were fixed offsets -- 176, 92, 4 -- which held at one font size and no other.
+     At a larger UI scale "Unit price" is wide enough to start before "Quantity" has
+     finished, and the header read "QuantiUnit price" with the two words stacked on each
+     other.
+
+     Measured off the widest thing each column can hold instead: its own heading, or a
+     number long enough to cover any realistic cart, whichever is bigger. Worked out on
+     first use rather than at load, because the headings are translated strings and
+     translations are not guaranteed to be loaded while this file is being read. ]]
+local cartStops
+local function columnStops()
+    if cartStops then return cartStops end
+
+    local tm = getTextManager()
+    local F  = UIFont.Small
+
+    local function width(key, sample)
+        return math.max(tm:MeasureStringX(F, getText(key)),
+                        tm:MeasureStringX(F, sample)) + TC.UI.CELL_PAD * 2
+    end
+
+    local totalW = width("IGUI_TC_Total",     "$999999")
+    local unitW  = width("IGUI_TC_UnitPrice", "$99999")
+    local qtyW   = width("IGUI_TC_Quantity",  "999")
+
+    cartStops = {
+        total = 4,
+        unit  = 4 + totalW,
+        qty   = 4 + totalW + unitW,
+        name  = 4 + totalW + unitW + qtyW,   -- how much room the name has to give up
+    }
+    return cartStops
+end
+
 TC_CartList = ISScrollingListBox:derive("TC_CartList")
 
 function TC_CartList:doDrawItem(y, item, alt)
@@ -39,11 +75,13 @@ function TC_CartList:doDrawItem(y, item, alt)
 
     local ty = y + (ROW_HGT - FONT_HGT_SMALL) / 2
     local unit = TC.getBuyPrice(line.fullType) or 0
+    local c = columnStops()
 
-    self:drawText(TC.truncate(UIFont.Small, line.name, w - 260), 12, ty, 1, 1, 1, 1, UIFont.Small)
-    TC.drawRight(self, tostring(line.qty),      w - 176, ty, UIFont.Small, 0.72, 0.72, 0.76)
-    TC.drawRight(self, "$" .. unit,             w - 92,  ty, UIFont.Small, 0.62, 0.62, 0.66)
-    TC.drawRight(self, "$" .. (unit * line.qty), w - 4,  ty, UIFont.Small, 0.78, 0.96, 0.78)
+    self:drawText(TC.truncate(UIFont.Small, line.name, w - c.name - 12),
+                  12, ty, 1, 1, 1, 1, UIFont.Small)
+    TC.drawRight(self, tostring(line.qty),       w - c.qty,   ty, UIFont.Small, 0.72, 0.72, 0.76)
+    TC.drawRight(self, "$" .. unit,              w - c.unit,  ty, UIFont.Small, 0.62, 0.62, 0.66)
+    TC.drawRight(self, "$" .. (unit * line.qty), w - c.total, ty, UIFont.Small, 0.78, 0.96, 0.78)
 
     return y + ROW_HGT
 end
@@ -63,7 +101,10 @@ function TC_CartWindow:new(x, y, w, h, playerNum, buyWindow)
     o.message = nil
     o.messageIsError = false
     o:setResizable(true)
-    o.minimumWidth = 560
+    -- Never narrower than the button row, so a resize cannot clip a label.
+    o.minimumWidth = math.max(560, PAD * 2 + TC.buttonRowWidth(
+        { getText("IGUI_TC_RemoveSelected"), getText("IGUI_TC_ClearAll"),
+          getText("IGUI_TC_Checkout"), getText("IGUI_TC_Rush") }, UIFont.Medium))
     o.minimumHeight = 420
     return o
 end
@@ -73,6 +114,19 @@ function TC_CartWindow:listGeometry()
     local listH = self.height - listY - BOTTOM_PAD - BUTTON_HGT - PAD
                   - FONT_HGT_LARGE - FONT_HGT_SMALL - PAD
     return listY, listH
+end
+
+--[[ The bottom row, worked out once and used by both creation and resize.
+
+     Two copies of a layout expression is how the two drift apart, and this one is
+     re-run on every resize. ]]
+function TC_CartWindow:buttonSlots()
+    return TC.buttonRow(PAD, self.width - PAD * 2,
+                        { getText("IGUI_TC_RemoveSelected"),
+                          getText("IGUI_TC_ClearAll"),
+                          getText("IGUI_TC_Checkout"),
+                          getText("IGUI_TC_Rush") },
+                        UIFont.Medium)
 end
 
 function TC_CartWindow:createChildren()
@@ -87,27 +141,24 @@ function TC_CartWindow:createChildren()
     self.list.target = self
     self:addChild(self.list)
 
-    --[[ Four buttons across the bottom, not three plus a squeezed pair.
-
-         "Place order" was cut to 55% of a third and its label ran straight out of the
-         button. Rush is one short word and needs far less room than the other three,
-         so it takes a fixed slice and the rest share what is left evenly. ]]
+    -- Sized from their own labels rather than from the window, so "Place order" cannot
+    -- run out through its border when the cart is narrow and "Rush" cannot become a
+    -- banner when it is wide. See TC.buttonRow.
+    local slots = self:buttonSlots()
     local by = self.height - BOTTOM_PAD - BUTTON_HGT
-    local rushW = math.max(70, getTextManager():MeasureStringX(UIFont.Medium,
-                                    getText("IGUI_TC_Rush")) + 28)
-    local wide  = (self.width - PAD * 5 - rushW) / 3
 
-    local function place(label, handler, x, w)
-        local b = ISButton:new(x, by, w, BUTTON_HGT, getText(label), self, handler)
+    local handlers = { TC_CartWindow.onRemove, TC_CartWindow.onClear,
+                       TC_CartWindow.onCheckout, TC_CartWindow.onRush }
+    local buttons = {}
+    for i, slot in ipairs(slots) do
+        local b = ISButton:new(slot.x, by, slot.w, BUTTON_HGT, slot.text, self, handlers[i])
         b:initialise(); b:instantiate()
         self:addChild(b)
-        return b
+        buttons[i] = b
     end
 
-    self.removeBtn   = place("IGUI_TC_RemoveSelected", TC_CartWindow.onRemove,   PAD, wide)
-    self.clearBtn    = place("IGUI_TC_ClearAll",       TC_CartWindow.onClear,    PAD * 2 + wide, wide)
-    self.checkoutBtn = place("IGUI_TC_Checkout",       TC_CartWindow.onCheckout, PAD * 3 + wide * 2, wide)
-    self.rushBtn     = place("IGUI_TC_Rush",           TC_CartWindow.onRush,     PAD * 4 + wide * 3, rushW)
+    self.removeBtn, self.clearBtn, self.checkoutBtn, self.rushBtn =
+        buttons[1], buttons[2], buttons[3], buttons[4]
 
     self:refreshList()
 end
@@ -277,13 +328,15 @@ function TC_CartWindow:prerender()
     local hy = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
     local F = UIFont.Small
     self:drawText(getText("IGUI_TC_ColItem"), PAD + 12, hy, 0.72, 0.72, 0.76, 1, F)
-    local function hr(text, right)
-        local w = getTextManager():MeasureStringX(F, text)
-        self:drawText(text, PAD + listW - right - w, hy, 0.72, 0.72, 0.76, 1, F)
+
+    -- Drawn through the same right-aligning helper the rows use, so a heading sits
+    -- exactly over its own numbers instead of twelve pixels to the side of them.
+    local c = columnStops()
+    for _, col in ipairs({ { "IGUI_TC_Quantity",  c.qty },
+                           { "IGUI_TC_UnitPrice", c.unit },
+                           { "IGUI_TC_Total",     c.total } }) do
+        TC.drawRight(self, getText(col[1]), PAD + listW - col[2], hy, F, 0.72, 0.72, 0.76)
     end
-    hr(getText("IGUI_TC_Quantity"), 176)
-    hr(getText("IGUI_TC_UnitPrice"), 92)
-    hr(getText("IGUI_TC_Total"), 4)
 
     if #self:cart() == 0 then
         local hint = getText("IGUI_TC_CartEmpty")
@@ -326,14 +379,15 @@ function TC_CartWindow:onResize()
     self.list:setHeight(listH)
 
     local by = self.height - BOTTOM_PAD - BUTTON_HGT
-    local rushW = math.max(70, getTextManager():MeasureStringX(UIFont.Medium,
-                                    getText("IGUI_TC_Rush")) + 28)
-    local wide  = (self.width - PAD * 5 - rushW) / 3
-
-    self.removeBtn:setX(PAD);                  self.removeBtn:setY(by);   self.removeBtn:setWidth(wide)
-    self.clearBtn:setX(PAD * 2 + wide);        self.clearBtn:setY(by);    self.clearBtn:setWidth(wide)
-    self.checkoutBtn:setX(PAD * 3 + wide * 2); self.checkoutBtn:setY(by); self.checkoutBtn:setWidth(wide)
-    self.rushBtn:setX(PAD * 4 + wide * 3);     self.rushBtn:setY(by);     self.rushBtn:setWidth(rushW)
+    local slots = self:buttonSlots()
+    for i, b in ipairs({ self.removeBtn, self.clearBtn, self.checkoutBtn, self.rushBtn }) do
+        b:setX(slots[i].x)
+        b:setY(by)
+        b:setWidth(slots[i].w)
+        -- The title is re-set as well as the width: below a certain size the labels are
+        -- truncated to fit, and growing the window has to give the words back.
+        b:setTitle(slots[i].text)
+    end
 end
 
 function TC_CartWindow:close()

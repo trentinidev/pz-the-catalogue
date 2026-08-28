@@ -182,7 +182,10 @@ function TC_SellWindow:new(x, y, w, h, playerNum)
     o.sortAsc = true
     o.expanded = {}
     o:setResizable(true)
-    o.minimumWidth = 640
+    -- Never narrower than the widest button row, so a resize cannot clip a label.
+    o.minimumWidth = math.max(640, PAD * 2 + TC.buttonRowWidth(
+        { getText("IGUI_TC_RemoveSelected"), getText("IGUI_TC_ClearAll"),
+          getText("IGUI_TC_Sell") }, UIFont.Medium))
     o.minimumHeight = 520
     return o
 end
@@ -207,6 +210,24 @@ TC_SellWindow.tableCols = {
     { key = "price", textKey = "IGUI_TC_ColValue",     align = "right" },
 }
 
+
+--[[ Both button rows, worked out once and shared by creation and resize.
+
+     Returns the top row (the two "add all" buttons) and the bottom row (remove, clear,
+     sell). Kept in one place because it is re-run on every resize, and two copies of a
+     layout expression are two chances for them to drift apart. ]]
+function TC_SellWindow:buttonSlots()
+    local avail = self.width - PAD * 2
+    local top = TC.buttonRow(PAD, avail,
+                             { getText("IGUI_TC_StageInventory"),
+                               getText("IGUI_TC_StageContainer") }, UIFont.Medium)
+    local bottom = TC.buttonRow(PAD, avail,
+                                { getText("IGUI_TC_RemoveSelected"),
+                                  getText("IGUI_TC_ClearAll"),
+                                  getText("IGUI_TC_Sell") }, UIFont.Medium)
+    return top, bottom
+end
+
 function TC_SellWindow:createChildren()
     ISCollapsableWindow.createChildren(self)
 
@@ -224,35 +245,25 @@ function TC_SellWindow:createChildren()
     -- Bulk staging sits on its own row above the confirm row, so "prepare a lot" and
     -- "commit the sale" are never adjacent buttons.
     local topRow = self.height - BOTTOM_PAD - (BUTTON_HGT + PAD) * 2
-    local halfW  = (self.width - PAD * 3) / 2
+    local by     = self.height - BOTTOM_PAD - BUTTON_HGT
 
-    self.stageInvBtn = ISButton:new(PAD, topRow, halfW, BUTTON_HGT,
-                                    getText("IGUI_TC_StageInventory"), self, TC_SellWindow.onStageInventory)
-    self.stageInvBtn:initialise(); self.stageInvBtn:instantiate()
-    self:addChild(self.stageInvBtn)
+    -- Both rows are sized from their own labels rather than from the window; see
+    -- TC.buttonRow. Cut into thirds and halves they overflowed on a narrow window and
+    -- turned into billboards on a wide one.
+    local top, bottom = self:buttonSlots()
 
-    self.stageContBtn = ISButton:new(PAD * 2 + halfW, topRow, halfW, BUTTON_HGT,
-                                     getText("IGUI_TC_StageContainer"), self, TC_SellWindow.onStageContainer)
-    self.stageContBtn:initialise(); self.stageContBtn:instantiate()
-    self:addChild(self.stageContBtn)
+    local function place(slot, y, handler)
+        local b = ISButton:new(slot.x, y, slot.w, BUTTON_HGT, slot.text, self, handler)
+        b:initialise(); b:instantiate()
+        self:addChild(b)
+        return b
+    end
 
-    local by    = self.height - BOTTOM_PAD - BUTTON_HGT
-    local third = (self.width - PAD * 4) / 3
-
-    self.removeBtn = ISButton:new(PAD, by, third, BUTTON_HGT,
-                                  getText("IGUI_TC_RemoveSelected"), self, TC_SellWindow.onRemoveSelected)
-    self.removeBtn:initialise(); self.removeBtn:instantiate()
-    self:addChild(self.removeBtn)
-
-    self.clearBtn = ISButton:new(PAD * 2 + third, by, third, BUTTON_HGT,
-                                 getText("IGUI_TC_ClearAll"), self, TC_SellWindow.onClearAll)
-    self.clearBtn:initialise(); self.clearBtn:instantiate()
-    self:addChild(self.clearBtn)
-
-    self.sellBtn = ISButton:new(PAD * 3 + third * 2, by, third, BUTTON_HGT,
-                                getText("IGUI_TC_Sell"), self, TC_SellWindow.onSell)
-    self.sellBtn:initialise(); self.sellBtn:instantiate()
-    self:addChild(self.sellBtn)
+    self.stageInvBtn  = place(top[1],    topRow, TC_SellWindow.onStageInventory)
+    self.stageContBtn = place(top[2],    topRow, TC_SellWindow.onStageContainer)
+    self.removeBtn    = place(bottom[1], by,     TC_SellWindow.onRemoveSelected)
+    self.clearBtn     = place(bottom[2], by,     TC_SellWindow.onClearAll)
+    self.sellBtn      = place(bottom[3], by,     TC_SellWindow.onSell)
 end
 
 -- ---------------------------------------------------------------------------
@@ -710,9 +721,7 @@ function TC_SellWindow:onSell()
 
     local sold = 0
     for _, item in ipairs(going) do
-        local container = item:getContainer()
-        if container then
-            container:Remove(item)
+        if TC.removeItem(item) then
             sold = sold + 1
         end
     end
@@ -828,16 +837,21 @@ function TC_SellWindow:onResize()
     self.list:setWidth(self.width - PAD * 2)
     self.list:setHeight(listH)
 
-    local by    = self.height - BOTTOM_PAD - BUTTON_HGT
-    local third = (self.width - PAD * 4) / 3
-    self.removeBtn:setX(PAD);               self.removeBtn:setY(by); self.removeBtn:setWidth(third)
-    self.clearBtn:setX(PAD * 2 + third);    self.clearBtn:setY(by);  self.clearBtn:setWidth(third)
-    self.sellBtn:setX(PAD * 3 + third * 2); self.sellBtn:setY(by);   self.sellBtn:setWidth(third)
-
+    local by     = self.height - BOTTOM_PAD - BUTTON_HGT
     local topRow = self.height - BOTTOM_PAD - (BUTTON_HGT + PAD) * 2
-    local halfW  = (self.width - PAD * 3) / 2
-    self.stageInvBtn:setX(PAD);              self.stageInvBtn:setY(topRow);  self.stageInvBtn:setWidth(halfW)
-    self.stageContBtn:setX(PAD * 2 + halfW); self.stageContBtn:setY(topRow); self.stageContBtn:setWidth(halfW)
+    local top, bottom = self:buttonSlots()
+
+    -- Titles are re-set with the widths: below a certain size the labels are truncated
+    -- to fit, and widening the window has to give the words back.
+    local function lay(b, slot, y)
+        b:setX(slot.x); b:setY(y); b:setWidth(slot.w); b:setTitle(slot.text)
+    end
+
+    lay(self.stageInvBtn,  top[1],    topRow)
+    lay(self.stageContBtn, top[2],    topRow)
+    lay(self.removeBtn,    bottom[1], by)
+    lay(self.clearBtn,     bottom[2], by)
+    lay(self.sellBtn,      bottom[3], by)
 end
 
 function TC_SellWindow:close()

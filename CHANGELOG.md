@@ -11,6 +11,33 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.6.3-alpha — 2026-08-27
+
+### Fixed
+- **Selling an item off the ground did not remove it — free money, one drag at a time.**
+  `container:Remove` takes an item out of the floor container the inventory page is
+  showing and leaves the world object standing on the square, so the catalogue paid for
+  the item and the item was still lying there to be sold again. Removal now follows
+  vanilla's own floor sequence and takes the world object with it.
+- **Delivery parcels paid for themselves.** A $2 round arrived inside a box the
+  catalogue would buy back for $4, so the cheapest thing on the shelf showed a profit
+  the moment it landed. Boxes the catalogue hands over are now stamped as packaging and
+  are worth nothing; a parcel found while looting is untouched. A stamped parcel is
+  still a carrier, so selling one still sells everything inside it.
+
+### Changed
+- **Buttons are sized from their labels, not from the window.** The cart and sell rows
+  divided the width into thirds and halves, which clipped `Place order` on a narrow
+  window and blew `Rush` up into a banner on a wide one. Widths now come from the text
+  and the leftover space goes into the gaps; a window cannot be dragged narrower than
+  its own button row.
+- **The cart header stopped writing `Quantity` and `Unit price` on top of each other.**
+  Its columns were fixed pixel offsets that held at one font size; they are measured
+  now, like every other table in the mod.
+
+---
+
+
 ## 0.6.2-alpha — 2026-08-27
 
 ### Changed
