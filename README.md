@@ -22,7 +22,8 @@ the `Base.Money` and `Base.MoneyBundle` actually sitting in your inventory.
 
 **Sell** — drop items into the sell window and it prices them, scaled by condition: a
 40%-durability axe fetches 40%, a half-empty bleach bottle fetches half, rotten food
-fetches nothing. Selling pays 90% of catalogue price. The 10% spread is the house's.
+fetches nothing. Selling pays 30% of catalogue price -- the catalogue buys low and sells
+high, as a company with no competition would.
 
 **Bundling cash** — a `Bundle Money` recipe turns 100 loose notes into one
 `MoneyBundle`, the exact mirror of vanilla's `UnbundleMoney`. Vanilla can only take a
@@ -77,7 +78,7 @@ Custom sandbox options in B42 are drawn by the **server settings** screen
 | Option | Default | What it does |
 |---|---|---|
 | `PriceMultiplier` | 1.0 | Scales every buy price. Sell prices follow. |
-| `SellRatio` | 0.9 | Fraction of value paid when selling. |
+| `SellRatio` | 0.30 | Fraction of value paid when selling. |
 | `MaxQuantityPerPurchase` | 100 | Cap on the quantity field. |
 | `SellContainerContents` | true | Selling a bag sells what is inside it. |
 | `MinConditionToSell` | 0.0 | Refuse items below this condition. |
@@ -103,8 +104,8 @@ always spends bundles first. $2,350 arrives as 23 bundles and 50 notes: 73 objec
 12 kg, against 2,350 objects and 23.5 kg.
 
 The practical consequence is a hard ceiling: with a decent backpack you can carry
-roughly **$5,000**. Prices are tuned to sit under that ceiling — beans $1, an axe $30,
-a shotgun $250, a generator $600.
+roughly **$5,000**, which is what the price scale is built around: beans $2, a hammer
+$21, an axe $53, a shotgun $438, a generator $1,050.
 
 Note that vanilla can only *un*bundle, never re-bundle. The catalogue is the only thing
 in the game that hands out `MoneyBundle`.

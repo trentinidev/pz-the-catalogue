@@ -12,6 +12,23 @@ TC.ITEM_FULL    = "Catalogue.Catalogue"
 TC.MONEY        = "Base.Money"
 TC.MONEY_BUNDLE = "Base.MoneyBundle"
 
+--[[ Global scale on every buy price.
+
+     The catalogue was too generous: buying was cheap enough that a modest pile of
+     looted cash bought most of what mattered, and selling at 90% meant loot converted
+     to money almost losslessly. 1.75 on the way in and a much harder spread on the way
+     out (see SellRatio) is the correction.
+
+     Applied HERE, in one place, rather than baked into TC_PriceTable.lua, because this
+     is the only spot that reaches all four pricing layers at once -- hand-set
+     overrides, the generated table, modded items and the fallback formula. Baking it
+     into the generated table would have needed a matching copy inside TC_ModPricing to
+     keep modded items in step, which is exactly the kind of duplication that drifts.
+
+     Note this means the numbers in TC_PriceTable.lua are BASE prices: what the game
+     shows is that figure times this scale times the sandbox PriceMultiplier. ]]
+TC.PRICE_SCALE = 1.75
+
 -- Vanilla UnbundleMoney turns one bundle into exactly this many loose notes.
 -- Read straight off media/scripts/generated/recipes/recipes_packing.txt; if the
 -- devs ever change that recipe this constant has to follow it.
@@ -22,7 +39,7 @@ TC.NOTES_PER_BUNDLE = 100
 -- keeps its old SandboxVars table until the settings are re-saved.
 local DEFAULTS = {
     PriceMultiplier            = 1.0,
-    SellRatio                  = 0.9,
+    SellRatio                  = 0.30,
     MaxQuantityPerPurchase     = 100,
     SellContainerContents      = true,
     MinConditionToSell         = 0.0,
