@@ -88,7 +88,22 @@ done
 [ -z "$dupes" ] || bad "method defined more than once:$dupes"
 note "dupes     no method defined twice"
 
-# --- 6. The version has been written down -----------------------------------------
+# --- 6. Every icon and texture a script asks for actually exists ---------------
+# A missing one is silent: the game renders nothing, or a placeholder, and the script
+# that named it is never blamed.
+missingArt=""
+for i in $(grep -ohE "Icon = [A-Za-z0-9_]+" 42/media/scripts/*.txt | sed "s/Icon = //" | sort -u); do
+    [ -f "42/media/textures/Item_$i.png" ] || missingArt="$missingArt$(printf '
+    icon Item_%s.png' "$i")"
+done
+for t in $(grep -ohE "texture = [A-Za-z0-9_/]+" 42/media/scripts/*.txt | sed "s/texture = //" | sort -u); do
+    [ -f "42/media/textures/$t.png" ] || missingArt="$missingArt$(printf '
+    texture %s.png' "$t")"
+done
+[ -z "$missingArt" ] || bad "art referenced by a script but not present:$missingArt"
+note "art       every Icon and texture a script names is on disk"
+
+# --- 7. The version has been written down -----------------------------------------
 # Bumping mod.info and forgetting the changelog is the easiest thing here to get wrong,
 # because nothing in the game ever notices.
 v=$(grep -oE '^modversion=.*' 42/mod.info | cut -d= -f2 | tr -d '\r')

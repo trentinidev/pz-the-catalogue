@@ -56,6 +56,42 @@ module Catalogue
        Sound stays vanilla's largest parcel throughout, and weight stays at 1.0 like
        every vanilla parcel, so the box itself never becomes the reason a delivery is
        too heavy. */
+    /* All three wear vanilla's parcel MESH with a texture of their own. Same reasoning
+       as the catalogue cover -- a new mesh is not worth it for a box-shaped thing -- but
+       here the texture could not be painted from the art either: the mesh's UV layout
+       lives in a binary FBX, and guessing which rectangle is which face is how you wrap
+       a shipping label around a corner.
+
+       So tools/gen_parcel_art.ps1 never touches the layout. It re-materialises vanilla's
+       own atlas, which is already correct for this mesh: the tier's material underneath,
+       vanilla's per-face shading kept so the box still reads as lit, and vanilla's tape
+       -- the brightest thing in the atlas -- repainted as that tier's banding. The bands
+       land correctly on the mesh precisely because they ARE vanilla's tape.
+
+       The silhouette is the one thing this cannot give: no corner brackets on the crate,
+       no pallet under the tarp. Those are shape, not texture. The icons have all of it,
+       and the icon is where the difference is actually read. */
+    model Parcel25World
+    {
+        mesh = WorldItems/Parcel_Present_1,
+        texture = TheCatalogue/Parcel25World,
+        scale = 0.2,
+    }
+
+    model Parcel50World
+    {
+        mesh = WorldItems/Parcel_Present_1,
+        texture = TheCatalogue/Parcel50World,
+        scale = 0.2,
+    }
+
+    model Parcel100World
+    {
+        mesh = WorldItems/Parcel_Present_1,
+        texture = TheCatalogue/Parcel100World,
+        scale = 0.2,
+    }
+
     item Parcel_XXL
     {
         DisplayCategory = Container,
@@ -66,24 +102,8 @@ module Catalogue
         CloseSound = CloseParcelLarge,
         OpenSound = OpenParcelLarge,
         PutInSound = StoreItemParcelLarge,
-        WorldStaticModel = Parcel1,
+        WorldStaticModel = Parcel25World,
         Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
-    }
-
-    /* The crate: vanilla's parcel MESH wearing planks. Same reasoning as the catalogue
-       cover -- a new mesh is not worth it for a box-shaped thing -- but here the texture
-       could not be painted from the art either, because the mesh's UV layout lives in a
-       binary FBX and guessing it wraps a shipping label around a corner.
-
-       So tools/gen_parcel_art.ps1 re-materialises vanilla's own atlas instead: plank
-       texture underneath, vanilla's per-face shading kept, and vanilla's tape -- the
-       brightest thing in the atlas -- turned into the dark strapping. The strap lands
-       correctly on the mesh precisely because it is vanilla's tape. */
-    model Parcel5XLWorld
-    {
-        mesh = WorldItems/Parcel_Present_1,
-        texture = TheCatalogue/Parcel5XLWorld,
-        scale = 0.2,
     }
 
     item Parcel_5XL
@@ -96,15 +116,10 @@ module Catalogue
         CloseSound = CloseParcelLarge,
         OpenSound = OpenParcelLarge,
         PutInSound = StoreItemParcelLarge,
-        WorldStaticModel = Parcel5XLWorld,
+        WorldStaticModel = Parcel50World,
         Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
     }
 
-    /* The heaviest tier gets vanilla's olive-drab military parcel on the ground: same
-       mesh and same scale as the others, so nothing about the shape can surprise us,
-       and it is already the colour the art wants. The pallet under it is the one thing
-       the icon has and the world model cannot -- that is a silhouette, and a silhouette
-       needs a mesh. */
     item Parcel_10XL
     {
         DisplayCategory = Container,
@@ -115,7 +130,7 @@ module Catalogue
         CloseSound = CloseParcelLarge,
         OpenSound = OpenParcelLarge,
         PutInSound = StoreItemParcelLarge,
-        WorldStaticModel = Base.Parcel_Military_ExtraLarge,
+        WorldStaticModel = Parcel100World,
         Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
     }
 
