@@ -2,11 +2,31 @@ module Catalogue
 {
     imports { Base }
 
+    /* The book on the ground: vanilla's closed-catalogue MESH wearing our own cover.
+
+       A new mesh would mean shipping an FBX, and nothing about this item needs a shape
+       vanilla does not already have -- it is a paperback-sized book lying shut. What it
+       needed was to stop being a Keio Furniture catalogue.
+
+       The texture layout is not ours to choose: it re-skins WorldItems/Catalogue, so the
+       mesh's UVs decide it. Measured off vanilla's own 64x64, columns 0..56 are the cover
+       and 57..63 are the fore-edge. tools/gen_art.ps1 builds it to that layout from the
+       art renders; do not edit the PNG by hand. */
+    model ShopCatalogueWorld
+    {
+        mesh = WorldItems/Catalogue,
+        texture = TheCatalogue/ShopCatalogueWorld,
+        scale = 0.125,
+    }
+
     /* The catalogue itself. Deliberately a plain "normal" item and NOT literature:
        literature items get a Read context option and a page/boredom system we do not
        want competing with our own Buy/Sell entries on the right-click menu.
-       Art is borrowed wholesale from vanilla Base.Catalog, which already ships an
-       inventory icon, an open-book static model and a ground model. */
+
+       The inventory icon and the ground model are ours. StaticModel -- the open book the
+       character holds while placing an order -- is still vanilla's: it is a different
+       mesh with a different texture layout, showing a two-page spread, and the cover art
+       has no spread to put on it. */
     item Catalogue
     {
         DisplayCategory = Literature,
@@ -14,7 +34,7 @@ module Catalogue
         Weight = 0.5,
         Icon = ShopCatalogue,
         StaticModel = Catalogue_Open,
-        WorldStaticModel = Catalogue,
+        WorldStaticModel = ShopCatalogueWorld,
         Tags = base:isfirefuel;base:isfiretinder,
         FireFuelRatio = 0.25,
     }
