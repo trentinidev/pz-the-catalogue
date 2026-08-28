@@ -289,7 +289,7 @@ function TC_CartWindow:onOrderComplete(payload)
         local order = TC.placeOrder(self.player, lines, total)
         self:onClear()
         self:setMessage(getText("IGUI_TC_CartOrdered", count,
-                                math.floor(TC.hoursLeft(order) + 0.5)), false)
+                                TC.etaPhrase(TC.hoursLeft(order))), false)
         return
     end
 

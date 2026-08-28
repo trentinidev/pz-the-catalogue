@@ -13,18 +13,39 @@
 TheCatalogue = TheCatalogue or {}
 local TC = TheCatalogue
 
+--[[ Whether this session has already raised the arrival window once.
+
+     A delivery can arrive and then be saved and quit on, and on the next load nothing
+     "arrives" -- it is already there. Without this, goods waiting at the door would go
+     unmentioned until the player happened to right-click the catalogue. Set on the
+     first mention of the session either way, so closing the window is respected and
+     the reminder never becomes nagging. ]]
+local announced = false
+
 local function tick()
     local player = getSpecificPlayer(0)
     if not player or player:isDead() then return end
     if TC.pendingCount(player) == 0 then return end
 
-    local delivered, refunded = TC.deliverDueOrders(player)
+    local arrived, refunded = TC.deliverDueOrders(player)
 
-    -- Told through the halo text rather than a window: a delivery can land while the
-    -- player is doing something else entirely, and a popup would be an interruption
-    -- for something they already paid for and expected.
-    if delivered > 0 then
-        HaloTextHelper.addText(player, getText("IGUI_TC_DeliveryArrived", delivered))
+    -- Something was already waiting when this session started.
+    if arrived == 0 and not announced and TC.arrivedCount(player) > 0 then
+        announced = true
+        TC.openArrivalWindow(0)
+    end
+
+    --[[ Nothing is spawned here any more. The van has turned up; the window says what
+         is on it and the player presses Receive when they are ready for it.
+
+         The popup is justified now in a way it would not have been before: it is not
+         reporting something that already happened, it is asking for a decision. The
+         halo text stays as well, because the window can be closed or missed and the
+         goods keep waiting either way. ]]
+    if arrived > 0 then
+        announced = true
+        HaloTextHelper.addText(player, getText("IGUI_TC_DeliveryArrived", arrived))
+        TC.openArrivalWindow(0)
     end
     if refunded > 0 then
         HaloTextHelper.addBadText(player, getText("IGUI_TC_DeliveryFailed", refunded))

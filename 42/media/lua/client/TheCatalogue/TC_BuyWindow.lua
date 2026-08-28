@@ -602,7 +602,7 @@ function TC_BuyWindow:onOrderComplete(payload)
     if not rush then
         local order = TC.placeOrder(player, lines, total)
         self:setMessage(getText("IGUI_TC_OrderPlaced", qty, entry.name,
-                                math.floor(TC.hoursLeft(order) + 0.5)), false)
+                                TC.etaPhrase(TC.hoursLeft(order))), false)
         return
     end
 

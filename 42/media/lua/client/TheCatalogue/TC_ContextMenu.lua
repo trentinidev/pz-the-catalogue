@@ -31,6 +31,10 @@ local function onHistory(playerNum, item)
     TC.openHistoryWindow(playerNum)
 end
 
+local function onCollect(playerNum, item)
+    TC.openArrivalWindow(playerNum)
+end
+
 --[[ Every real item in the right-clicked selection, stacks flattened. ]]
 local function allRealItems(items)
     local out = {}
@@ -72,6 +76,17 @@ local function addOptions(playerNum, context, items)
 
         local hist = context:addOption(getText("ContextMenu_TC_History"), playerNum, onHistory, catalogue)
         if hist and tex then hist.iconTexture = tex end
+
+        --[[ Only while something is actually standing at the door. Closing the arrival
+             window is not refusing the delivery, so there has to be a way back to it --
+             but an entry that is always there and usually does nothing is clutter on a
+             menu that is already long. ]]
+        local waiting = TC.arrivedCount(getSpecificPlayer(playerNum))
+        if waiting > 0 then
+            local collect = context:addOption(getText("ContextMenu_TC_Collect", waiting),
+                                              playerNum, onCollect, catalogue)
+            if collect and tex then collect.iconTexture = tex end
+        end
     end
 
     --[[ A keyboard-and-menu route into the sell box, offered only while the window
