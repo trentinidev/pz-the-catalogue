@@ -11,6 +11,31 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.7.7-alpha — 2026-08-27
+
+### Changed
+- **The three oversized parcels are now three different objects.** They were one cardboard
+  box drawn three times, which left capacity — a number in a tooltip — as the only thing
+  telling them apart. The step up in size is now a step up in packaging: a taped carton at
+  25, a strapped wooden crate at 50, a tarped pallet load at 100. Legible at a glance, and
+  what a real freight company would do anyway.
+- Renamed from `Parcel - XXL / 5XL / 10XL` to **`Parcel - 25 / 50 / 100`**, matching the
+  art and saying the useful thing outright.
+- The crate's world model re-materialises vanilla's parcel atlas rather than painting the
+  art onto it: plank texture underneath, vanilla's per-face shading kept, and vanilla's
+  tape turned into the dark strapping — which lands correctly on the mesh precisely
+  because it *is* vanilla's tape. The 100 uses vanilla's olive-drab military parcel,
+  already the colour the art wants.
+- **`tools/gen_parcel_art.ps1`** builds all of it from the art sheet.
+
+### Not changed
+- The world models keep vanilla's box shape, so the crate has no corner brackets and the
+  pallet load has no pallet. Those are silhouettes, and a silhouette needs a mesh. The
+  inventory icons have all of it, which is where the difference is actually read.
+
+---
+
+
 ## 0.7.6-alpha — 2026-08-27
 
 ### Changed
