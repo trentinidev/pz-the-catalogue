@@ -125,21 +125,39 @@ end
 --[[ How a wait is put into words.
 
      Two forms, because the two places that show one have very different room. The
-     phrase goes in a sentence ("arriving within the hour"); the short form goes in the
-     ledger's When column beside timestamps.
+     phrase goes in a sentence ("arriving in about 20 minutes"); the short form goes in
+     the ledger's When column, beside timestamps and in far less space.
 
-     Neither is ever exact. A delivery is somebody else's schedule, and "in about three
-     hours" is both what a real one would tell you and what stops the player watching a
-     clock instead of playing.
+     Under an hour it counts in MINUTES. Saying "under 1h" for everything below the
+     hour throws away the whole point of the rebalanced lead times: a twenty-minute
+     delivery and a fifty-minute one are different plans, and the ledger redraws every
+     frame, so a real countdown is there for free.
+
+     Nothing here is ever exact. Minutes are rounded to the nearest five and hours to
+     the nearest whole one -- a delivery is somebody else's schedule, and an approximate
+     answer is both what a real one would give you and what stops the player watching a
+     clock instead of playing. Below five minutes there is no useful number left to
+     give, so it says so in words.
 ]]
+local function minutesLeft(hours)
+    -- To the nearest five, so the figure ticks in steps a person would actually say.
+    return math.floor(hours * 60 / 5 + 0.5) * 5
+end
+
 function TC.etaPhrase(hours)
-    if hours < 1 then return getText("IGUI_TC_EtaSoon") end
-    return getText("IGUI_TC_EtaHours", math.floor(hours + 0.5))
+    if hours >= 1 then return getText("IGUI_TC_EtaHours", math.floor(hours + 0.5)) end
+
+    local mins = minutesLeft(hours)
+    if mins < 5 then return getText("IGUI_TC_EtaSoon") end
+    return getText("IGUI_TC_EtaMinutes", mins)
 end
 
 function TC.etaShort(hours)
-    if hours < 1 then return getText("IGUI_TC_LedgerSoon") end
-    return getText("IGUI_TC_LedgerEta", math.floor(hours + 0.5))
+    if hours >= 1 then return getText("IGUI_TC_LedgerEta", math.floor(hours + 0.5)) end
+
+    local mins = minutesLeft(hours)
+    if mins < 5 then return getText("IGUI_TC_LedgerImminent") end
+    return getText("IGUI_TC_LedgerMinutes", mins)
 end
 
 --[[ What paying to skip the wait costs, on top of the order. ]]
