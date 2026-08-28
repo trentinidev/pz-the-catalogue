@@ -19,23 +19,48 @@ function TC_OrderAction:isValid()
     return TheCatalogue.hasCatalogue(self.character) and self.window ~= nil
 end
 
+--[[ A page flip partway through, once.
+
+     The action was silent between its two ends, which made two seconds feel like a
+     freeze rather than like doing something. A single flip near the middle is enough
+     to say the pages are turning; a loop would be noise on an action this short.
+
+     Guarded by a flag rather than by a time window, because update runs every tick and
+     a window would fire it several times in a row. ]]
 function TC_OrderAction:update()
     self.character:setMetabolicTarget(Metabolics.LightDomestic)
+
+    if not self.flipped and self:getJobDelta() > 0.45 then
+        self.flipped = true
+        TheCatalogue.playSound(self.character, "orderFlip")
+    end
 end
 
+--[[ Reading, not looting.
+
+     It was the Loot animation -- a crouched rummage through a container -- which is
+     what the character does to a corpse, not to a mail-order catalogue. Read is the
+     same animation vanilla uses for a book or for writing a note, which is exactly
+     what placing an order is. ]]
 function TC_OrderAction:start()
-    self:setActionAnim("Loot")
-    self.character:reportEvent("EventLootItem")
+    self:setActionAnim(CharacterActionAnims.Read)
+    self.character:reportEvent("EventRead")
+    TheCatalogue.playSound(self.character, "orderOpen")
 end
 
 function TC_OrderAction:stop()
     ISBaseTimedAction.stop(self)
+    TheCatalogue.playSound(self.character, "orderCancel")
     if self.window and self.window.onOrderCancelled then
         self.window:onOrderCancelled()
     end
 end
 
 function TC_OrderAction:perform()
+    -- The pen goes down before the window is told, so the sound lands with the action
+    -- finishing rather than after whatever the callback decides to do.
+    TheCatalogue.playSound(self.character, "orderSign")
+
     -- Runs only on completion, so an interrupted order never touches money or items.
     if self.window and self.window.onOrderComplete then
         self.window:onOrderComplete(self.payload)

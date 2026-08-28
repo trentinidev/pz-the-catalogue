@@ -556,6 +556,9 @@ function TC_BuyWindow:startPurchase(rush)
 
     local seconds = TC.opt("OrderSeconds")
     if type(seconds) ~= "number" or seconds <= 0 then
+        -- No action to hang the paperwork on when the wait is configured away, so the
+        -- pen still sounds before the register does.
+        TC.playSound(self.player, "orderSign")
         self:onOrderComplete({ entry = entry, qty = self.quantity, rush = rush })
         return
     end

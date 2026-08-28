@@ -58,6 +58,23 @@ local function removeItem(item)
     if c then c:Remove(item) end
 end
 
+--[[ Put `amount` into the player's hands as objects, and say nothing about it.
+
+     Declared before takeCash because takeCash makes change through it. The register
+     sound belongs to the TRANSACTION, and a purchase that breaks a hundred is still
+     one transaction -- routing the change through here rather than through giveCash is
+     what stops it ringing twice for one purchase. ]]
+local function addCash(player, amount)
+    local inv = player:getInventory()
+    local PER = TC.NOTES_PER_BUNDLE
+
+    local bundles = math.floor(amount / PER)
+    local notes   = amount - bundles * PER
+
+    for _ = 1, bundles do inv:AddItem(TC.MONEY_BUNDLE) end
+    for _ = 1, notes   do inv:AddItem(TC.MONEY)        end
+end
+
 --[[ Take exactly `amount` dollars off the player, breaking a bundle and returning
      change when the notes do not divide evenly.
 
@@ -99,8 +116,12 @@ function TC.takeCash(player, amount)
     for i = 1, useNotes   do removeItem(notes[i])   end
 
     if change > 0 then
-        TC.giveCash(player, change)
+        addCash(player, change)
     end
+
+    -- Money has changed hands: this is the instant the transaction is real, and the
+    -- only place in the mod that has to know it happened.
+    TC.playSound(player, "cash")
     return true
 end
 
@@ -113,14 +134,8 @@ function TC.giveCash(player, amount)
     amount = math.floor(amount + 0.5)
     if amount <= 0 then return end
 
-    local inv = player:getInventory()
-    local PER = TC.NOTES_PER_BUNDLE
-
-    local bundles = math.floor(amount / PER)
-    local notes   = amount - bundles * PER
-
-    for _ = 1, bundles do inv:AddItem(TC.MONEY_BUNDLE) end
-    for _ = 1, notes   do inv:AddItem(TC.MONEY)        end
+    addCash(player, amount)
+    TC.playSound(player, "cash")
 end
 
 --[[ Weight of a payout before it happens, so the buy panel can warn honestly.
