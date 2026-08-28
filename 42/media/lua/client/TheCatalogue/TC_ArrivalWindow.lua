@@ -10,9 +10,17 @@
      in the pending list on modData, which means it survives a save, a crash and a quit
      -- the goods cannot be lost by not being ready for them.
 
-     Closing this window is not refusing the delivery. Everything waiting stays waiting;
-     the ledger shows it as ready to collect and the catalogue's right-click menu grows
-     a Collect entry until it has been taken.
+     IT HAS NO CLOSE BUTTON. Every other window here is a tool the player opens and
+     dismisses; this one is a question, and the answer is Receive. It can be collapsed
+     out of the way with the arrow in its title bar -- that is what the arrow is for --
+     but the only thing that makes it go away is taking the delivery. A window that can
+     be dismissed without answering is a window that leaves goods in limbo with no
+     obvious way back to them.
+
+     It is also laid out on a centre line rather than flush left like the working
+     windows. There is one question and one answer on it, so everything -- the
+     headline, the table, the tally, the button -- is balanced about the middle, with
+     equal margins on both sides.
 ]]
 
 TheCatalogue = TheCatalogue or {}
@@ -27,17 +35,37 @@ local ROW_HGT    = 28
 local BUTTON_HGT = FONT_HGT_MEDIUM + 12
 local HEADER_HGT = FONT_HGT_SMALL + 12
 
---[[ One measured stop, for the same reason as everywhere else here: a fixed pixel
-     offset only holds at the font size it was written against. Cached on first use
-     rather than at load, because it is measured from a translated string. ]]
+-- Equal on both sides of the table, so the columns sit inside a symmetric frame. The
+-- right-hand one has to clear the scrollbar, so the left one matches it rather than
+-- using the smaller cell padding and leaving the table looking shifted.
+local INSET = TC.UI.SCROLL_GUTTER
+
+--[[ The quantity column, measured once. A fixed pixel width only holds at the font
+     size it was written against; this is measured from the heading and from the widest
+     number a delivery can plausibly show. Worked out on first use, not at load,
+     because it reads a translated string. ]]
 local qtyW
 local function quantityWidth()
     if not qtyW then
         local tm = getTextManager()
         qtyW = math.max(tm:MeasureStringX(UIFont.Small, getText("IGUI_TC_Quantity")),
-                        tm:MeasureStringX(UIFont.Small, "999")) + TC.UI.CELL_PAD * 2
+                        tm:MeasureStringX(UIFont.Small, "9999")) + TC.UI.CELL_PAD * 2
     end
     return qtyW
+end
+
+--[[ The two column bands, given the list's pixel width. One definition, used by the
+     header and by every row, so a heading cannot drift away from the values under it. ]]
+local function columns(listW)
+    local qty = quantityWidth()
+    local qtyLeft = listW - INSET - qty
+    return {
+        nameLeft  = INSET,
+        nameW     = qtyLeft - INSET - TC.UI.CELL_PAD,
+        qtyLeft   = qtyLeft,
+        qtyW      = qty,
+        ruleX     = qtyLeft - TC.UI.CELL_PAD / 2,
+    }
 end
 
 -- ---------------------------------------------------------------------------
@@ -46,19 +74,16 @@ TC_ArrivalList = ISScrollingListBox:derive("TC_ArrivalList")
 
 function TC_ArrivalList:doDrawItem(y, item, alt)
     local line = item.item
-    local w = self:getWidth()
-
-    self:drawRect(0, y + ROW_HGT - 1, w, 1, 0.25, 1, 1, 1)
-
+    local c = columns(self:getWidth())
     local ty = y + (ROW_HGT - FONT_HGT_SMALL) / 2
-    local rightEdge = w - TC.UI.SCROLL_GUTTER
-    local qtyLeft   = rightEdge - quantityWidth()
 
-    self:drawRect(qtyLeft, y, 1, ROW_HGT - 1, 0.22, 1, 1, 1)
+    self:drawRect(0, y + ROW_HGT - 1, self:getWidth(), 1, 0.25, 1, 1, 1)
+    self:drawRect(c.ruleX, y, 1, ROW_HGT - 1, 0.22, 1, 1, 1)
 
-    self:drawText(TC.truncate(UIFont.Small, line.name or "?", qtyLeft - 12 - TC.UI.CELL_PAD),
-                  12, ty, 0.92, 0.92, 0.95, 1, UIFont.Small)
-    TC.drawRight(self, tostring(line.qty or 1), rightEdge, ty, UIFont.Small, 0.78, 0.96, 0.78)
+    self:drawText(TC.truncate(UIFont.Small, line.name or "?", c.nameW),
+                  c.nameLeft, ty, 0.92, 0.92, 0.95, 1, UIFont.Small)
+    TC.drawCentred(self, tostring(line.qty or 1), c.qtyLeft, c.qtyW, ty,
+                   UIFont.Small, 0.78, 0.96, 0.78)
 
     return y + ROW_HGT
 end
@@ -75,44 +100,60 @@ function TC_ArrivalWindow:new(x, y, w, h, playerNum)
     o.playerNum = playerNum
     o.player = getSpecificPlayer(playerNum)
     o:setResizable(true)
-    o.minimumWidth = math.max(420, PAD * 2 + 200 + quantityWidth() + TC.UI.SCROLL_GUTTER)
-    o.minimumHeight = 300
+    o.minimumWidth = math.max(440, PAD * 2 + INSET * 2 + 200 + quantityWidth())
+    o.minimumHeight = 320
     return o
 end
 
-function TC_ArrivalWindow:listGeometry()
-    local listY = self:titleBarHeight() + PAD + FONT_HGT_MEDIUM + PAD + HEADER_HGT
-    local listH = self.height - listY - BOTTOM_PAD - BUTTON_HGT - PAD - FONT_HGT_SMALL - PAD
-    return listY, listH
+--[[ The vertical stack, worked out in one place.
+
+     Headline, table, tally, button, each with the same gap between them. Written as a
+     single walk down the window so the blocks cannot drift apart the way two separate
+     copies of the arithmetic would. ]]
+function TC_ArrivalWindow:layout()
+    local L = {}
+    L.headlineY = self:titleBarHeight() + PAD
+    L.headerY   = L.headlineY + FONT_HGT_MEDIUM + PAD
+    L.listY     = L.headerY + HEADER_HGT
+    L.buttonY   = self.height - BOTTOM_PAD - BUTTON_HGT
+    L.footY     = L.buttonY - PAD - FONT_HGT_SMALL
+    L.listH     = L.footY - PAD - L.listY
+    L.listX     = PAD
+    L.listW     = self.width - PAD * 2
+    return L
+end
+
+--[[ The button is sized by its own label and centred, not stretched across the window.
+     One choice, sitting on the centre line everything else is balanced about. ]]
+function TC_ArrivalWindow:buttonSlot()
+    local w = math.max(160, getTextManager():MeasureStringX(UIFont.Medium,
+                                getText("IGUI_TC_Receive")) + TC.UI.BTN_PAD * 2)
+    w = math.min(w, self.width - PAD * 2)
+    return math.floor((self.width - w) / 2), math.floor(w)
 end
 
 function TC_ArrivalWindow:createChildren()
     ISCollapsableWindow.createChildren(self)
 
-    local listY, listH = self:listGeometry()
-    self.list = TC_ArrivalList:new(PAD, listY, self.width - PAD * 2, listH)
+    -- No way out but Receive. minTitleBarWidth already accounts for an invisible close
+    -- button, so hiding it is enough -- the title simply centres over the space.
+    if self.closeButton then self.closeButton:setVisible(false) end
+
+    local L = self:layout()
+    self.list = TC_ArrivalList:new(L.listX, L.listY, L.listW, L.listH)
     self.list:initialise(); self.list:instantiate()
     self.list.itemheight = ROW_HGT
     self.list.drawBorder = true
     self.list.target = self
     self:addChild(self.list)
 
-    local slots = self:buttonSlots()
-    local by = self.height - BOTTOM_PAD - BUTTON_HGT
-
-    self.receiveBtn = ISButton:new(slots[1].x, by, slots[1].w, BUTTON_HGT,
-                                   slots[1].text, self, TC_ArrivalWindow.onReceive)
+    local bx, bw = self:buttonSlot()
+    self.receiveBtn = ISButton:new(bx, L.buttonY, bw, BUTTON_HGT,
+                                   getText("IGUI_TC_Receive"), self, TC_ArrivalWindow.onReceive)
     self.receiveBtn:initialise(); self.receiveBtn:instantiate()
     self:addChild(self.receiveBtn)
 
     self:refreshList()
-end
-
---[[ One button, laid out the same way as every other row in the mod so it is sized by
-     its own label rather than by the window. ]]
-function TC_ArrivalWindow:buttonSlots()
-    return TC.buttonRow(PAD, self.width - PAD * 2,
-                        { getText("IGUI_TC_Receive") }, UIFont.Medium)
 end
 
 --[[ Everything waiting, merged into one list.
@@ -123,21 +164,21 @@ end
 function TC_ArrivalWindow:refreshList()
     self.list:clear()
 
-    local merged, order = {}, {}
+    local merged, seen = {}, {}
     for _, o in ipairs(TC.arrivedOrders(self.player)) do
         for _, l in ipairs(o.lines or {}) do
             local key = l.fullType or l.name
-            if merged[key] then
-                merged[key].qty = merged[key].qty + (l.qty or 1)
+            if seen[key] then
+                seen[key].qty = seen[key].qty + (l.qty or 1)
             else
-                merged[key] = { name = l.name, qty = l.qty or 1, weight = l.weight or 0 }
-                table.insert(order, key)
+                seen[key] = { name = l.name, qty = l.qty or 1, weight = l.weight or 0 }
+                table.insert(merged, seen[key])
             end
         end
     end
 
-    for _, key in ipairs(order) do
-        self.list:addItem(merged[key].name, merged[key])
+    for _, line in ipairs(merged) do
+        self.list:addItem(line.name, line)
     end
 end
 
@@ -183,50 +224,54 @@ function TC_ArrivalWindow:prerender()
         return
     end
 
-    local listY, listH = self:listGeometry()
-    local listW = self.width - PAD * 2
+    local L = self:layout()
     local F = UIFont.Small
+    local c = columns(L.listW)
 
-    local titleY = self:titleBarHeight() + PAD
-    self:drawText(getText("IGUI_TC_ArrivalHeadline"), PAD, titleY,
-                  0.85, 1, 0.85, 1, UIFont.Medium)
+    TC.drawCentred(self, getText("IGUI_TC_ArrivalHeadline"), 0, self.width, L.headlineY,
+                   UIFont.Medium, 0.85, 1, 0.85)
 
-    local headerY = listY - HEADER_HGT
-    self:drawRect(PAD, headerY, listW, HEADER_HGT, 0.75, 0.13, 0.13, 0.15)
-    self:drawRectBorder(PAD, headerY, listW, HEADER_HGT, 0.5, 0.4, 0.4, 0.4)
+    self:drawRect(L.listX, L.headerY, L.listW, HEADER_HGT, 0.75, 0.13, 0.13, 0.15)
+    self:drawRectBorder(L.listX, L.headerY, L.listW, HEADER_HGT, 0.5, 0.4, 0.4, 0.4)
 
-    local hy = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
-    local rightEdge = listW - TC.UI.SCROLL_GUTTER
-    self:drawRect(PAD + rightEdge - quantityWidth(), headerY, 1, HEADER_HGT, 0.4, 1, 1, 1)
-    self:drawText(getText("IGUI_TC_ColItem"), PAD + 12, hy, 0.72, 0.72, 0.76, 1, F)
-    TC.drawRight(self, getText("IGUI_TC_Quantity"), PAD + rightEdge, hy, F, 0.72, 0.72, 0.76)
+    local hy = L.headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
+    self:drawRect(L.listX + c.ruleX, L.headerY, 1, HEADER_HGT, 0.4, 1, 1, 1)
+    self:drawText(getText("IGUI_TC_ColItem"), L.listX + c.nameLeft, hy,
+                  0.72, 0.72, 0.76, 1, F)
+    TC.drawCentred(self, getText("IGUI_TC_Quantity"), L.listX + c.qtyLeft, c.qtyW, hy,
+                   F, 0.72, 0.72, 0.76)
 
-    local count, weight = self:totals()
-    local footY = listY + listH + PAD
+    -- A rule under the table, the same width as the table, so the tally below reads as
+    -- a summary of it rather than as another line of it.
+    self:drawRect(L.listX, L.footY - PAD / 2, L.listW, 1, 0.3, 1, 1, 1)
 
     local msgText, msgErr = self:activeMessage()
     if msgText then
         local r, g, b = 0.6, 1, 0.6
         if msgErr then r, g, b = 1, 0.3, 0.3 end
-        self:drawText(TC.truncate(F, msgText, listW), PAD, footY, r, g, b, 1, F)
+        TC.drawCentred(self, TC.truncate(F, msgText, L.listW), 0, self.width, L.footY,
+                       F, r, g, b)
     else
-        self:drawText(getText("IGUI_TC_ArrivalSummary", count, string.format("%.1f", weight)),
-                      PAD, footY, 0.62, 0.62, 0.66, 1, F)
+        local count, weight = self:totals()
+        TC.drawCentred(self,
+                       getText("IGUI_TC_ArrivalSummary", count, string.format("%.1f", weight)),
+                       0, self.width, L.footY, F, 0.62, 0.62, 0.66)
     end
 end
 
 function TC_ArrivalWindow:onResize()
     ISCollapsableWindow.onResize(self)
 
-    local listY, listH = self:listGeometry()
-    self.list:setWidth(self.width - PAD * 2)
-    self.list:setHeight(listH)
+    local L = self:layout()
+    self.list:setX(L.listX)
+    self.list:setY(L.listY)
+    self.list:setWidth(L.listW)
+    self.list:setHeight(L.listH)
 
-    local slots = self:buttonSlots()
-    self.receiveBtn:setX(slots[1].x)
-    self.receiveBtn:setY(self.height - BOTTOM_PAD - BUTTON_HGT)
-    self.receiveBtn:setWidth(slots[1].w)
-    self.receiveBtn:setTitle(slots[1].text)
+    local bx, bw = self:buttonSlot()
+    self.receiveBtn:setX(bx)
+    self.receiveBtn:setY(L.buttonY)
+    self.receiveBtn:setWidth(bw)
 end
 
 function TC_ArrivalWindow:close()

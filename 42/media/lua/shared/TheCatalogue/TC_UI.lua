@@ -314,3 +314,14 @@ function TC.buttonRowWidth(labels, font)
     end
     return total + math.max(0, #labels - 1) * TC.UI.BTN_MIN_GAP
 end
+
+--[[ Draw a string centred inside a column of the given left edge and width.
+
+     The two alignments already here -- left at a fixed x, right against an edge -- are
+     what a dense table wants, where the eye compares figures down a column. A short
+     value in a narrow column is the other case: centred under a centred heading, it
+     reads as one balanced block rather than a number pushed against a rule. ]]
+function TC.drawCentred(panel, text, left, width, y, font, r, g, b, a)
+    local w = getTextManager():MeasureStringX(font, text)
+    panel:drawText(text, left + math.floor((width - w) / 2), y, r, g, b, a or 1, font)
+end

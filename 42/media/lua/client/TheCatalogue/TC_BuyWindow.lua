@@ -446,6 +446,18 @@ end
      catalogue entry arrives directly -- no need to go back through the selected
      index, which is also briefly stale right after a clear(). ]]
 function TC_BuyWindow:onSelectItem(entry)
+    --[[ A new selection starts at one.
+
+         The quantity used to carry over, so typing 10 for one item and then clicking a
+         different row left the field reading 10 against something you had only just
+         looked at -- and Add to cart would take you at your word. Every item is its own
+         decision; the number belongs to the thing that was on screen when it was typed.
+         Only reset on an actual CHANGE of item, so clicking the same row twice does not
+         throw away a quantity that was just entered. ]]
+    if entry ~= self.selectedEntry then
+        self:setQuantity(1)
+    end
+
     self.selectedEntry = entry
     self.message = nil
 end
