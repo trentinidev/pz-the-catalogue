@@ -14,7 +14,7 @@
     "Sandbox_TheCatalogue_SellContainerContents_tooltip": "When on, selling a bag or a loaded gun sells what is inside it too, at its own value. When off, the catalogue refuses non-empty containers.",
 
     "Sandbox_TheCatalogue_DeliveryHoursMultiplier": "Delivery time",
-    "Sandbox_TheCatalogue_DeliveryHoursMultiplier_tooltip": "Multiplier on how long an order takes. The lead time grows with the weight and value of the order -- a tin of beans is a few hours, a generator most of a day. Set very low for near-instant delivery.",
+    "Sandbox_TheCatalogue_DeliveryHoursMultiplier_tooltip": "Multiplier on how long an order takes. Lead time is mostly about bulk, and bulk compounds: a single pistol round is about twenty minutes, a hundred of them about two and a half hours, a crate of supplies most of a morning, a generator several days. Set very low for near-instant delivery.",
 
     "Sandbox_TheCatalogue_RushFeePercent": "Rush delivery surcharge",
     "Sandbox_TheCatalogue_RushFeePercent_tooltip": "Percentage added to an order that skips the wait and arrives immediately.",
