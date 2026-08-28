@@ -114,8 +114,9 @@ separate materials.
 
 Open the `.blend`, change what you like, and export FBX with:
 
-- **Scale 1.00** and **apply unit scale OFF** — the game reads raw coordinates, and unit
-  conversion is exactly the trap described above
+- **Scale 1.00**, **apply unit scale ON**, and the scene's unit length set to **0.0254** —
+  together these reproduce vanilla's convention, which is the trap described above. Any
+  other combination writes a file the game may scale differently from vanilla's
 - **Forward -Z, Up Y**
 - **Apply modifiers** on, and apply all transforms first (`Ctrl+A`) — a mesh carrying an
   unapplied scale exports at a size nobody can explain later
