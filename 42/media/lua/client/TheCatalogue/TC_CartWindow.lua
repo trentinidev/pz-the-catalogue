@@ -53,11 +53,15 @@ local function columnStops()
     local unitW  = width("IGUI_TC_UnitPrice", "$99999")
     local qtyW   = width("IGUI_TC_Quantity",  "999")
 
+    -- Counted back from the scrollbar, not from the border: at 4px the last digit of
+    -- the total drew underneath the scroll track and no resize could rescue it.
+    local edge = TC.UI.SCROLL_GUTTER
+
     cartStops = {
-        total = 4,
-        unit  = 4 + totalW,
-        qty   = 4 + totalW + unitW,
-        name  = 4 + totalW + unitW + qtyW,   -- how much room the name has to give up
+        total = edge,
+        unit  = edge + totalW,
+        qty   = edge + totalW + unitW,
+        name  = edge + totalW + unitW + qtyW,   -- what the name column has to give up
     }
     return cartStops
 end
