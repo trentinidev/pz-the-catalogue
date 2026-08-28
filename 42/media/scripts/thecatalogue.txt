@@ -46,19 +46,22 @@ module Catalogue
        catalogue sells. Rather than dropping heavy goods loose on the ground and
        calling it a delivery, the company packs them in bigger crates.
 
-       Art and sound are vanilla's largest parcel throughout: same Parcel1 icon, same
-       world model, same open/close/put-in sounds. A crate that is visibly the same
-       object at four times the capacity is a small fiction, and a much smaller one
-       than a generator arriving with no packaging at all.
+       THREE TIERS, THREE MATERIALS. They used to be one cardboard box drawn three
+       times, which made the capacity the only thing telling them apart -- and capacity
+       is a number in a tooltip, not something you can see on the ground. Now the step
+       up in size is a step up in packaging: a taped carton, a strapped wooden crate, a
+       tarped pallet load. That is legible at a glance and it is also just what a real
+       freight company would do.
 
-       Capacity is the only thing that differs. Weight stays at 1.0 like every vanilla
-       parcel, so the box itself never becomes the reason a delivery is too heavy. */
+       Sound stays vanilla's largest parcel throughout, and weight stays at 1.0 like
+       every vanilla parcel, so the box itself never becomes the reason a delivery is
+       too heavy. */
     item Parcel_XXL
     {
         DisplayCategory = Container,
         ItemType = base:container,
         Weight = 1.0,
-        Icon = Parcel1,
+        Icon = ParcelXXL,
         Capacity = 25,
         CloseSound = CloseParcelLarge,
         OpenSound = OpenParcelLarge,
@@ -67,31 +70,52 @@ module Catalogue
         Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
     }
 
+    /* The crate: vanilla's parcel MESH wearing planks. Same reasoning as the catalogue
+       cover -- a new mesh is not worth it for a box-shaped thing -- but here the texture
+       could not be painted from the art either, because the mesh's UV layout lives in a
+       binary FBX and guessing it wraps a shipping label around a corner.
+
+       So tools/gen_parcel_art.ps1 re-materialises vanilla's own atlas instead: plank
+       texture underneath, vanilla's per-face shading kept, and vanilla's tape -- the
+       brightest thing in the atlas -- turned into the dark strapping. The strap lands
+       correctly on the mesh precisely because it is vanilla's tape. */
+    model Parcel5XLWorld
+    {
+        mesh = WorldItems/Parcel_Present_1,
+        texture = TheCatalogue/Parcel5XLWorld,
+        scale = 0.2,
+    }
+
     item Parcel_5XL
     {
         DisplayCategory = Container,
         ItemType = base:container,
         Weight = 1.0,
-        Icon = Parcel1,
+        Icon = Parcel5XL,
         Capacity = 50,
         CloseSound = CloseParcelLarge,
         OpenSound = OpenParcelLarge,
         PutInSound = StoreItemParcelLarge,
-        WorldStaticModel = Parcel1,
+        WorldStaticModel = Parcel5XLWorld,
         Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
     }
 
+    /* The heaviest tier gets vanilla's olive-drab military parcel on the ground: same
+       mesh and same scale as the others, so nothing about the shape can surprise us,
+       and it is already the colour the art wants. The pallet under it is the one thing
+       the icon has and the world model cannot -- that is a silhouette, and a silhouette
+       needs a mesh. */
     item Parcel_10XL
     {
         DisplayCategory = Container,
         ItemType = base:container,
         Weight = 1.0,
-        Icon = Parcel1,
+        Icon = Parcel10XL,
         Capacity = 100,
         CloseSound = CloseParcelLarge,
         OpenSound = OpenParcelLarge,
         PutInSound = StoreItemParcelLarge,
-        WorldStaticModel = Parcel1,
+        WorldStaticModel = Base.Parcel_Military_ExtraLarge,
         Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
     }
 
