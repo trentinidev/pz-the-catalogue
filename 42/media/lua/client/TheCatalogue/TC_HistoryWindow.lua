@@ -39,8 +39,13 @@ local function columnStops()
     local gap = 16
 
     local whenW = tm:MeasureStringX(F, "1993-07-20 00:00")
-    local kindW = math.max(tm:MeasureStringX(F, getText("IGUI_TC_LedgerBought")),
-                           tm:MeasureStringX(F, getText("IGUI_TC_LedgerSold")))
+    -- All three words the column can hold. Measuring only two of them is how a column
+    -- ends up a few pixels short of the one case nobody checked.
+    local kindW = 0
+    for _, key in ipairs({ "IGUI_TC_LedgerBought", "IGUI_TC_LedgerSold",
+                           "IGUI_TC_LedgerPending" }) do
+        kindW = math.max(kindW, tm:MeasureStringX(F, getText(key)))
+    end
 
     stops = { when = 12 }
     stops.kind = stops.when + whenW + gap
@@ -63,15 +68,24 @@ function TC_HistoryList:doDrawItem(y, item, alt)
     local whenX, kindX, whatX = columnStops()
 
     -- Bought and sold are told apart by colour and by the sign on the figure, not by a
-    -- word, so the column stays narrow and the direction reads at a glance.
-    local isBuy = (e.kind == "buy")
+    -- word, so the column stays narrow and the direction reads at a glance. A pending
+    -- order is amber: paid for, not yet in hand.
+    local isBuy = (e.kind == "buy") or e.pending
     local r, g, b = 0.95, 0.72, 0.6            -- money going out
     local sign = "-"
-    if not isBuy then r, g, b = 0.72, 0.95, 0.76; sign = "+" end
+    if e.pending then
+        r, g, b = 0.95, 0.82, 0.45
+    elseif not isBuy then
+        r, g, b = 0.72, 0.95, 0.76
+        sign = "+"
+    end
 
     self:drawText(e.when or "?", whenX, ty, 0.6, 0.6, 0.64, 1, UIFont.Small)
 
-    local label = isBuy and getText("IGUI_TC_LedgerBought") or getText("IGUI_TC_LedgerSold")
+    local label
+    if e.pending then label = getText("IGUI_TC_LedgerPending")
+    elseif isBuy then label = getText("IGUI_TC_LedgerBought")
+    else label = getText("IGUI_TC_LedgerSold") end
     self:drawText(label, kindX, ty, 0.72, 0.72, 0.76, 1, UIFont.Small)
 
     -- The amount column is right-aligned, so the description stops short of it.
@@ -122,6 +136,26 @@ end
 
 function TC_HistoryWindow:refreshList()
     self.list:clear()
+
+    --[[ Orders still in flight go at the top, above the completed history.
+
+         They belong here rather than in a window of their own: "what did I buy" and
+         "what have I got coming" are the same question asked at different times, and
+         splitting them would mean checking two places to answer it. They are marked
+         pending and carry an ETA instead of a timestamp, so they cannot be mistaken
+         for something that already happened. ]]
+    for _, order in ipairs(TC.orders(self.player)) do
+        local parts = {}
+        for _, line in ipairs(order.lines or {}) do
+            table.insert(parts, (line.qty or 1) .. " x " .. (line.name or "?"))
+        end
+        self.list:addItem("", {
+            pending = true,
+            total   = order.paid or 0,
+            when    = getText("IGUI_TC_LedgerEta", math.floor(TC.hoursLeft(order) + 0.5)),
+            summary = table.concat(parts, ", "),
+        })
+    end
 
     for _, e in ipairs(TC.history(self.player)) do
         -- The lines are flattened into one readable string here rather than at write

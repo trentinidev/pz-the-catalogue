@@ -239,10 +239,19 @@ function TC_BuyWindow:createChildren()
     self.cartBtn:initialise(); self.cartBtn:instantiate()
     self:addChild(self.cartBtn)
 
-    self.buyBtn = ISButton:new(dx + PAD, by, DETAIL_W - PAD * 2, BUTTON_HGT,
+    -- Two ways to buy, side by side, so the trade-off is visible at the moment of
+    -- deciding rather than hidden behind a setting.
+    local buyW = (DETAIL_W - PAD * 2 - PAD) * 0.58
+    self.buyBtn = ISButton:new(dx + PAD, by, buyW, BUTTON_HGT,
                                getText("IGUI_TC_Buy"), self, TC_BuyWindow.onBuy)
     self.buyBtn:initialise(); self.buyBtn:instantiate()
     self:addChild(self.buyBtn)
+
+    self.rushBtn = ISButton:new(dx + PAD + buyW + PAD, by,
+                                DETAIL_W - PAD * 3 - buyW, BUTTON_HGT,
+                                getText("IGUI_TC_Rush"), self, TC_BuyWindow.onRush)
+    self.rushBtn:initialise(); self.rushBtn:instantiate()
+    self:addChild(self.rushBtn)
 
     self:populateCategories()
     self:refreshList()
@@ -486,7 +495,11 @@ end
      Everything that could REFUSE the order is checked here, before the action starts,
      so the player is told immediately rather than after standing still for three
      seconds. Nothing is charged until the action completes. ]]
-function TC_BuyWindow:onBuy()
+function TC_BuyWindow:onRush()
+    self:onBuy(true)
+end
+
+function TC_BuyWindow:onBuy(rush)
     local entry = self.selectedEntry
     if not entry then
         self:setMessage(getText("IGUI_TC_SelectAnItem"), true)
@@ -496,6 +509,7 @@ function TC_BuyWindow:onBuy()
 
     local unit  = TC.getBuyPrice(entry.fullType) or 0
     local total = unit * self.quantity
+    if rush then total = total + TC.rushSurcharge(total) end
 
     if not getScriptManager():FindItem(entry.fullType) then
         TC.warn("refused purchase: unknown item %s", tostring(entry.fullType))
@@ -509,13 +523,13 @@ function TC_BuyWindow:onBuy()
 
     local seconds = TC.opt("OrderSeconds")
     if type(seconds) ~= "number" or seconds <= 0 then
-        self:onOrderComplete({ entry = entry, qty = self.quantity })
+        self:onOrderComplete({ entry = entry, qty = self.quantity, rush = rush })
         return
     end
 
     self:setMessage(getText("IGUI_TC_Ordering"), false)
     ISTimedActionQueue.add(TC_OrderAction:new(self.player, self,
-                                              { entry = entry, qty = self.quantity }, seconds))
+                                              { entry = entry, qty = self.quantity, rush = rush }, seconds))
 end
 
 function TC_BuyWindow:onOrderCancelled()
@@ -532,6 +546,9 @@ function TC_BuyWindow:onOrderComplete(payload)
     local unit  = TC.getBuyPrice(entry.fullType) or 0
     local qty   = payload.qty or 1
     local total = unit * qty
+    local rush  = payload.rush and true or false
+
+    if rush then total = total + TC.rushSurcharge(total) end
 
     -- Re-checked rather than trusted from before the action: seconds passed, and the
     -- player may have spent or dropped money in the meantime.
@@ -549,6 +566,22 @@ function TC_BuyWindow:onOrderComplete(payload)
         -- takeCash re-checks and leaves the inventory untouched on failure, so a race
         -- between the balance check and here cannot half-charge the player.
         self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
+        return
+    end
+
+    local lines = { {
+        fullType = entry.fullType, name = entry.name,
+        qty = qty, weight = entry.weight or 0, unit = unit,
+    } }
+
+    --[[ A normal order is booked and arrives later; only a rush order is handed over
+         across the counter. The money is already gone either way, which is what makes
+         the order safe to persist: the list holds a debt the catalogue owes, never a
+         charge still to come. ]]
+    if not rush then
+        local order = TC.placeOrder(player, lines, total)
+        self:setMessage(getText("IGUI_TC_OrderPlaced", qty, entry.name,
+                                math.floor(TC.hoursLeft(order) + 0.5)), false)
         return
     end
 
@@ -785,8 +818,10 @@ function TC_BuyWindow:onResize()
     self.minusBtn:setX(dx + PAD);        self.minusBtn:setY(by - BUTTON_HGT - PAD)
     self.qtyEntry:setX(dx + PAD + 40);   self.qtyEntry:setY(by - BUTTON_HGT - PAD)
     self.plusBtn:setX(dx + PAD + 130);   self.plusBtn:setY(by - BUTTON_HGT - PAD)
-    self.buyBtn:setX(dx + PAD);          self.buyBtn:setY(by)
-    self.buyBtn:setWidth(DETAIL_W - PAD * 2)
+    local buyW = (DETAIL_W - PAD * 2 - PAD) * 0.58
+    self.buyBtn:setX(dx + PAD);  self.buyBtn:setY(by);  self.buyBtn:setWidth(buyW)
+    self.rushBtn:setX(dx + PAD + buyW + PAD); self.rushBtn:setY(by)
+    self.rushBtn:setWidth(DETAIL_W - PAD * 3 - buyW)
     self.wishBtn:setX(dx + PAD + SPINNER_W + PAD); self.wishBtn:setY(by - BUTTON_HGT - PAD)
     self.wishBtn:setWidth(DETAIL_W - PAD * 3 - SPINNER_W)
     local half = (DETAIL_W - PAD * 2 - PAD) / 2

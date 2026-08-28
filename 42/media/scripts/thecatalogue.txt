@@ -19,6 +19,62 @@ module Catalogue
         FireFuelRatio = 0.25,
     }
 
+    /* Oversized shipping parcels.
+
+       Vanilla tops out at Parcel_ExtraLarge, capacity 20, and a single generator
+       weighs 40 -- so the largest box the game ships cannot hold one item the
+       catalogue sells. Rather than dropping heavy goods loose on the ground and
+       calling it a delivery, the company packs them in bigger crates.
+
+       Art and sound are vanilla's largest parcel throughout: same Parcel1 icon, same
+       world model, same open/close/put-in sounds. A crate that is visibly the same
+       object at four times the capacity is a small fiction, and a much smaller one
+       than a generator arriving with no packaging at all.
+
+       Capacity is the only thing that differs. Weight stays at 1.0 like every vanilla
+       parcel, so the box itself never becomes the reason a delivery is too heavy. */
+    item Parcel_XXL
+    {
+        DisplayCategory = Container,
+        ItemType = base:container,
+        Weight = 1.0,
+        Icon = Parcel1,
+        Capacity = 25,
+        CloseSound = CloseParcelLarge,
+        OpenSound = OpenParcelLarge,
+        PutInSound = StoreItemParcelLarge,
+        WorldStaticModel = Parcel1,
+        Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
+    }
+
+    item Parcel_5XL
+    {
+        DisplayCategory = Container,
+        ItemType = base:container,
+        Weight = 1.0,
+        Icon = Parcel1,
+        Capacity = 50,
+        CloseSound = CloseParcelLarge,
+        OpenSound = OpenParcelLarge,
+        PutInSound = StoreItemParcelLarge,
+        WorldStaticModel = Parcel1,
+        Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
+    }
+
+    item Parcel_10XL
+    {
+        DisplayCategory = Container,
+        ItemType = base:container,
+        Weight = 1.0,
+        Icon = Parcel1,
+        Capacity = 100,
+        CloseSound = CloseParcelLarge,
+        OpenSound = OpenParcelLarge,
+        PutInSound = StoreItemParcelLarge,
+        WorldStaticModel = Parcel1,
+        Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
+    }
+
     /* Bundle loose notes. The exact mirror of vanilla's UnbundleMoney -- same time,
        same tags, same category, same 1:100 rate -- so the two read as one pair of
        recipes rather than as a mod bolted onto a vanilla one.

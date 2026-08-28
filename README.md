@@ -2,7 +2,7 @@
 
 A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
-> **Alpha — 0.5.0.** Not released, and the version number says so deliberately. It works
+> **Alpha — 0.6.0.** Not released, and the version number says so deliberately. It works
 > and it is played, but multiplayer is unsafe (all transaction logic runs client-side)
 > and parts of it have never been exercised. 1.0.0 is reserved for the first build that
 > has been played end to end and is safe on a dedicated server.
@@ -37,11 +37,16 @@ do not, or your wishlist. Star anything from the detail panel; the wishlist is s
 character and survives reloads. Click any column header to sort by it, click again to
 reverse, and drag the dividers to re-balance the widths.
 
-**Ordering** — add lines to a cart and settle the whole thing in one transaction, or buy
-a single line outright. Placing an order takes a couple of interruptible seconds by
-default, so you cannot kit yourself out mid-horde; set `OrderSeconds` to 0 for the
-instant behaviour. Every completed purchase and sale is written to a ledger you can open
-from the catalogue's right-click menu.
+**Ordering** — add lines to a cart and settle the whole thing in one transaction, or
+order a single line outright. Placing an order takes a couple of interruptible seconds,
+so you cannot kit yourself out mid-horde.
+
+**Delivery** — paying and receiving are separate. An order is booked, the money leaves
+immediately, and the goods turn up hours later in a parcel dropped at your feet,
+wherever you happen to be. How long depends on the weight and value of the order: a tin
+of beans is a few hours, a generator most of a day. **Rush** delivery skips the wait for
+a surcharge. Pending orders and completed ones share one ledger, opened from the
+catalogue's right-click menu.
 
 **Selling in bulk** — stage everything eligible from your inventory or from an open
 container in one click. Nothing leaves your possession until you confirm. Expand any
@@ -83,6 +88,11 @@ Custom sandbox options in B42 are drawn by the **server settings** screen
 | `SellContainerContents` | true | Selling a bag sells what is inside it. |
 | `MinConditionToSell` | 0.0 | Refuse items below this condition. |
 | `RequireCatalogueOnPerson` | true | Close both windows if you no longer carry a catalogue. |
+| `DeliveryHoursMultiplier` | 1.0 | Scales how long orders take. |
+| `RushFeePercent` | 20 | Surcharge for skipping the wait. |
+| `OrderSeconds` | 2.0 | Length of the interruptible action when ordering. |
+| `CatalogueLootMultiplier` | 1.0 | How common the catalogue is in world loot. |
+| `DebugLogging` | false | Timing and loot-table detail in the console. |
 
 ---
 
