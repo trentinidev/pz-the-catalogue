@@ -39,6 +39,7 @@
 
     "IGUI_TC_LedgerTitle": "Shop Catalogue - Ledger",
     "IGUI_TC_LedgerWhen": "When",
+    "IGUI_TC_LedgerKind": "Type",
     "IGUI_TC_LedgerWhat": "What",
     "IGUI_TC_LedgerAmount": "Amount",
     "IGUI_TC_LedgerBought": "Bought",

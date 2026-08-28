@@ -181,12 +181,6 @@ function TC.applyTableBehaviour(cls)
         return ISCollapsableWindow.onMouseUpOutside(self, x, y)
     end
 
-    -- -----------------------------------------------------------------------
-    -- Status line
-    -- -----------------------------------------------------------------------
-
-    function cls:setMessage(text, isError)
-        self.message = text
-        self.messageIsError = isError and true or false
-    end
+    -- Status lines, with the self-clearing behaviour shared by every window here.
+    TC.applyMessageBehaviour(cls)
 end

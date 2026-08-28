@@ -1,7 +1,7 @@
 {
     "ContextMenu_TC_Buy": "Buy",
     "ContextMenu_TC_Sell": "Sell",
-    "ContextMenu_TC_History": "Order history",
+    "ContextMenu_TC_History": "Ledger",
     "ContextMenu_TC_AddToSell": "Add to sell box",
     "ContextMenu_TC_AddOneToSell": "Add one to sell box",
     "ContextMenu_TC_AddToSellMany": "Add %1 items to sell box"

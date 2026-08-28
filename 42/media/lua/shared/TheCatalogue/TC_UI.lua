@@ -56,6 +56,36 @@ function TC.defaultColumnWidths(kind)
     }
 end
 
+--[[ Status lines that clear themselves.
+
+     A confirmation is worth reading once. Left on screen it stops being feedback and
+     becomes furniture: "Added 5 x Apple to the cart" sitting there ten minutes later
+     tells the player nothing except that something happened at some point.
+
+     Expiry is measured in real seconds, not game time. This is a message to the person
+     at the keyboard, and it should be gone by the time they have looked away and back
+     -- not eight in-game hours later, and not instantly during a sleep. ]]
+TC.MESSAGE_SECONDS = 6
+
+function TC.applyMessageBehaviour(cls)
+    function cls:setMessage(text, isError)
+        self.message = text
+        self.messageIsError = isError and true or false
+        self.messageAt = getTimestampMs()
+    end
+
+    --[[ The message if it is still fresh, nil once it has aged out. Clears the stored
+         text on the way so nothing keeps re-checking a dead string. ]]
+    function cls:activeMessage()
+        if not self.message then return nil end
+        if getTimestampMs() - (self.messageAt or 0) > TC.MESSAGE_SECONDS * 1000 then
+            self.message = nil
+            return nil
+        end
+        return self.message, self.messageIsError
+    end
+end
+
 --[[ Cut text to fit a pixel width, with an ellipsis when it had to be cut.
 
      Item names in this game run long ("Camouflage Hunting Vest with Orange Trim"), and
