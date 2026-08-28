@@ -11,6 +11,28 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.7.6-alpha — 2026-08-27
+
+### Changed
+- **New art for the catalogue: a 1993 Cumberland Mail Order edition.** The inventory icon
+  is rebuilt from the new render, and the book on the ground wears its own cover instead
+  of being a Keio Furniture catalogue.
+- The world model re-skins vanilla's closed-catalogue mesh rather than shipping a new
+  one — nothing about this item needs a shape the game does not already have. Its texture
+  layout is therefore fixed by that mesh's UVs: cover in columns 0-56, fore-edge in 57-63,
+  measured off vanilla's own 64×64.
+- **`tools/gen_art.ps1`** builds both assets from the source renders, so the art can be
+  re-rendered and the assets rebuilt without anyone having to remember which rectangle of
+  the sheet is the cover or how far it gets squashed.
+
+### Not changed
+- The open book the character holds while ordering is still vanilla's. It is a different
+  mesh with a different texture layout, showing a two-page spread, and the new art has no
+  spread to put on it.
+
+---
+
+
 ## 0.7.5-alpha — 2026-08-27
 
 ### Added
