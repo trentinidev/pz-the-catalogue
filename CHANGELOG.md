@@ -11,6 +11,25 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.7.4-alpha — 2026-08-27
+
+### Added
+- **`tools/check.sh`**, run before every commit by `.githooks/pre-commit`. Lua syntax
+  through LuaJIT 2.1 (a 5.1 parser, matching the game's Kahlua VM — a 5.4 parser would
+  accept `goto` and bitwise operators that Kahlua rejects at load), the translation JSON,
+  translation keys in both directions, `TC.*` helpers, methods defined twice in one file,
+  and whether `mod.info`'s version has a changelog entry. Everything up to 0.6.5 was
+  verified by grep alone, which is why a ledger that threw the instant it opened got
+  released. It does not catch code that is valid and wrong anyway — that is still on
+  testing.
+
+### Changed
+- **The mod is documented as single-player only.** Server authority is deferred until
+  after 1.0 rather than half-done before it, so 1.0.0 no longer promises it.
+
+---
+
+
 ## 0.7.3-alpha — 2026-08-27
 
 ### Fixed

@@ -1,0 +1,14 @@
+#!/bin/sh
+# Refuse the commit if tools/check.sh does not pass.
+#
+# Enabled per clone -- git will not run a hook that has only been cloned, by design.
+# On a new machine:
+#
+#     git config core.hooksPath .githooks
+#
+# To commit past a known failure, once: git commit --no-verify
+
+if ! sh tools/check.sh; then
+    printf '\ncommit refused. Fix the above, or use --no-verify if you know why.\n'
+    exit 1
+fi

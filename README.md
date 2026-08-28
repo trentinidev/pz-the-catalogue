@@ -2,10 +2,12 @@
 
 A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
-> **Alpha — 0.6.1.** Not released, and the version number says so deliberately. It works
-> and it is played, but multiplayer is unsafe (all transaction logic runs client-side)
-> and parts of it have never been exercised. 1.0.0 is reserved for the first build that
-> has been played end to end and is safe on a dedicated server.
+> **Alpha — 0.7.3.** Not released, and the version number says so deliberately. It works
+> and it is played, but parts of it have never been exercised.
+> **Single-player only.** All transaction logic runs client-side, so on a dedicated
+> server it is trivially cheatable; server authority is deliberately deferred until
+> after 1.0 rather than half-done before it. 1.0.0 is reserved for the first build that
+> has been played end to end.
 > See [CHANGELOG.md](CHANGELOG.md) for what has landed.
 
 Craft a **Shop Catalogue** from a Notebook, right-click it, and trade with the world's
@@ -226,6 +228,34 @@ assault rifle at $750. Food runs a median of $2, clothing $26, skill books $46.
 Money, MoneyBundle and BareHands are excluded from the catalogue: a currency that can be
 bought and sold at any spread other than exactly 1.0 is an arbitrage loop. Corpses,
 body parts, wound items and live-animal categories are excluded too.
+
+## Checks
+
+`tools/check.sh` runs everything that can be verified without launching the game: Lua
+syntax, the translation JSON, translation keys in both directions, `TC.*` helpers called
+against helpers defined, methods defined twice in one file, and whether the version in
+`mod.info` has a changelog entry.
+
+```sh
+sh tools/check.sh
+```
+
+Syntax is parsed by **LuaJIT 2.1**, not Lua 5.4: the game runs Kahlua, a Lua 5.1 VM, and
+a 5.4 parser would accept `goto`, integer division and bitwise operators that Kahlua
+rejects at load time. Install with `winget install DEVCOM.LuaJIT`. Without it the script
+still runs and says plainly that syntax went unchecked.
+
+It runs before every commit through `.githooks/pre-commit`. Git will not run a hook that
+was merely cloned, so on a new machine enable it once:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+**What it does not catch.** Anything that is valid Lua and wrong anyway. The bug that
+took down the ledger in 0.6.4 — a cached function whose two exits returned different
+numbers of values — parses perfectly and always will. Static checks buy the cheap half;
+the rest is still playing the thing.
 
 ## Requirements
 
