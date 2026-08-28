@@ -103,7 +103,30 @@ done
 [ -z "$missingArt" ] || bad "art referenced by a script but not present:$missingArt"
 note "art       every Icon and texture a script names is on disk"
 
-# --- 7. The version has been written down -----------------------------------------
+# --- 7. Every mesh a model block asks for --------------------------------------
+# Ours must be in the repo. A vanilla one is checked against the game install when this
+# machine has one, and reported as unverified when it does not -- better than pretending
+# either way.
+GAME_MODELS="S:/SteamLibrary/steamapps/common/ProjectZomboid/media/models_X"
+missingMesh=""; vanillaUnchecked=0
+for m in $(grep -ohE "mesh = [A-Za-z0-9_/]+" 42/media/scripts/*.txt | sed "s/mesh = //" | sort -u); do
+    if [ -f "42/media/models_X/$m.fbx" ] || [ -f "42/media/models_X/$m.x" ]; then
+        continue
+    elif [ -d "$GAME_MODELS" ]; then
+        [ -f "$GAME_MODELS/$m.fbx" ] || [ -f "$GAME_MODELS/$m.FBX" ] || [ -f "$GAME_MODELS/$m.x" ] \
+            || missingMesh="$missingMesh$(printf '\n    %s' "$m")"
+    else
+        vanillaUnchecked=$((vanillaUnchecked + 1))
+    fi
+done
+[ -z "$missingMesh" ] || bad "mesh referenced by a model block but not found:$missingMesh"
+if [ "$vanillaUnchecked" -gt 0 ]; then
+    note "mesh      ours present; $vanillaUnchecked vanilla mesh(es) unverified, no game install here"
+else
+    note "mesh      every mesh a model block names is present"
+fi
+
+# --- 8. The version has been written down -----------------------------------------
 # Bumping mod.info and forgetting the changelog is the easiest thing here to get wrong,
 # because nothing in the game ever notices.
 v=$(grep -oE '^modversion=.*' 42/mod.info | cut -d= -f2 | tr -d '\r')
