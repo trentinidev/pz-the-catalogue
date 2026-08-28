@@ -244,3 +244,73 @@ function TC.resizeColumn(widths, key, newLeftX, listWidth)
     end
     return true
 end
+
+--[[ A row of buttons that neither overflows nor balloons.
+
+     The cart laid its four buttons out as fractions of the window width, which is wrong
+     at both ends of the resize. Narrow, a third of the width is less than the words
+     "Remove selected" and the label ran out through the border. Wide, the same third
+     became a button the size of a paragraph with one word floating in the middle of it.
+
+     A button should be the size of what it says. So the widths come from the labels,
+     and any space left over goes into the GAPS between them -- the row still spans the
+     full width and still looks deliberate, but the buttons stay button-sized. When
+     there is not enough room even for the labels, every button gives up the same
+     FRACTION of its own width, which squeezes the long label hardest and stops the
+     short one collapsing to nothing, and the titles are truncated to what is left so a
+     label can never draw outside its own button.
+
+     Returns one { x, w, text } per label, laid out left to right from x0.
+]]
+TC.UI.BTN_PAD     = 28   -- breathing room either side of a button label
+TC.UI.BTN_MIN_GAP = 10   -- buttons never touch
+
+function TC.buttonRow(x0, availW, labels, font)
+    local tm   = getTextManager()
+    local n    = #labels
+    local gaps = math.max(0, n - 1)
+
+    local widths, sum = {}, 0
+    for i, text in ipairs(labels) do
+        widths[i] = tm:MeasureStringX(font, text) + TC.UI.BTN_PAD
+        sum = sum + widths[i]
+    end
+
+    local forGaps = availW - sum
+    if forGaps < gaps * TC.UI.BTN_MIN_GAP then
+        local room  = math.max(0, availW - gaps * TC.UI.BTN_MIN_GAP)
+        local scale = (sum > 0) and (room / sum) or 0
+        sum = 0
+        for i = 1, n do
+            widths[i] = math.max(24, math.floor(widths[i] * scale))
+            sum = sum + widths[i]
+        end
+        forGaps = availW - sum
+    end
+
+    local gap = (gaps > 0) and (forGaps / gaps) or 0
+
+    local out, x = {}, x0
+    for i = 1, n do
+        out[i] = {
+            x    = math.floor(x),
+            w    = math.floor(widths[i]),
+            text = TC.truncate(font, labels[i], widths[i] - 8),
+        }
+        x = x + widths[i] + gap
+    end
+    return out
+end
+
+--[[ The narrowest a row of buttons can be drawn without truncating anything.
+
+     Windows use it as their minimum width, so a row can never be dragged smaller than
+     the words in it. Cheaper than discovering the same number by clipping a label. ]]
+function TC.buttonRowWidth(labels, font)
+    local tm = getTextManager()
+    local total = 0
+    for _, text in ipairs(labels) do
+        total = total + tm:MeasureStringX(font, text) + TC.UI.BTN_PAD
+    end
+    return total + math.max(0, #labels - 1) * TC.UI.BTN_MIN_GAP
+end

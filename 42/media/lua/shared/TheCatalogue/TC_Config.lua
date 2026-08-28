@@ -97,6 +97,42 @@ TC.EXCLUDED_ITEMS = {
     ["Catalogue.Parcel_10XL"] = true,
 }
 
+--[[ Delivery packaging.
+
+     A parcel that arrives with an order is a box, not goods. Left valued as merchandise
+     it paid for itself: a $2 round turned up inside a parcel the catalogue would buy
+     back for $4, so the cheapest thing on the shelf showed a profit the moment it
+     landed and the loop had no bottom.
+
+     Two ways to be packaging. The oversized parcels exist only as delivery crates, so
+     they are packaging by type. A vanilla parcel is ordinary loot that a delivery merely
+     borrowed, so it gets stamped on the way out instead -- a box found in a post office
+     still sells for what it is worth, and only the one the catalogue handed over is
+     worthless.
+
+     Worthless is not the same as unsellable. A packaging parcel is still a carrier, so
+     staging one sells everything inside it and the box goes with the sale; otherwise
+     "sell this parcel" would quietly mean "unpack it first".
+]]
+TC.PACKAGING_TYPES = {
+    ["Catalogue.Parcel_XXL"]  = true,
+    ["Catalogue.Parcel_5XL"]  = true,
+    ["Catalogue.Parcel_10XL"] = true,
+}
+
+function TC.markPackaging(item)
+    if not item then return end
+    local md = item:getModData()
+    if md then md.TC_packaging = true end
+end
+
+function TC.isPackaging(item)
+    if not item then return false end
+    if TC.PACKAGING_TYPES[item:getFullType()] then return true end
+    local md = item:getModData()
+    return (md and md.TC_packaging) == true
+end
+
 -- ---------------------------------------------------------------------------
 -- Logging
 -- ---------------------------------------------------------------------------
@@ -141,6 +177,42 @@ function TC.contentsOf(item)
     if not item then return nil end
     if not instanceof(item, "InventoryContainer") then return nil end
     return item:getInventory()
+end
+
+--[[ Take an item out of the world for good.
+
+     `container:Remove(item)` is enough for anything held in an inventory, and it was
+     all the sale did. On the GROUND that removes the item from the floor container the
+     inventory page is showing and leaves the IsoWorldInventoryObject standing on the
+     square: the catalogue paid for the item, and the item was still lying there to be
+     picked up and sold again. Free money, one drag at a time.
+
+     The sequence below is vanilla's own, lifted from ISTransferAction's floor branch --
+     drop the animal designation, tell the square (and any clients) the object is gone,
+     take it out of the square's object list, then cut the item's link back to it. Doing
+     only some of those leaves a ghost: an object with no item, or an item that still
+     believes it is on the floor.
+]]
+function TC.removeItem(item)
+    if not item then return false end
+
+    local world = item:getWorldItem()
+    if world then
+        local square = world:getSquare()
+        if square then
+            if DesignationZoneAnimal and DesignationZoneAnimal.removeItemFromGround then
+                DesignationZoneAnimal.removeItemFromGround(world)
+            end
+            square:transmitRemoveItemFromSquare(world)
+            square:removeWorldObject(world)
+        end
+        item:setWorldItem(nil)
+    end
+
+    local container = item:getContainer()
+    if container then container:Remove(item) end
+
+    return true
 end
 
 -- ---------------------------------------------------------------------------
