@@ -47,10 +47,19 @@ local function columnStops()
         kindW = math.max(kindW, tm:MeasureStringX(F, getText(key)))
     end
 
+    --[[ The amount column is measured too, and counted back from the right.
+
+         It was a bare 4px offset, which put the figure under the scrollbar: "-$2" drew
+         as "-$" with the last character behind the scroll track, and no amount of
+         resizing helped because the gutter moves with the edge. Widened to hold the
+         largest figure the ledger can show, and pushed clear of the gutter. ]]
+    local amountW = tm:MeasureStringX(F, "-$999999") + TC.UI.CELL_PAD * 2
+
     stops = { when = 12 }
-    stops.kind = stops.when + whenW + gap
-    stops.what = stops.kind + kindW + gap
-    return stops.when, stops.kind, stops.what
+    stops.kind   = stops.when + whenW + gap
+    stops.what   = stops.kind + kindW + gap
+    stops.amount = amountW
+    return stops.when, stops.kind, stops.what, stops.amount
 end
 
 TC_HistoryList = ISScrollingListBox:derive("TC_HistoryList")
@@ -64,12 +73,17 @@ function TC_HistoryList:doDrawItem(y, item, alt)
     end
 
     local ty = y + (ROW_HGT - FONT_HGT_SMALL) / 2
-    local whenX, kindX, whatX = columnStops()
+    local whenX, kindX, whatX, amountW = columnStops()
+
+    -- Everything to the right of the list is the scrollbar's, so the amount stops
+    -- short of it rather than under it.
+    local rightEdge  = w - TC.UI.SCROLL_GUTTER
+    local amountLeft = rightEdge - amountW
 
     -- Same grid as the catalogue: a rail under each row and a rule between each
     -- column, so a record reads across and a column reads down.
     self:drawRect(0, y + ROW_HGT - 1, w, 1, 0.25, 1, 1, 1)
-    for _, x in ipairs({ kindX - 8, whatX - 8, w - 88 }) do
+    for _, x in ipairs({ kindX - 8, whatX - 8, amountLeft }) do
         self:drawRect(x, y, 1, ROW_HGT - 1, 0.22, 1, 1, 1)
     end
 
@@ -99,11 +113,12 @@ function TC_HistoryList:doDrawItem(y, item, alt)
     else label = getText("IGUI_TC_LedgerSold") end
     self:drawText(label, kindX, ty, 0.72, 0.72, 0.76, 1, UIFont.Small)
 
-    -- The amount column is right-aligned, so the description stops short of it.
-    self:drawText(TC.truncate(UIFont.Small, e.summary or "", w - whatX - 90),
+    -- What is the elastic column: it gives up whatever the fixed ones need, so the
+    -- figure on the right is never the thing that gets cut.
+    self:drawText(TC.truncate(UIFont.Small, e.summary or "", amountLeft - whatX - TC.UI.CELL_PAD),
                   whatX, ty, 0.86, 0.86, 0.9, 1, UIFont.Small)
 
-    TC.drawRight(self, sign .. "$" .. (e.total or 0), w - 4, ty, UIFont.Small, r, g, b)
+    TC.drawRight(self, sign .. "$" .. (e.total or 0), rightEdge, ty, UIFont.Small, r, g, b)
 
     return y + ROW_HGT
 end
@@ -120,7 +135,11 @@ function TC_HistoryWindow:new(x, y, w, h, playerNum)
     o.playerNum = playerNum
     o.player = getSpecificPlayer(playerNum)
     o:setResizable(true)
-    o.minimumWidth = 620
+
+    -- Wide enough for the three fixed columns plus a readable stretch of What, so the
+    -- elastic column can never be squeezed out of existence by a drag.
+    local _, _, whatX, amountW = columnStops()
+    o.minimumWidth = math.max(620, PAD * 2 + whatX + 200 + amountW + TC.UI.SCROLL_GUTTER)
     o.minimumHeight = 380
     return o
 end
@@ -204,17 +223,19 @@ function TC_HistoryWindow:prerender()
 
     local hy = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
     local F = UIFont.Small
-    local whenX, kindX, whatX = columnStops()
-    for _, x in ipairs({ kindX - 8, whatX - 8, listW - 88 }) do
+    local whenX, kindX, whatX, amountW = columnStops()
+    local rightEdge  = listW - TC.UI.SCROLL_GUTTER
+    local amountLeft = rightEdge - amountW
+
+    for _, x in ipairs({ kindX - 8, whatX - 8, amountLeft }) do
         self:drawRect(PAD + x, headerY, 1, HEADER_HGT, 0.4, 1, 1, 1)
     end
     self:drawText(getText("IGUI_TC_LedgerWhen"), PAD + whenX, hy, 0.72, 0.72, 0.76, 1, F)
     self:drawText(getText("IGUI_TC_LedgerKind"), PAD + kindX, hy, 0.72, 0.72, 0.76, 1, F)
     self:drawText(getText("IGUI_TC_LedgerWhat"), PAD + whatX, hy, 0.72, 0.72, 0.76, 1, F)
 
-    local amt = getText("IGUI_TC_LedgerAmount")
-    local aw = getTextManager():MeasureStringX(F, amt)
-    self:drawText(amt, PAD + listW - aw - 4, hy, 0.72, 0.72, 0.76, 1, F)
+    -- Through the same helper the rows use, so the heading sits over its own figures.
+    TC.drawRight(self, getText("IGUI_TC_LedgerAmount"), PAD + rightEdge, hy, F, 0.72, 0.72, 0.76)
 
     if #self.list.items == 0 then
         local hint = getText("IGUI_TC_LedgerEmpty")

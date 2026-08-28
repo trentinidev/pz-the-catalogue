@@ -11,6 +11,20 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.6.4-alpha — 2026-08-27
+
+### Fixed
+- **The ledger's Amount column was drawn underneath the scrollbar**, so `-$2` rendered
+  as `-$` with the digit behind the scroll track, and resizing never helped because the
+  gutter moves with the edge. The column is measured against the largest figure the
+  ledger can show and counted back from the scrollbar; `What` is the elastic column and
+  gives up the room, so the figure is never the thing that gets cut. The cart's Total
+  column had the same 4-pixel offset and the same latent bug.
+- The ledger cannot be dragged narrower than its own columns any more.
+
+---
+
+
 ## 0.6.3-alpha — 2026-08-27
 
 ### Fixed
