@@ -136,6 +136,16 @@ else
     bad "CHANGELOG.md has no entry for modversion $v"
 fi
 
+# The version string the mod prints into console.txt must match mod.info. That banner is
+# how a log tells you which build was in memory, and a stale one would say the opposite of
+# the truth -- worse than no banner at all.
+lua_v=$(grep -oE 'TC\.VERSION = "[^"]+"' 42/media/lua/shared/TheCatalogue/TC_Config.lua | sed 's/.*"\(.*\)"/\1/')
+if [ "$lua_v" = "$v" ]; then
+    note "banner    TC.VERSION matches mod.info"
+else
+    bad "TC.VERSION is \"$lua_v\" but mod.info says \"$v\""
+fi
+
 if [ $fail -eq 0 ]; then
     note ""
     note "all checks passed"

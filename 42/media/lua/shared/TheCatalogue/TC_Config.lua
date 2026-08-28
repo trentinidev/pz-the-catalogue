@@ -133,6 +133,20 @@ function TC.isPackaging(item)
     return (md and md.TC_packaging) == true
 end
 
+
+--[[ Which build is actually running, printed into console.txt at load.
+
+     Written after a round of testing was spent on a build that had already been replaced
+     on disk: the game was launched four minutes before the files changed, and Project
+     Zomboid reads models once at boot. Nothing in the log said which version was in
+     memory, so three of us -- the log, the screenshots and me -- were describing
+     different builds.
+
+     A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
+     sandbox option and this line has to be there whether or not anyone turned it on.
+     tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
+TC.VERSION = "0.8.5-alpha"
+print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging
 -- ---------------------------------------------------------------------------

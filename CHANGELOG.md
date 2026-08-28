@@ -11,6 +11,19 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.8.5-alpha — 2026-08-28
+
+### Added
+- **The mod prints its version into `console.txt` at load.** A round of size testing was
+  spent on a build that had already been replaced on disk — the game was launched four
+  minutes before the mesh files changed, and Project Zomboid reads models once at boot.
+  Nothing in the log said which version was in memory, so the log, the screenshots and I
+  were each describing a different build. `tools/check.sh` verifies the string against
+  `mod.info`, because a stale banner would be worse than none.
+
+---
+
+
 ## 0.8.4-alpha — 2026-08-28
 
 ### Fixed
