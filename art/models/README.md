@@ -1,9 +1,4 @@
- tier | vertex data | node scale | effective | |
-|---|---|---|---|---|
-| vanilla extra large | 17.664 | 0.0254 | 0.4487 | the reference |
-| `parcel25` | 0.651 | 1.0 | 0.651 | 1.45× the extra large |
-| `parcel50` | 0.919 | 1.0 | 0.919 | 1.41× the 25 |
-| `parcel100` | 1.234 | 1.0 | 1.234 | 1.34× the 50 |# The parcel meshes
+# The parcel meshes
 
 The three oversized parcels have meshes of their own. They are built by
 [`tools/blender_parcels.py`](../../tools/blender_parcels.py), which runs Blender headless
@@ -23,39 +18,39 @@ blender --background --factory-startup --python tools/blender_parcels.py
 `--factory-startup` is deliberate: it ignores whatever add-ons and unit settings this
 machine's Blender happens to have, so the output does not depend on anyone's preferences.
 
-## Size is measured against vanilla, in RAW vertex units
+## Size: the unit conversion is baked into the vertices
 
-This took two wrong answers to get right, and the distinction is the whole of it.
+This took four attempts, and the reason is that vanilla's own file carries **two different
+numbers** for the same box:
 
-Vanilla's extra-large parcel, `Parcel_Present_1.fbx`, holds vertex data **17.664** units
-across, and the file declares its units as inches. Blender helpfully multiplies by 0.0254
-and reports 0.449 — **the game does not**. It reads the vertex data and applies only the
-`scale` from the model block.
+| | |
+|---|---|
+| vertex data in `Parcel_Present_1.fbx` | **17.664** |
+| after the file's inch-to-metre conversion | **0.4487** |
 
-The first attempt built against real-world metres, on the strength of vanilla's remaining
-ASCII `.x` models (a canteen 0.122 tall). Those are hand-held models and share no scale
-with `WorldStaticModel`. The second built against Blender's post-import 0.449, and shipped
-parcels eight times too small.
+Everything turns on which one the game reads, and the wrong answer is not subtly wrong —
+it is wrong by a factor of 39.4.
 
-And then the FBX has to be written in vanilla's convention, not just at vanilla's
-numbers. Ours previously declared its units as metres while vanilla declares inches — a
-factor of 39.4 that shows up under one reading of the file and not the other, which is
-exactly how you get one tier tiny and another enormous.
+- **Real-world metres**, from vanilla's remaining ASCII `.x` models (a canteen 0.122 tall).
+  Those are hand-held models and share no scale with `WorldStaticModel`. Wrong.
+- **Blender's post-import 0.4487.** Shipped parcels eight times too small.
+- **The raw 17.664.** Shipped parcels that filled the screen — and crucially, that was the
+  item *on the ground*, not the placement ghost. Since 36.18 against vanilla's 17.66 should
+  have been twice the size rather than screen-filling, this rules the raw reading out: the
+  game applies vanilla's conversion, and ignored ours, because ours lived in unit metadata
+  (which Blender honours on import and the game does not) rather than in the node transform.
+- **Baked into the geometry**, which is where it stands. The vertices are already the final
+  numbers, the node scale is 1.0, and our files carry no unit information for anything to
+  interpret differently.
 
-The export configuration was found by exporting a known cube several ways and re-importing
-each. Only `scale_length = 0.0254` with `apply_unit_scale=True` comes back as vanilla does:
-raw 17.664 with an object scale of 0.0254. With the convention matched, `scale = 0.2` means
-the same thing for both files however the game reads them, and the tier ratios hold either
-way.
+| tier | vertex data | node scale | effective | |
+|---|---|---|---|---|
+| vanilla extra large | 17.664 | 0.0254 | 0.4487 | the reference |
+| `parcel25` | 0.651 | 1.0 | 0.651 | 1.45× the extra large |
+| `parcel50` | 0.919 | 1.0 | 0.919 | 1.41× the 25 |
+| `parcel100` | 1.234 | 1.0 | 1.234 | 1.34× the 50 |
 
-So every size here is a multiple of 17.664, and the model blocks use vanilla's `scale = 0.2`:
-
-| tier | raw | in game | |
-|---|---|---|---|
-| vanilla extra large | 17.66 | 3.53 | the reference |
-| `parcel25` | 25.61 | 5.12 | 1.45× the extra large |
-| `parcel50` | 36.18 | 7.24 | 1.38× the 25 |
-| `parcel100` | 48.58 | 9.72 | 1.38× the 50 |
+All three use vanilla's own `scale = 0.2` in their model blocks.
 
 **The step between tiers is a doubling of bulk, not of width.** The brief was "each one
 double the last", and taking that literally gave 1.2× / 2.4× / 4.8× — right for capacity,
@@ -126,9 +121,9 @@ separate materials.
 
 Open the `.blend`, change what you like, and export FBX with:
 
-- **Scale 1.00**, **apply unit scale ON**, and the scene's unit length set to **0.0254** —
-  together these reproduce vanilla's convention, which is the trap described above. Any
-  other combination writes a file the game may scale differently from vanilla's
+- **Scale 1.00**, **apply unit scale OFF**, scene unit length **1.0** — the conversion is
+  already in the vertices, and any unit metadata written into the file is metadata the game
+  may read differently from vanilla's. That is the trap described above.
 - **Forward -Z, Up Y**
 - **Apply modifiers** on, and apply all transforms first (`Ctrl+A`) — a mesh carrying an
   unapplied scale exports at a size nobody can explain later
