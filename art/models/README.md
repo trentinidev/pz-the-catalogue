@@ -1,4 +1,9 @@
-# The parcel meshes
+ tier | vertex data | node scale | effective | |
+|---|---|---|---|---|
+| vanilla extra large | 17.664 | 0.0254 | 0.4487 | the reference |
+| `parcel25` | 0.651 | 1.0 | 0.651 | 1.45× the extra large |
+| `parcel50` | 0.919 | 1.0 | 0.919 | 1.41× the 25 |
+| `parcel100` | 1.234 | 1.0 | 1.234 | 1.34× the 50 |# The parcel meshes
 
 The three oversized parcels have meshes of their own. They are built by
 [`tools/blender_parcels.py`](../../tools/blender_parcels.py), which runs Blender headless
