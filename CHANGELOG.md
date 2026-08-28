@@ -11,6 +11,32 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.8.1-alpha — 2026-08-28
+
+### Fixed
+- **The parcels were the wrong size, because the reference was in the wrong space.** The
+  game reads an FBX's raw vertex data and applies only the `scale` from the model block —
+  it does not apply the file's unit metadata. Vanilla's extra large holds 17.664 units of
+  vertex data and declares inches, so Blender reports 0.449 and the game sees 17.664.
+  Building against Blender's number shipped parcels eight times too small.
+  Sizes are now multiples of vanilla's own raw figure, at vanilla's own `scale = 0.2`:
+  the 25 is 1.20× the extra large, the 50 is 2.05× the 25, the 100 is 1.95× the 50 and
+  covers about a tile.
+
+### Changed
+- **The polygon budget is vanilla's now.** Every vanilla parcel is 20 triangles — a plain
+  box with a painted texture doing all the work. These were 324, 1188 and 1836, which is
+  not a nicer version of the game's art but a different game's art sitting next to it.
+  They are 12, 60 and 60, with geometry only where it changes the silhouette: the crate's
+  corner posts, the pallet under the tarp.
+- **The tape, strapping, rails, plank seams and shipping label are painted into the
+  texture**, which is where vanilla puts them. The previous textures were flat material
+  with nothing drawn on, which was the other half of why they did not sit next to the
+  game's own boxes.
+
+---
+
+
 ## 0.8.0-alpha — 2026-08-28
 
 ### Added

@@ -41,9 +41,9 @@ New-Item -ItemType Directory -Force -Path $worldDir | Out-Null
 # Banding colour per tier, read off the art: translucent packing tape on the carton,
 # near-black webbing on the crate, dark brown canvas strap on the pallet load.
 $TIERS = @(
-    @{ key = "parcel25";  icon = "Item_ParcelXXL";  world = "Parcel25World";  band = @(214, 198, 170); timber = @(150, 116,  76) },
-    @{ key = "parcel50";  icon = "Item_Parcel5XL";  world = "Parcel50World";  band = @( 46,  44,  48); timber = @(146, 102,  56) },
-    @{ key = "parcel100"; icon = "Item_Parcel10XL"; world = "Parcel100World"; band = @( 74,  62,  50); timber = @(158, 116,  70) }
+    @{ key = "parcel25";  icon = "Item_ParcelXXL";  world = "Parcel25World";  band = @(214, 198, 170); bandAlpha = 205; timber = @(150, 116,  76); bands = @(0.5);        crossTop = $true;  rails = $false },
+    @{ key = "parcel50";  icon = "Item_Parcel5XL";  world = "Parcel50World";  band = @( 46,  44,  48); bandAlpha = 255; timber = @(146, 102,  56); bands = @(0.30, 0.70); crossTop = $false; rails = $true  },
+    @{ key = "parcel100"; icon = "Item_Parcel10XL"; world = "Parcel100World"; band = @( 74,  62,  50); bandAlpha = 255; timber = @(158, 116,  70); bands = @(0.28, 0.72); crossTop = $true;  rails = $false }
 )
 
 $TAPE_SD = 1.5    # how far above mean luminance counts as vanilla's tape
@@ -184,55 +184,119 @@ foreach ($tier in $TIERS) {
     Write-Host ("{0,-10} icon   content {1}x{2} -> {3}" -f $tier.key, $b[2], $b[3], (Split-Path $iconPath -Leaf))
 
     # --------------------------------------------------------- the world texture
-    # --------------------------------------------------------- the world texture
     #
-    # Painted into OUR grid, not into vanilla's atlas. The meshes in
-    # tools/blender_parcels.py are unwrapped to the layout in $CELLS, so for the first
-    # time a pixel put in the FRONT cell comes out on the front of the box.
+    # Painted into OUR grid: the meshes in tools/blender_parcels.py are unwrapped to the
+    # layout in $CELLS_UV, so a pixel put in the FRONT cell comes out on the front.
     #
-    # Flat material per cell, and deliberately flat: the mesh now carries real bevels and
-    # a real frame, so the light does the shading. Baking shading in as well would fight
-    # the geometry and look painted-on from every angle but one.
+    # AND PAINTED, not modelled. Vanilla's parcels are a plain box whose tape exists only
+    # in the texture, and that is the standard being matched. The tape cross, the
+    # strapping, the crate's rails and the shipping label are drawn on here; the mesh
+    # carries only what changes the outline -- the crate's corner posts, the pallet.
     #
-    # This is the starting texture, not the finished one. art/models/uv_layout.png is the
-    # same grid with the cells labelled -- paint stamps and shipping labels straight onto
-    # it and they land where you put them.
+    # The art sheets could not be cut up automatically to supply the six faces: their
+    # panels touch, so a projection profile finds one region rather than six. The material
+    # is sampled from them and the markings are drawn, which is closer to how the game's
+    # own parcel textures are made anyway.
 
     $faces = New-Object System.Drawing.Bitmap((Join-Path $art ("{0}_faces.png" -f $tier.key)))
     $patch = Find-MaterialPatch $faces 160 24
     Write-Host ("{0,-10} material patch ({1},{2}) {3}px, sd {4:N1}" -f $tier.key, $patch[0], $patch[1], $patch[2], $patch[4])
 
-    # 384x256 keeps the six body cells square-ish at 3:2. Vanilla's parcels are 64x64,
-    # so this is generous without being wasteful.
-    $TW = 384; $TH = 256
-    $world = New-Canvas $TW $TH
+    # 384x256 keeps the six body cells square at 3:2. Vanilla's parcels are 64x64, so this
+    # carries four times their linear detail -- generous, not wasteful.
+    $texW = 384; $texH = 256
+    $world = New-Canvas $texW $texH
     $g = New-Graphics $world
-
-    foreach ($cellName in @("front","back","left","right","top","bottom")) {
+    foreach ($cellName in @("front", "back", "left", "right", "top", "bottom")) {
         $c = $CELLS_UV[$cellName]
-        # v runs upward in UV space and downward in pixels.
-        $dx = [int]($c[0] * $TW); $dw = [int](($c[2] - $c[0]) * $TW)
-        $dy = [int]((1 - $c[3]) * $TH); $dh = [int](($c[3] - $c[1]) * $TH)
+        $dx = [int]($c[0] * $texW); $dw = [int](($c[2] - $c[0]) * $texW)
+        $dy = [int]((1 - $c[3]) * $texH); $dh = [int](($c[3] - $c[1]) * $texH)
         Draw-Region $g $faces $dx $dy $dw $dh $patch[0] $patch[1] $patch[2] $patch[3]
     }
-
-    # The trim strip: strapping on the left half, bare timber on the right. Both are flat
-    # colours read off the art, because a strap is a strap from every angle and the posts
-    # and pallet boards are too small on screen to carry grain.
-    $band = [System.Drawing.Color]::FromArgb(255, $tier.band[0], $tier.band[1], $tier.band[2])
-    $wood = [System.Drawing.Color]::FromArgb(255, $tier.timber[0], $tier.timber[1], $tier.timber[2])
-    $sc = $CELLS_UV["strap"];  $tc = $CELLS_UV["timber"]
-    $g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceOver
-    $g.FillRectangle((New-Object System.Drawing.SolidBrush $band),
-                     [int]($sc[0]*$TW), [int]((1-$sc[3])*$TH), [int](($sc[2]-$sc[0])*$TW), [int](($sc[3]-$sc[1])*$TH))
-    $g.FillRectangle((New-Object System.Drawing.SolidBrush $wood),
-                     [int]($tc[0]*$TW), [int]((1-$tc[3])*$TH), [int](($tc[2]-$tc[0])*$TW), [int](($tc[3]-$tc[1])*$TH))
     $g.Dispose()
 
-    # Every pixel opaque. A world model is not alpha tested, and a stray sub-255 alpha
-    # from a resample shows as a hole in the mesh rather than as a soft edge.
-    for ($y = 0; $y -lt $TH; $y++) {
-        for ($x = 0; $x -lt $TW; $x++) {
+    # From here on it is ordinary painting over the material, so a plain Graphics rather
+    # than the SourceCopy one the resamples above needed.
+    $g = [System.Drawing.Graphics]::FromImage($world)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::None
+
+    $bandBrush  = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb($tier.bandAlpha, $tier.band[0], $tier.band[1], $tier.band[2]))
+    $solidBand  = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, $tier.band[0], $tier.band[1], $tier.band[2]))
+    $woodBrush  = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, $tier.timber[0], $tier.timber[1], $tier.timber[2]))
+    $inkBrush   = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(70, 30, 22, 14))
+    $paperBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(235, 232, 228, 214))
+    $stampBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(190, 158, 44, 38))
+
+    # The four upright faces. Banding runs down them, and on the crate a rail closes the
+    # top and bottom of each panel the way a real frame does.
+    foreach ($side in @("front", "back", "left", "right")) {
+        $c = $CELLS_UV[$side]
+        $rx = [int]($c[0] * $texW); $ry = [int]((1 - $c[3]) * $texH)
+        $rw = [int](($c[2] - $c[0]) * $texW); $rh = [int](($c[3] - $c[1]) * $texH)
+        $bw = [int]($rw * 0.11)
+
+        if ($tier.rails) {
+            $rail = [int]($rh * 0.13)
+            $g.FillRectangle($woodBrush, $rx, $ry, $rw, $rail)
+            $g.FillRectangle($woodBrush, $rx, ($ry + $rh - $rail), $rw, $rail)
+            # Two plank seams between the rails. More would just turn to noise once the
+            # texture is filtered down onto a sixty-triangle box on the ground.
+            for ($i = 1; $i -le 2; $i++) {
+                $g.FillRectangle($inkBrush, $rx, ($ry + [int]($rh * (0.13 + 0.25 * $i))), $rw, 1)
+            }
+        }
+
+        foreach ($f in $tier.bands) {
+            $g.FillRectangle($bandBrush, ($rx + [int]($rw * $f) - [int]($bw / 2)), $ry, $bw, $rh)
+        }
+    }
+
+    # The lid. Most of what an isometric camera ever sees of a box on the ground is its
+    # top, so this is the face the banding has to read on.
+    $c = $CELLS_UV["top"]
+    $rx = [int]($c[0] * $texW); $ry = [int]((1 - $c[3]) * $texH)
+    $rw = [int](($c[2] - $c[0]) * $texW); $rh = [int](($c[3] - $c[1]) * $texH)
+    $bw = [int]($rw * 0.11)
+    foreach ($f in $tier.bands) {
+        $g.FillRectangle($bandBrush, ($rx + [int]($rw * $f) - [int]($bw / 2)), $ry, $bw, $rh)
+    }
+    if ($tier.crossTop) {
+        $g.FillRectangle($bandBrush, $rx, ($ry + [int]($rh * 0.5) - [int]($bw / 2)), $rw, $bw)
+    }
+    if ($tier.rails) {
+        $rail = [int]($rh * 0.13)
+        $g.FillRectangle($woodBrush, $rx, $ry, $rw, $rail)
+        $g.FillRectangle($woodBrush, $rx, ($ry + $rh - $rail), $rw, $rail)
+    }
+
+    # A shipping label and a stamp on the front. A parcel with no paperwork on it reads as
+    # scenery rather than as something addressed to you.
+    $c = $CELLS_UV["front"]
+    $rx = [int]($c[0] * $texW); $ry = [int]((1 - $c[3]) * $texH)
+    $rw = [int](($c[2] - $c[0]) * $texW); $rh = [int](($c[3] - $c[1]) * $texH)
+    $lw = [int]($rw * 0.40); $lh = [int]($rh * 0.20)
+    $lx = $rx + [int]($rw * 0.54); $ly = $ry + [int]($rh * 0.62)
+    $g.FillRectangle($paperBrush, $lx, $ly, $lw, $lh)
+    for ($i = 1; $i -le 3; $i++) {
+        $g.FillRectangle($inkBrush, ($lx + 2), ($ly + [int]($lh * 0.22 * $i)), ($lw - 4), 1)
+    }
+    $g.FillRectangle($stampBrush, ($rx + [int]($rw * 0.10)), ($ry + [int]($rh * 0.28)),
+                     [int]($rw * 0.30), [int]($rh * 0.13))
+
+    # The trim strip: strapping on the left half, bare timber on the right. Flat, because
+    # a strap is a strap from every angle and a corner post is a few pixels wide on screen.
+    $c = $CELLS_UV["strap"]
+    $g.FillRectangle($solidBand, [int]($c[0]*$texW), [int]((1-$c[3])*$texH),
+                     [int](($c[2]-$c[0])*$texW), [int](($c[3]-$c[1])*$texH))
+    $c = $CELLS_UV["timber"]
+    $g.FillRectangle($woodBrush, [int]($c[0]*$texW), [int]((1-$c[3])*$texH),
+                     [int](($c[2]-$c[0])*$texW), [int](($c[3]-$c[1])*$texH))
+    $g.Dispose()
+
+    # Every pixel opaque. A world model is not alpha tested, and a stray sub-255 alpha from
+    # a resample shows as a hole in the mesh rather than as a soft edge.
+    for ($y = 0; $y -lt $texH; $y++) {
+        for ($x = 0; $x -lt $texW; $x++) {
             $c = $world.GetPixel($x, $y)
             if ($c.A -ne 255) { $world.SetPixel($x, $y, [System.Drawing.Color]::FromArgb(255, $c.R, $c.G, $c.B)) }
         }
@@ -240,7 +304,7 @@ foreach ($tier in $TIERS) {
 
     $worldPath = Join-Path $worldDir ("{0}.png" -f $tier.world)
     $world.Save($worldPath, [System.Drawing.Imaging.ImageFormat]::Png)
-    Write-Host ("{0,-10} world  -> {1} ({2}x{3}, our UV grid)" -f $tier.key, (Split-Path $worldPath -Leaf), $TW, $TH)
+    Write-Host ("{0,-10} world  -> {1} ({2}x{3}, painted into our UV grid)" -f $tier.key, (Split-Path $worldPath -Leaf), $texW, $texH)
 
     $world.Dispose(); $faces.Dispose(); $iso.Dispose()
 }

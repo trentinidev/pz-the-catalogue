@@ -2,7 +2,7 @@
 
 A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
-> **Alpha — 0.8.0.** Not released, and the version number says so deliberately. It works
+> **Alpha — 0.8.1.** Not released, and the version number says so deliberately. It works
 > and it is played, but parts of it have never been exercised.
 > **Single-player only.** All transaction logic runs client-side, so on a dedicated
 > server it is trivially cheatable; server authority is deliberately deferred until
