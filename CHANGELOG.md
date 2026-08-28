@@ -11,6 +11,21 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.8.2-alpha — 2026-08-28
+
+### Fixed
+- **The parcel FBX files now carry vanilla's unit convention**, which is what the sizes
+  were still missing. Getting the numbers right was only half of it: ours declared metres
+  while vanilla declares inches, a factor of 39.4 that shows up under one reading of the
+  file and not the other — exactly how one tier ends up tiny and another enormous.
+  The export configuration was found empirically, by writing a known cube several ways and
+  re-importing each; only one comes back as vanilla does, raw 17.664 with an object scale
+  of 0.0254. With the convention matched, the tiers measure 1.20×, 2.46× and 4.80× the
+  extra large under *both* readings of the file rather than only one.
+
+---
+
+
 ## 0.8.1-alpha — 2026-08-28
 
 ### Fixed

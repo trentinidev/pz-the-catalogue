@@ -247,6 +247,10 @@ def build_parcel100():
 
 
 def export(obj, name):
+    # Inches, like vanilla's files. Set here rather than at the top because it only
+    # affects what the exporter writes, never the numbers modelled above.
+    bpy.context.scene.unit_settings.scale_length = 0.0254
+
     os.makedirs(BLEND_DIR, exist_ok=True)
     os.makedirs(FBX_DIR, exist_ok=True)
 
@@ -262,11 +266,14 @@ def export(obj, name):
         # is what vanilla's meshes use and what the game expects.
         axis_forward="-Z",
         axis_up="Y",
-        # No unit conversion: the numbers modelled are the numbers written, because the
-        # game reads raw vertices. apply_unit_scale would fold Blender's metre in and
-        # silently rescale everything.
+        # Matches vanilla's unit convention exactly. Found by exporting a known cube under
+        # several configurations and re-importing each: only this one comes back as
+        # raw 17.664 with an object scale of 0.0254, which is what Parcel_Present_1.fbx
+        # does. With the convention matched it no longer matters how the game reads the
+        # unit metadata -- ours and vanilla's are read the same way, so `scale = 0.2`
+        # means the same thing for both, and the tier ratios hold either way.
         global_scale=1.0,
-        apply_unit_scale=False,
+        apply_unit_scale=True,
         apply_scale_options="FBX_SCALE_NONE",
         bake_space_transform=False,
         use_mesh_modifiers=True,
