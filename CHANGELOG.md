@@ -11,6 +11,23 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.7.3-alpha — 2026-08-27
+
+### Fixed
+- **The item ID was drawn through the separator in the buy window's detail panel.** The
+  rule was pinned to the bottom of the 64px icon, on the assumption that the name and
+  the fullType beside it would always fit in that height — at a larger UI scale they do
+  not. The rule now sits below whichever of the two is actually taller.
+
+### Changed
+- **The delivery window lists items with their icons**, on the same row height and grid
+  as the catalogue: a rail under each row and a rule between the columns. A delivery
+  should read as a page from the same book, not as a different widget that happens to
+  list items.
+
+---
+
+
 ## 0.7.2-alpha — 2026-08-27
 
 ### Changed
