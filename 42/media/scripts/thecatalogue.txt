@@ -70,27 +70,29 @@ module Catalogue
        unwrap is a grid we chose and wrote down, so a pixel in the FRONT cell comes out on
        the front. See art/models/README.md and art/models/uv_layout.png.
 
-       scale = 1.0 because these are modelled life-size: vanilla's remaining ASCII .x
-       models measure like real objects at scale 1.0, so a metre here is a metre there. */
+       scale = 0.2, vanilla's own, because the sizes are defined against vanilla's extra
+       large rather than against a metre. Measured by importing Parcel_Present_1.fbx: it is
+       0.449 across and its model block scales it by 0.2. The tiers come out at 1.2x, 2.5x
+       and 4.8x that -- each roughly double the one below, the largest about a tile. */
     model Parcel25World
     {
         mesh = WorldItems/parcel25,
         texture = TheCatalogue/Parcel25World,
-        scale = 1.0,
+        scale = 0.2,
     }
 
     model Parcel50World
     {
         mesh = WorldItems/parcel50,
         texture = TheCatalogue/Parcel50World,
-        scale = 1.0,
+        scale = 0.2,
     }
 
     model Parcel100World
     {
         mesh = WorldItems/parcel100,
         texture = TheCatalogue/Parcel100World,
-        scale = 1.0,
+        scale = 0.2,
     }
 
     item Parcel_XXL
