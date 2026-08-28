@@ -800,10 +800,13 @@ function TC_SellWindow:prerender()
 
     -- Spell out the spread rather than leaving the player to work out why the total
     -- falls short of the sticker prices.
+    -- When the status line ages out, this falls back to the spread note, so the row
+    -- never goes blank -- it goes back to saying the useful permanent thing.
     local msgY = footY + FONT_HGT_LARGE + 6
-    if self.message then
-        local msg = TC.truncate(UIFont.Small, self.message, listW)
-        if self.messageIsError then
+    local msgText, msgErr = self:activeMessage()
+    if msgText then
+        local msg = TC.truncate(UIFont.Small, msgText, listW)
+        if msgErr then
             self:drawText(msg, PAD, msgY, 1, 0.3, 0.3, 1, UIFont.Small)
         else
             self:drawText(msg, PAD, msgY, 0.6, 1, 0.6, 1, UIFont.Small)

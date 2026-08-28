@@ -804,10 +804,11 @@ function TC_BuyWindow:prerender()
     local bw = getTextManager():MeasureStringX(UIFont.Large, bText)
     self:drawText(bText, innerRight - bw, blockY, 0.85, 1, 0.85, 1, UIFont.Large)
 
-    if self.message then
+    local msgText, msgErr = self:activeMessage()
+    if msgText then
         local my = blockY + FONT_HGT_LARGE + 6
-        local msg = TC.truncate(UIFont.Small, self.message, DETAIL_W - PAD * 2)
-        if self.messageIsError then
+        local msg = TC.truncate(UIFont.Small, msgText, DETAIL_W - PAD * 2)
+        if msgErr then
             self:drawText(msg, innerLeft, my, 1, 0.3, 0.3, 1, UIFont.Small)
         else
             self:drawText(msg, innerLeft, my, 0.6, 1, 0.6, 1, UIFont.Small)

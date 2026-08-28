@@ -11,6 +11,32 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.6.2-alpha — 2026-08-27
+
+### Changed
+- **The ledger is a real table now**, with the same column rules and row rails as the
+  catalogue, and a `Type` heading over the column that was previously unlabelled.
+- **"Order history" is now "Ledger"** in the right-click menu, matching what the window
+  has called itself all along.
+
+### Fixed
+- **The ledger's delivery estimate was frozen at whatever it said when the window
+  opened.** The row now keeps the order rather than a formatted string and renders the
+  countdown each frame, so an open ledger walks down from `~8h` to `~7h` to `~6h` as the
+  hours pass. A delivery that lands while the window is open drops out of the pending
+  block on its own.
+- **Confirmation messages stayed on screen forever.** "Added 5 x Apple to the cart" is
+  worth reading once; left up it becomes furniture that says only that something
+  happened at some point. Messages now clear themselves after six real seconds --
+  measured in real time, not game time, because they are addressed to the person at the
+  keyboard and should not survive a night's sleep.
+- **`Place order` overflowed its button in the cart.** The bottom row divided the width
+  into thirds and then squeezed two buttons into the last one. `Rush` is now measured
+  from its own label and the other three split what remains evenly.
+
+---
+
+
 ## 0.6.1-alpha — 2026-08-27
 
 ### Fixed

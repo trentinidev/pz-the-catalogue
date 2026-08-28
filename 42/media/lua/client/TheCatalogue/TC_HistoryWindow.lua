@@ -62,10 +62,16 @@ function TC_HistoryList:doDrawItem(y, item, alt)
     if self.selected == item.index then
         self:drawRect(0, y, w, ROW_HGT - 1, 0.55, 0.24, 0.34, 0.45)
     end
-    self:drawRect(0, y + ROW_HGT - 1, w, 1, 0.22, 1, 1, 1)
 
     local ty = y + (ROW_HGT - FONT_HGT_SMALL) / 2
     local whenX, kindX, whatX = columnStops()
+
+    -- Same grid as the catalogue: a rail under each row and a rule between each
+    -- column, so a record reads across and a column reads down.
+    self:drawRect(0, y + ROW_HGT - 1, w, 1, 0.25, 1, 1, 1)
+    for _, x in ipairs({ kindX - 8, whatX - 8, w - 88 }) do
+        self:drawRect(x, y, 1, ROW_HGT - 1, 0.22, 1, 1, 1)
+    end
 
     -- Bought and sold are told apart by colour and by the sign on the figure, not by a
     -- word, so the column stays narrow and the direction reads at a glance. A pending
@@ -80,7 +86,12 @@ function TC_HistoryList:doDrawItem(y, item, alt)
         sign = "+"
     end
 
-    self:drawText(e.when or "?", whenX, ty, 0.6, 0.6, 0.64, 1, UIFont.Small)
+    -- A pending row shows a live countdown; a completed one shows when it happened.
+    local when = e.when or "?"
+    if e.pending and e.order then
+        when = getText("IGUI_TC_LedgerEta", math.floor(TC.hoursLeft(e.order) + 0.5))
+    end
+    self:drawText(when, whenX, ty, 0.6, 0.6, 0.64, 1, UIFont.Small)
 
     local label
     if e.pending then label = getText("IGUI_TC_LedgerPending")
@@ -149,10 +160,13 @@ function TC_HistoryWindow:refreshList()
         for _, line in ipairs(order.lines or {}) do
             table.insert(parts, (line.qty or 1) .. " x " .. (line.name or "?"))
         end
+        -- The ORDER is kept, not a formatted time. The countdown is rendered per frame
+        -- from it, so an open ledger ticks down from ~8h to ~7h as the hours pass
+        -- rather than freezing at whatever it said when the window opened.
         self.list:addItem("", {
             pending = true,
+            order   = order,
             total   = order.paid or 0,
-            when    = getText("IGUI_TC_LedgerEta", math.floor(TC.hoursLeft(order) + 0.5)),
             summary = table.concat(parts, ", "),
         })
     end
@@ -172,6 +186,15 @@ end
 function TC_HistoryWindow:prerender()
     ISCollapsableWindow.prerender(self)
 
+    -- The countdown redraws itself every frame, but a delivered order has to LEAVE the
+    -- list, and that only happens on a rebuild. Watching the pending count is enough:
+    -- it is the only thing that changes the rows while the window sits open.
+    local pending = TC.pendingCount(self.player)
+    if pending ~= self.lastPending then
+        self.lastPending = pending
+        self:refreshList()
+    end
+
     local listY, listH = self:listGeometry()
     local listW = self.width - PAD * 2
     local headerY = listY - HEADER_HGT
@@ -181,8 +204,12 @@ function TC_HistoryWindow:prerender()
 
     local hy = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
     local F = UIFont.Small
-    local whenX, _, whatX = columnStops()
+    local whenX, kindX, whatX = columnStops()
+    for _, x in ipairs({ kindX - 8, whatX - 8, listW - 88 }) do
+        self:drawRect(PAD + x, headerY, 1, HEADER_HGT, 0.4, 1, 1, 1)
+    end
     self:drawText(getText("IGUI_TC_LedgerWhen"), PAD + whenX, hy, 0.72, 0.72, 0.76, 1, F)
+    self:drawText(getText("IGUI_TC_LedgerKind"), PAD + kindX, hy, 0.72, 0.72, 0.76, 1, F)
     self:drawText(getText("IGUI_TC_LedgerWhat"), PAD + whatX, hy, 0.72, 0.72, 0.76, 1, F)
 
     local amt = getText("IGUI_TC_LedgerAmount")

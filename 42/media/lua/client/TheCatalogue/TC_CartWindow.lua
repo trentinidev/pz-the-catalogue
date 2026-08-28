@@ -87,29 +87,27 @@ function TC_CartWindow:createChildren()
     self.list.target = self
     self:addChild(self.list)
 
+    --[[ Four buttons across the bottom, not three plus a squeezed pair.
+
+         "Place order" was cut to 55% of a third and its label ran straight out of the
+         button. Rush is one short word and needs far less room than the other three,
+         so it takes a fixed slice and the rest share what is left evenly. ]]
     local by = self.height - BOTTOM_PAD - BUTTON_HGT
-    local third = (self.width - PAD * 4) / 3
+    local rushW = math.max(70, getTextManager():MeasureStringX(UIFont.Medium,
+                                    getText("IGUI_TC_Rush")) + 28)
+    local wide  = (self.width - PAD * 5 - rushW) / 3
 
-    self.removeBtn = ISButton:new(PAD, by, third, BUTTON_HGT,
-                                  getText("IGUI_TC_RemoveSelected"), self, TC_CartWindow.onRemove)
-    self.removeBtn:initialise(); self.removeBtn:instantiate()
-    self:addChild(self.removeBtn)
+    local function place(label, handler, x, w)
+        local b = ISButton:new(x, by, w, BUTTON_HGT, getText(label), self, handler)
+        b:initialise(); b:instantiate()
+        self:addChild(b)
+        return b
+    end
 
-    self.clearBtn = ISButton:new(PAD * 2 + third, by, third, BUTTON_HGT,
-                                 getText("IGUI_TC_ClearAll"), self, TC_CartWindow.onClear)
-    self.clearBtn:initialise(); self.clearBtn:instantiate()
-    self:addChild(self.clearBtn)
-
-    self.checkoutBtn = ISButton:new(PAD * 3 + third * 2, by, third * 0.55, BUTTON_HGT,
-                                    getText("IGUI_TC_Checkout"), self, TC_CartWindow.onCheckout)
-    self.checkoutBtn:initialise(); self.checkoutBtn:instantiate()
-    self:addChild(self.checkoutBtn)
-
-    self.rushBtn = ISButton:new(PAD * 3 + third * 2 + third * 0.55 + 4, by,
-                                third * 0.45 - 4, BUTTON_HGT,
-                                getText("IGUI_TC_Rush"), self, TC_CartWindow.onRush)
-    self.rushBtn:initialise(); self.rushBtn:instantiate()
-    self:addChild(self.rushBtn)
+    self.removeBtn   = place("IGUI_TC_RemoveSelected", TC_CartWindow.onRemove,   PAD, wide)
+    self.clearBtn    = place("IGUI_TC_ClearAll",       TC_CartWindow.onClear,    PAD * 2 + wide, wide)
+    self.checkoutBtn = place("IGUI_TC_Checkout",       TC_CartWindow.onCheckout, PAD * 3 + wide * 2, wide)
+    self.rushBtn     = place("IGUI_TC_Rush",           TC_CartWindow.onRush,     PAD * 4 + wide * 3, rushW)
 
     self:refreshList()
 end
@@ -152,11 +150,6 @@ function TC_CartWindow:onClear()
     for i = #cart, 1, -1 do table.remove(cart, i) end
     self:refreshList()
     self.message = nil
-end
-
-function TC_CartWindow:setMessage(text, isError)
-    self.message = text
-    self.messageIsError = isError and true or false
 end
 
 --[[ Everything that can REFUSE the order is checked here, before the action starts,
@@ -314,10 +307,11 @@ function TC_CartWindow:prerender()
     self:drawText(label, self.width - PAD - tw - lw - PAD,
                   footY + (FONT_HGT_LARGE - FONT_HGT_SMALL) / 2, 0.68, 0.68, 0.72, 1, UIFont.Small)
 
-    if self.message then
-        local msg = TC.truncate(UIFont.Small, self.message, listW)
+    local msgText, msgErr = self:activeMessage()
+    if msgText then
+        local msg = TC.truncate(UIFont.Small, msgText, listW)
         local my = footY + FONT_HGT_LARGE + 6
-        if self.messageIsError then
+        if msgErr then
             self:drawText(msg, PAD, my, 1, 0.3, 0.3, 1, UIFont.Small)
         else
             self:drawText(msg, PAD, my, 0.6, 1, 0.6, 1, UIFont.Small)
@@ -332,13 +326,14 @@ function TC_CartWindow:onResize()
     self.list:setHeight(listH)
 
     local by = self.height - BOTTOM_PAD - BUTTON_HGT
-    local third = (self.width - PAD * 4) / 3
-    self.removeBtn:setX(PAD);                   self.removeBtn:setY(by);   self.removeBtn:setWidth(third)
-    self.clearBtn:setX(PAD * 2 + third);        self.clearBtn:setY(by);    self.clearBtn:setWidth(third)
-    self.checkoutBtn:setX(PAD * 3 + third * 2); self.checkoutBtn:setY(by)
-    self.checkoutBtn:setWidth(third * 0.55)
-    self.rushBtn:setX(PAD * 3 + third * 2 + third * 0.55 + 4); self.rushBtn:setY(by)
-    self.rushBtn:setWidth(third * 0.45 - 4)
+    local rushW = math.max(70, getTextManager():MeasureStringX(UIFont.Medium,
+                                    getText("IGUI_TC_Rush")) + 28)
+    local wide  = (self.width - PAD * 5 - rushW) / 3
+
+    self.removeBtn:setX(PAD);                  self.removeBtn:setY(by);   self.removeBtn:setWidth(wide)
+    self.clearBtn:setX(PAD * 2 + wide);        self.clearBtn:setY(by);    self.clearBtn:setWidth(wide)
+    self.checkoutBtn:setX(PAD * 3 + wide * 2); self.checkoutBtn:setY(by); self.checkoutBtn:setWidth(wide)
+    self.rushBtn:setX(PAD * 4 + wide * 3);     self.rushBtn:setY(by);     self.rushBtn:setWidth(rushW)
 end
 
 function TC_CartWindow:close()
@@ -367,3 +362,4 @@ function TC.openCartWindow(playerNum, buyWindow)
     TC_CartWindow.instances[playerNum] = win
     return win
 end
+TC.applyMessageBehaviour(TC_CartWindow)
