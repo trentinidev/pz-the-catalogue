@@ -11,6 +11,21 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.7.1-alpha — 2026-08-27
+
+### Changed
+- **Waits under an hour count down in minutes** — `in ~20min`, `in ~10min` — instead of
+  collapsing to a single `under 1h`. With lead times rebalanced, a twenty-minute delivery
+  and a fifty-minute one are different plans, and the ledger already redraws every frame,
+  so the countdown is there for free. Rounded to the nearest five minutes, because a
+  delivery is somebody else's schedule and an exact figure would invite watching a clock
+  instead of playing; below five minutes it says `any minute` rather than a number worth
+  nothing. The order confirmation now reads "arriving in about 20 minutes" for the same
+  reason.
+
+---
+
+
 ## 0.7.0-alpha — 2026-08-27
 
 ### Added
