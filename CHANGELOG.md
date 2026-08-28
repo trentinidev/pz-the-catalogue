@@ -11,6 +11,30 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.7.8-alpha — 2026-08-28
+
+### Changed
+- **All three parcel tiers now carry their own art**, icons and world textures both. The
+  new renders arrived with alpha, so the icons are the art itself rather than a crop off
+  a comparison sheet, and each world texture takes its material — cardboard, planks,
+  olive canvas — from that tier's own faces instead of from a vanilla stand-in.
+- **The material patch is found, not hand-picked.** Hardcoded coordinates are magic
+  numbers that silently start pointing at a shipping label the next time the art is
+  re-rendered; the script searches for the flattest fully-opaque window instead, which is
+  what picks bare planks over a corner bracket. Sampled from the face sheets rather than
+  the isometric render, because the iso view is busy everywhere and the best it could
+  offer still carried half a FRAGILE stamp.
+
+### Added
+- **`art/`** holds the source renders, so both generators are reproducible from a clean
+  clone rather than from whatever happens to be in someone's Downloads folder.
+- `tools/check.sh` now verifies that **every `Icon` and `texture` a script names exists on
+  disk**. A missing one is silent in game — nothing renders, and the script that named it
+  is never blamed.
+
+---
+
+
 ## 0.7.7-alpha — 2026-08-27
 
 ### Changed

@@ -1,6 +1,6 @@
 # The Catalogue -- build the item icon and the world-model texture from the art renders.
 #
-#     powershell -ExecutionPolicy Bypass -File tools\gen_art.ps1 -Source <folder>
+#     powershell -ExecutionPolicy Bypass -File tools\gen_art.ps1
 #
 # WHY THIS IS A SCRIPT. Both outputs are tiny -- 32x32 and 64x64 -- and both are derived
 # from 1254px renders by rules that are easy to get subtly wrong and impossible to spot
@@ -16,17 +16,17 @@
 #
 # Change those and the cover wraps around onto the pages.
 
-param(
-    [string]$Source = "$env:USERPROFILE\Downloads"
-)
+# Sources live in art/, so this is reproducible from a clean clone rather than from
+# whatever happens to be in someone's Downloads folder.
 
 Add-Type -AssemblyName System.Drawing
 $ErrorActionPreference = "Stop"
 
 $root      = Split-Path -Parent $PSScriptRoot
 $textures  = Join-Path $root "42\media\textures"
-$iconSrc   = Join-Path $Source "catalog_icon.png"
-$sheetSrc  = Join-Path $Source "catalog_model.png"
+$art       = Join-Path $root "art"
+$iconSrc   = Join-Path $art "catalogue_icon.png"
+$sheetSrc  = Join-Path $art "catalogue_faces.png"
 
 foreach ($f in @($iconSrc, $sheetSrc)) {
     if (-not (Test-Path $f)) { throw "missing source render: $f" }
