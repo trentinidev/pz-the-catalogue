@@ -4,7 +4,7 @@ A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
 [![checks](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml/badge.svg)](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml)
 
-> **Alpha — 0.11.3, single-player.** Not released, and the version number says so
+> **Alpha — 0.12.0, single-player.** Not released, and the version number says so
 > deliberately: it works and it is played, but parts of it have never been exercised.
 > [What to expect](#what-to-expect) sets out the limits before you install.
 > See [CHANGELOG.md](CHANGELOG.md) for what has landed, and [ROADMAP.txt](ROADMAP.txt)
@@ -306,6 +306,12 @@ Three layers, most specific first, in `media/lua/shared/TheCatalogue/`:
   fallback would price them anyway and the floor is $1, which is how a debug water
   bucket ends up on the shelf for a dollar. They are refused before any pricing layer
   is asked.
+- **Packs** — a box is priced at what it holds: the count comes from the trailing number
+  of the item's `DoubleClickRecipe` (`UnpackFoodBox6`), the content from stripping
+  `Box`/`Carton`/`Crate`/`Case`/`Pack` off the id and finding the sibling. A carton looks
+  for the inner box before the bare item, so a carton of twelve boxes of twelve is 144
+  units. Resolved in a pass after the index, because a box's content may be indexed
+  after the box and a carton has to wait for its boxes.
 - **`TC_ModPricing.lua`** — items from other mods, which the study will never cover. The
   rich properties it needs (`BodyLocation`, `Calories`, `Capacity`, `ConditionMax`, the
   defence ratings) live on `InventoryItem`, not on the `ScriptItem` the index walks, so

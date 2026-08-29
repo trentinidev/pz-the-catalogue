@@ -277,6 +277,75 @@ end
      to fall back to the old category-and-weight formula. That is a worse price, but a
      price, and it is better than dropping a modded item out of the catalogue entirely.
 ]]
+--[[ A PACK IS WORTH WHAT IS IN IT.
+
+     Packing mods add hundreds of "Box of X" items, and none of the rules above can see
+     what a box holds -- so a box of six BBQ sauces priced as one serving of sauce, and a
+     10 kg box of dried beans as a sachet. The bulk factor got the ORDER right; it cannot
+     get the ANSWER right, because only the recipe knows the count.
+
+     Two things the game will tell us, and neither needs the recipe API:
+
+       the COUNT     an item that unpacks declares DoubleClickRecipe, and the convention
+                     across these mods is to put the yield in the recipe name --
+                     UnpackFoodBox6, UnpackBox12, OCP_UnpackCarton12. The trailing number
+                     is the count.
+       the CONTENT   strip Box/Carton/Crate/Case/Pack off the id and look for a sibling.
+                     OCP.BBQSauceBox -> Base.BBQSauce, OCP.Seasoning_BasilBox ->
+                     Base.Seasoning_Basil. Measured on a 306-box packing mod: 239 of its
+                     242 distinct stems resolve to an item this catalogue already prices.
+
+     Returns the stem and count only; the lookup happens in TC_Prices.buildIndex, because
+     the sibling may not have been priced yet when this box comes round in the loop, and a
+     carton of boxes needs its boxes done first.
+
+     Deliberately no per-mod table. The rule is the study's own rule for vanilla packs --
+     a pack is worth what its recipe yields -- and it holds for any mod that names an
+     unpack recipe after its yield. The three stems it misses fall through to the ordinary
+     rules and are merely priced as before, not lost. ]]
+--[[ Outer packs first, and the order matters.
+
+     A carton holds BOXES, not units. These mods ship both -- a RadioTransmitterBox of
+     twelve and a RadioTransmitterCarton of twelve boxes -- and matching the bare stem
+     for both priced the carton at twelve transmitters instead of a hundred and
+     forty-four, undervaluing it twelvefold.
+
+     So an outer pack looks for the inner pack first and only falls back to the bare
+     item. `outer` says which kind this is; the lookup order lives in
+     TC_Prices.buildIndex, which is the half that can see other items' prices. ]]
+local PACK_SUFFIXES = {
+    { suffix = "Carton", outer = true  },
+    { suffix = "Crate",  outer = true  },
+    { suffix = "Case",   outer = true  },
+    { suffix = "Pack",   outer = false },
+    { suffix = "Box",    outer = false },
+}
+
+function TC.packSpec(item, fullType)
+    local recipe = str(item, "getDoubleClickRecipe")
+    if not recipe then return nil end
+
+    local count = tonumber(string.match(recipe, "(%d+)%s*$"))
+    -- 2 at the least, or it is not a pack; 200 at the most, so a recipe that happens to
+    -- end in a year or an id cannot price a box at four figures times its contents.
+    if not count or count < 2 or count > 200 then return nil end
+
+    local id = string.match(fullType, "^[^.]+%.(.+)$")
+    if not id then return nil end
+
+    for _, p in ipairs(PACK_SUFFIXES) do
+        local stem = string.match(id, "^(.+)" .. p.suffix .. "$")
+        if stem and #stem > 1 then return stem, count, p.outer end
+    end
+    return nil
+end
+
+--[[ Returns: price, packStem, packCount, packOuter.
+
+     The pack spec rides along rather than being asked for separately because building
+     the instance is the expensive half -- it is the whole reason the first open of the
+     buy window costs a few seconds with many item mods installed. Asking this one
+     instance both questions is free; building a second one would double that cost. ]]
 function TC.priceUnknownItem(scriptItem, fullType)
     local ok, item = pcall(function() return instanceItem(fullType) end)
     if not ok or not item then return nil end
@@ -291,5 +360,6 @@ function TC.priceUnknownItem(scriptItem, fullType)
                   or ruleWeapon(item, fullType, weight, category)
                   or ruleDrainable(item, fullType, weight)
 
-    return price
+    local stem, count, outer = TC.packSpec(item, fullType)
+    return price, stem, count, outer
 end
