@@ -12,6 +12,56 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.11.2-alpha — 2026-08-29
+
+The study was revised; this imports the revision. It is a better document than the one
+0.11.1 read, and it caught two things this mod had wrong.
+
+### Fixed
+- **Twenty-seven real items were being withheld from the catalogue.** `TC_EXCLUDED_CATEGORIES`
+  dropped `Ears`, `Eye`, `Tail` and thirteen animal names -- `Bear`, `Beaver`, `Dog`,
+  `Duck`, `Fox`, `Squirrel` and the rest -- on the reading that they were "live-animal
+  categories that exist to carry an animal's data rather than to be an object you own".
+  They are not. They are where vanilla files its **plush toys and costume pieces**.
+  Spiffo, Spiffo Big, Freddy Fox, Pancho Dog, Moley Mole, Jacques Beaver, a rubber duck, a
+  rubber spider, bunny-ear hats, a rabbit's-foot keyring, a dog leash and a pet water dish
+  are all buyable now. Five categories are still refused wholesale, all genuinely engine
+  states: `Hidden`, `Corpse`, `MaleBody`, `Wound`, `ZedDmg`.
+- **194 ids that are not merchandise are refused outright**, through the generated
+  `TC_ExcludedItems.lua`: debug and test fixtures, corpses, the wound and bandage overlays
+  the health system paints on a body, hair and beard stubble. Leaving them merely unpriced
+  would not have worked -- the formula fallback prices whatever the table skips and
+  `roundPrice` floors at $1, so `Base.BucketWaterDebug` would have gone on the shelf for a
+  dollar.
+- **Every item over $999 was being skipped by the importer**, falling through to the
+  formula. The study writes prices Brazilian style, so `2.700` is two thousand seven
+  hundred and the integer test rejected it. Generators, gold and silver bars, ham radios,
+  the antibiotics box. Caught by the row count not adding up: 4,887 + 194 is not 5,092.
+
+### Changed
+- **Prices now hold relations, not just values.** A dirty variant is 35% of the clean one,
+  a sterilised one 150%, a broken one at most 25%, an opened one at most 80%; a pack is
+  worth what its vanilla recipe actually yields, and a full container never less than the
+  shell it returns. So a bandage is $10, a dirty one $4, a sterilised one $15 -- and
+  `RippedSheets` and `RippedSheetsDirty` are $2 and $1, where 0.11.1 could only show $1
+  for both.
+- **`TC_Overrides.lua` is empty**, and that is the finished state. Its last two entries
+  pinned `AlcoholBandage` at $12 and `RippedSheetsSterilizedBundle` at $5, from when the
+  study priced sterilised level with clean and this mod disagreed. The study sets that
+  relation by rule now. An override wins outright, so leaving them would have quietly held
+  two items below the relation every other item in their family obeys -- an override does
+  not just state a price, it opts an item out of every rule the table enforces.
+- The importer reads columns **by name**, not by position, and skips any table whose
+  header lacks one it needs. The document holds several summary tables that also have an
+  `Item ID` and a `Status`; under the old positional read, one of them fed whole lines
+  into the price field.
+
+### Known
+- 4,898 items are listed, against 5,092 vanilla ids. The buy window's own count is higher
+  again when item mods are loaded: that figure is the runtime index, not the vanilla one.
+
+---
+
 ## 0.11.1-alpha — 2026-08-29
 
 The price table is no longer computed. It is imported.

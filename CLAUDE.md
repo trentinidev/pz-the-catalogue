@@ -25,17 +25,28 @@ that line first. It has already caught one round of feedback given on a stale bu
 `TC_PriceTable.lua` is **180 KB of generated data** -- roughly a quarter of a context
 window. Never read it whole. `grep` it for the fullType you care about. It is rewritten
 wholesale by `sh tools/import_prices.sh` from `tools/reference/PZ_prices_B42.20.4.md`,
-a **1.1 MB** study that is even less readable whole -- grep that too. To change one price
-permanently use `TC_Overrides.lua`, which wins over the table, and say there why the
-study is wrong; that file is nearly empty on purpose.
+a **1.3 MB** study that is even less readable whole -- grep that too.
 
-`CHANGELOG.md` (37 KB) is append-only history: read the top, not the file.
+`CHANGELOG.md` (39 KB) is append-only history: read the top, not the file.
 
 Prices are **imported, not computed**, since 0.11.1. `tools/gen_prices.ps1` is gone.
 `tools/rules.ps1` survives only as the readable twin of `TC_ModPricing.lua`, which prices
 items from OTHER mods at runtime -- the study will never cover those. Those two formula
 layers are multiplied by `TC.MOD_PRICE_SCALE` (0.75) to sit on the study's footing;
 `TC.PRICE_SCALE` is 1.0 and the table is in plain dollars.
+
+The same script writes `TC_ExcludedItems.lua` from the 194 ids the study marks as not
+merchandise. **Omitting a price does not keep an item off the shelf** -- the formula
+fallback prices it anyway and `roundPrice` floors at $1, which is how a debug water
+bucket gets listed for a dollar. Exclusion is decided per id; only five categories are
+still refused wholesale (`Hidden`, `Corpse`, `MaleBody`, `Wound`, `ZedDmg`). A category
+name is a guess about its contents -- `Bear`, `Dog`, `Duck`, `Ears` turned out to be
+where vanilla files its **plush toys**, and excluding them withheld 27 real items.
+
+`TC_Overrides.lua` is **empty on purpose**. The study holds relations, not just prices
+(dirty at 35% of clean, sterilised at 150%, broken at most 25%, a pack worth what its
+recipe yields), and an override opts an item out of every one of them. Read its header
+before adding anything.
 
 ## Before every commit
 
