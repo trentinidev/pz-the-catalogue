@@ -12,6 +12,37 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.11.3-alpha — 2026-08-29
+
+### Fixed
+- **Every modded food listed at $1, whatever its size.** A 10 kg box of dried beans, a
+  4 kg box of carrots and a 1 kg sachet of dried basil all came out at a dollar, which
+  made a whole mod's worth of "Box of ..." items free money against anything they could
+  be resold or eaten as.
+
+  `ruleFood` in `TC_ModPricing.lua` took a `weight` argument and never read it. Calories
+  gave the price of one PORTION and nothing gave the number of portions in the package,
+  so every food priced as a single serving; the $1 floor underneath then collapsed the
+  whole class onto the same number and hid it.
+
+  Food now carries a **bulk factor**. It is the one place weight is the answer rather
+  than a nudge: for a rifle against a poker mass tells you nothing, but ten kilos of
+  dried beans is ten kilos of dried beans. Calibrated against vanilla rather than taste
+  -- over the 705 food items the study prices with a weight, the median runs $1 up to
+  0.3 kg, $2 from 0.7 to 1.5 kg, $4 from 1.5 to 3 kg and $15 from 3 to 5 kg, so a case is
+  worth about fifteen times a single. The screenshot's boxes now run $2 to $11 by weight
+  instead of $1 across the board.
+
+  Mirrored in `tools/rules.ps1`, which is the readable twin of that file.
+
+### Known
+- The same class of bug may sit in `ruleLiterature` and `ruleContainer`, which also take
+  a `weight` they never read. For those two it is probably right -- a book is priced by
+  the skill it teaches and a bag by its capacity, and neither gets more valuable for
+  being heavy. Left alone deliberately rather than by omission.
+
+---
+
 ## 0.11.2-alpha — 2026-08-29
 
 The study was revised; this imports the revision. It is a better document than the one

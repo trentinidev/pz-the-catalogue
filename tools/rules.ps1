@@ -73,6 +73,19 @@ function Rule-Food { param($it)
     $portion = Clamp ($cal / 250.0) 0.35 2.2
     $price = $base * (0.55 + 0.45 * $portion)
 
+    # HOW MUCH FOOD IS THIS. Calories give the price of one portion; weight gives how
+    # many portions are in the package. Without this a 10 kg box of dried beans priced
+    # the same as a sachet of dried basil, and with the $1 floor underneath, an entire
+    # mod's worth of "Box of ..." items listed at a dollar each.
+    #
+    # Calibrated on the vanilla study: across its 705 weighted food items the median is
+    # $1 up to 0.3 kg and $15 from 3 to 5 kg, so a case is worth about fifteen times a
+    # single. Pivot is one portion; the clamps stop a crumb rounding to nothing and a
+    # pallet running away. Mirrored in TC_ModPricing.lua's bulkFactor -- change both.
+    $w = N $it 'Weight' 0.3
+    if ($w -le 0) { $w = 0.3 }
+    $price = $price * (Clamp ([math]::Pow($w / 0.3, 0.68)) 0.8 14)
+
     # A dish someone cooked is worth more than its parts.
     if ((HasTag $it 'base:iscookable') -and $cal -gt 800) { $price *= 1.3 }
 

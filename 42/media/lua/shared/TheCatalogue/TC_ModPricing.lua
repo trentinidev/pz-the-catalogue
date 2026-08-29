@@ -53,6 +53,31 @@ local function round(p)
     return math.floor(p + 0.5)
 end
 
+--[[ HOW MUCH FOOD IS THIS. The one place weight is not a nudge but the answer.
+
+     For a rifle against a poker, mass tells you nothing, which is what the header means
+     when it says weight is never the main signal. For food it tells you almost
+     everything: ten kilos of dried beans IS ten kilos of dried beans, and a box of
+     twenty-four cans is heavy precisely because there are twenty-four cans in it.
+
+     ruleFood took a weight argument and never read it, so every modded food came out at
+     its per-portion price no matter how much of it there was -- which is why an entire
+     mod's worth of "Box of ..." items listed at $1 each, a 10 kg box of black beans
+     priced the same as a sachet of dried basil. roundPrice floors at $1, so they all
+     collapsed onto the floor and became indistinguishable.
+
+     CALIBRATED AGAINST VANILLA, not taste. Over the 705 food items the study prices
+     with a weight, the median runs $1 up to 0.3 kg, $2 from 0.7 to 1.5 kg, $4 from 1.5
+     to 3 kg and $15 from 3 to 5 kg -- so a 4 kg case is worth about fifteen times a
+     0.2 kg single. The pivot is a single portion and the exponent reproduces that
+     spread; the clamps stop a crumb from rounding to nothing and a pallet from running
+     away.
+]]
+local function bulkFactor(w)
+    if type(w) ~= "number" or w <= 0 then return 1.0 end
+    return clamp((w / 0.3) ^ 0.68, 0.8, 14)
+end
+
 -- A gentle nudge INSIDE a class. Weight is never the main signal here; see the header.
 local function weightNudge(w, pivot, strength)
     if type(w) ~= "number" or w <= 0 then w = pivot end
@@ -132,7 +157,7 @@ local function ruleFood(item, fullType, weight)
 
     local cal = num(item, "getCalories", 150)
     local portion = clamp(cal / 250.0, 0.35, 2.2)
-    return round(base * (0.55 + 0.45 * portion))
+    return round(base * (0.55 + 0.45 * portion) * bulkFactor(weight))
 end
 
 local function ruleClothing(item, fullType, weight)
