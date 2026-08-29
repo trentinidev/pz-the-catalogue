@@ -1,0 +1,1140 @@
+--[[ The Catalogue -- the cash machine.
+
+     ONE WINDOW, FOUR SCREENS, because that is what the machine in the wall is. A real
+     ATM does not open four windows; it swaps what is on the one screen it has, and every
+     step is answered before the next one appears. So this is a single ISCollapsableWindow
+     with a `screen` field, all of its widgets built once in createChildren and shown or
+     hidden by applyScreen.
+
+         welcome   there is no account yet: what one is, and the button that opens it
+         pin       the keypad -- entering a PIN, choosing one, confirming a new one
+         account   the balance, the statement, and the two things you can do
+         amount    how much, in quick steps or typed, for a deposit or a withdrawal
+
+     WHY NOT ON THE RAIL. Buy, Sell and Ledger are three faces of one catalogue and the
+     rail down their right edge is what makes that true (see TC_UI.lua). The cash machine
+     is not a fourth face of it: it is a PLACE. You have to walk to it, it is bolted to a
+     wall in a town, and the whole point of the feature is that the money in it is
+     somewhere you are not. A rail entry would say the opposite -- that the account is
+     another page of a book in your bag -- and it would need a rail on a window that is
+     opened by right-clicking a tile rather than by holding a catalogue.
+
+     THE PIN IS ASKED FOR EVERY VISIT. It would have been friendlier to ask once and
+     remember, and it would have made the PIN a formality typed at account opening and
+     never again. Three wrong tries ends the session and the player walks back; the card
+     is not eaten, because a mod that permanently destroys the way into your own savings
+     over a typo is a mod that gets uninstalled.
+
+     LOSING THE CARD IS NOT LOSING THE MONEY. With the PIN entered and no card on the
+     player, the machine prints another one. See TC_Bank.lua: the card is a credential,
+     the account is the money, and they are deliberately not the same object.
+]]
+
+TheCatalogue = TheCatalogue or {}
+local TC = TheCatalogue
+
+--[[ Every one of these is a FILE LOCAL and has to be, which is the whole reason
+     tools/check.sh grew its `consts` rule: a shared file that names one of them gets a
+     nil global instead, and `nil + 10` is a crash that parses perfectly. See TC_UI.lua,
+     where the rail computes its own heights lazily for exactly this reason. ]]
+local FONT_HGT_SMALL  = getTextManager():getFontHeight(UIFont.Small)
+local FONT_HGT_MEDIUM = getTextManager():getFontHeight(UIFont.Medium)
+local FONT_HGT_LARGE  = getTextManager():getFontHeight(UIFont.Large)
+
+local PAD        = 14
+local BOTTOM_PAD = PAD * 2
+local BUTTON_HGT = FONT_HGT_MEDIUM + 12
+local HEADER_HGT = FONT_HGT_SMALL + 12
+local ROW_HGT    = TC.UI.ROW_HGT
+local LINE_GAP   = 10
+local KEY_GAP    = 8
+
+-- Equal margins inside the statement table, the arrival window's trick: the right-hand
+-- one has to clear the scrollbar, so the left one matches it rather than leaving the
+-- columns looking shifted inside their own frame.
+local INSET = TC.UI.SCROLL_GUTTER
+
+--[[ The quick amounts, and the order they are offered in.
+
+     Doubling steps rather than round tens, because the question a player is answering is
+     "roughly how much", and 1 / 5 / 10 / 20 / 50 / 100 is how the notes in a wallet are
+     actually grouped. A hundred is the last one because that is a MoneyBundle -- past it,
+     "all" is nearly always what is meant, and the typed field is there for the rest. ]]
+local QUICK = { 1, 5, 10, 20, 50, 100 }
+
+-- The four screens, named once so a typo is a nil rather than a silently dead branch.
+local WELCOME = "welcome"
+local PIN     = "pin"
+local ACCOUNT = "account"
+local AMOUNT  = "amount"
+
+-- How wrong you may be before the machine gives up on you.
+local MAX_TRIES = 3
+
+--[[ How much room the status line gets, in lines and in the gap between them.
+
+     Two, because that is what the longest thing the machine says needs at the width the
+     window opens at, and because a THIRD line would start eating the screen above it for a
+     message that clears itself after six seconds. Anything longer than two lines is a
+     message that should have been written shorter. ]]
+local MSG_LINES   = 2
+local MSG_LEADING = 3
+
+--[[ How often the window re-checks that the player is still standing at the machine, and
+     how far they may drift before it closes.
+
+     Measured in milliseconds and tiles. Every frame would be wasteful for a question
+     whose answer changes at walking pace, and the buy window already checks whether the
+     catalogue is still in the bag on the same kind of timer. ]]
+local RANGE_CHECK_MS = 400
+local RANGE_TILES    = 2.5
+
+-- ---------------------------------------------------------------------------
+-- The statement table
+-- ---------------------------------------------------------------------------
+
+--[[ Column widths, measured once on first use rather than written as pixel numbers.
+
+     Every fixed offset in this mod has eventually collided with a larger UI scale -- the
+     cart's header stacked "QuantiUnit price" on itself, the buy window's detail panel drew
+     a fullType through its own separator -- so a column here is as wide as the WIDER of
+     its own heading and the widest value it can hold, and never narrower.
+
+     Worked out on first use and not at load, because these are translated strings and
+     nothing guarantees the translations are ready while this file is being read. ]]
+local stmtW
+local function statementWidths()
+    if stmtW then return stmtW end
+
+    local tm = getTextManager()
+    local F  = UIFont.Small
+
+    local function width(key, sample)
+        return math.max(tm:MeasureStringX(F, getText(key)),
+                        tm:MeasureStringX(F, sample)) + TC.UI.CELL_PAD * 2
+    end
+
+    stmtW = {
+        when    = width("IGUI_TC_LedgerWhen",    "1993-07-09 13:00"),
+        amount  = width("IGUI_TC_LedgerAmount",  "-$999999"),
+        balance = width("IGUI_TC_BankColBalance", "$9999999"),
+    }
+    return stmtW
+end
+
+--[[ The four bands, given the list's pixel width. One definition used by the header and
+     by every row, so a heading cannot drift off the values under it.
+
+     Counted from the RIGHT edge inwards for the two money columns, the same shape as
+     TC.columns: the figures are what the eye runs down, so they get fixed widths pinned
+     right, and the elastic middle column absorbs a resize. ]]
+local function statementColumns(listW)
+    local W = statementWidths()
+
+    local rightEdge = listW - INSET
+    local balLeft   = rightEdge - W.balance
+    local amtLeft   = balLeft - W.amount
+    local whenLeft  = INSET
+    local whatLeft  = whenLeft + W.when
+
+    return {
+        whenLeft = whenLeft,
+        whenW    = W.when - TC.UI.CELL_PAD,
+
+        whatLeft = whatLeft,
+        whatW    = math.max(20, amtLeft - whatLeft - TC.UI.CELL_PAD),
+
+        amtLeft   = amtLeft,
+        amtRight  = balLeft,
+        balLeft   = balLeft,
+        balRight  = rightEdge,
+
+        rules = { whatLeft - math.floor(TC.UI.CELL_PAD / 2), amtLeft, balLeft },
+    }
+end
+
+--[[ What a statement line is called, and what colour it reads in.
+
+     Money in is green and money out is red, which is the only colour convention this mod
+     already uses (the buy window turns "Cash after" red the moment an order costs more
+     than the player is carrying). The two lines that move no money -- opening the account
+     and printing a card -- are grey and show a dash rather than $0, because a zero in a
+     money column invites the reader to add it up. ]]
+local KINDS = {
+    open     = { key = "IGUI_TC_BankKindOpen",     sign = nil, r = 0.62, g = 0.62, b = 0.66 },
+    card     = { key = "IGUI_TC_BankKindCard",     sign = nil, r = 0.62, g = 0.62, b = 0.66 },
+    deposit  = { key = "IGUI_TC_BankKindDeposit",  sign = "+", r = 0.66, g = 0.94, b = 0.66 },
+    withdraw = { key = "IGUI_TC_BankKindWithdraw", sign = "-", r = 0.96, g = 0.66, b = 0.62 },
+}
+
+TC_StatementList = ISScrollingListBox:derive("TC_StatementList")
+
+function TC_StatementList:doDrawItem(y, item, alt)
+    local line = item.item
+    local w = self:getWidth()
+    local c = statementColumns(w)
+    local ty = y + (ROW_HGT - FONT_HGT_SMALL) / 2
+    local F = UIFont.Small
+
+    -- The same grid as the catalogue and the ledger: a rail under each row and a rule
+    -- between each column, so a record reads across and a column reads down.
+    self:drawRect(0, y + ROW_HGT - 1, w, 1, 0.25, 1, 1, 1)
+    for _, x in ipairs(c.rules) do
+        self:drawRect(x, y, 1, ROW_HGT - 1, 0.22, 1, 1, 1)
+    end
+
+    local kind = KINDS[line.kind] or KINDS.open
+
+    self:drawText(TC.truncate(F, line.when or "?", c.whenW),
+                  c.whenLeft, ty, 0.62, 0.62, 0.66, 1, F)
+    self:drawText(TC.truncate(F, getText(kind.key), c.whatW),
+                  c.whatLeft, ty, 0.92, 0.92, 0.95, 1, F)
+
+    local amountText = getText("IGUI_TC_BankNoMovement")
+    if kind.sign then amountText = kind.sign .. "$" .. tostring(line.amount or 0) end
+    TC.drawRight(self, amountText, c.amtRight, ty, F, kind.r, kind.g, kind.b)
+
+    TC.drawRight(self, "$" .. tostring(line.balance or 0), c.balRight, ty,
+                 F, 0.82, 0.82, 0.86)
+
+    return y + ROW_HGT
+end
+
+-- ---------------------------------------------------------------------------
+-- The window
+-- ---------------------------------------------------------------------------
+
+TC_ATMWindow = ISCollapsableWindow:derive("TC_ATMWindow")
+TC_ATMWindow.instances = TC_ATMWindow.instances or {}
+
+--[[ The keypad's key size, measured off its widest label.
+
+     Clear and Enter are words and the digits are single characters, so the words decide
+     the size and every key is square-ish and identical -- an ATM keypad with one wide key
+     in it does not read as a keypad. Lazily, and cached, because it reads translations. ]]
+local keySize
+local function keyWidth()
+    if not keySize then
+        local tm = getTextManager()
+        keySize = math.max(52,
+                           tm:MeasureStringX(UIFont.Medium, getText("IGUI_TC_PinKeyClear")),
+                           tm:MeasureStringX(UIFont.Medium, getText("IGUI_TC_PinKeyEnter")))
+                  + TC.UI.BTN_PAD
+    end
+    return keySize
+end
+
+local function keypadWidth()
+    return keyWidth() * 3 + KEY_GAP * 2
+end
+
+-- The four lines of sales patter on the welcome screen, in order.
+local PITCH = { "IGUI_TC_ATMPitch1", "IGUI_TC_ATMPitch2",
+                "IGUI_TC_ATMPitch3", "IGUI_TC_ATMPitch4" }
+
+--[[ The narrowest this window may be dragged: whatever the widest thing on any of the
+     four screens actually needs.
+
+     Every screen is measured, not just the one that happens to be open, because a resize
+     made on the account screen has to survive switching to the keypad. Three button rows,
+     the keypad grid and the longest line of welcome text, and the largest of them wins. ]]
+local function minimumWidth()
+    local quick = {}
+    for i, n in ipairs(QUICK) do quick[i] = "$" .. n end
+    table.insert(quick, getText("IGUI_TC_BankAll"))
+
+    --[[ Prose no longer sets the minimum width, because prose WRAPS now.
+
+         It used to: the window could not be dragged narrower than the longest line of
+         welcome text, and that line still came out truncated at the size the window opens
+         at, so the constraint bought nothing. What is kept is half of it -- enough that
+         four sentences wrap to about eight lines rather than to one word each, which is
+         where a narrow column stops being readable. ]]
+    local tm = getTextManager()
+    local pitch = 0
+    for _, key in ipairs(PITCH) do
+        pitch = math.max(pitch, tm:MeasureStringX(UIFont.Small, getText(key)))
+    end
+
+    local widest = math.max(
+        keypadWidth(),
+        pitch / 2,
+        TC.buttonRowWidth({ getText("IGUI_TC_BankDeposit"),
+                            getText("IGUI_TC_BankWithdraw"),
+                            getText("IGUI_TC_BankDone") }, UIFont.Medium),
+        TC.buttonRowWidth(quick, UIFont.Medium),
+        TC.buttonRowWidth({ getText("IGUI_TC_BankConfirm"),
+                            getText("IGUI_TC_BankBack") }, UIFont.Medium),
+        TC.buttonRowWidth({ getText("IGUI_TC_BankOpenAccount"),
+                            getText("IGUI_TC_BankCancel") }, UIFont.Medium)
+    )
+
+    return math.ceil(widest) + PAD * 2
+end
+
+--[[ And the shortest it may be dragged, which is whatever the KEYPAD screen needs -- the
+     tallest of the four, and the only one with nothing elastic on it to give up.
+
+     Counted as the real stack: headline, prompt, the row of PIN boxes, four rows of keys,
+     the status line, and the button row at the bottom. The title bar cannot be asked
+     about from here -- titleBarHeight is a method on a window that does not exist yet at
+     the moment :new needs this number -- so it is allowed for at the same font height the
+     bar is drawn from. ]]
+local function minimumHeight()
+    local titleBar = FONT_HGT_MEDIUM + PAD
+
+    return titleBar
+           + PAD + FONT_HGT_LARGE                       -- headline
+           + PAD + FONT_HGT_SMALL                       -- keypad prompt
+           + PAD + FONT_HGT_MEDIUM + 12                 -- the PIN boxes
+           + PAD + BUTTON_HGT * 4 + KEY_GAP * 3         -- the keys
+           + PAD + FONT_HGT_SMALL * MSG_LINES
+                 + MSG_LEADING * (MSG_LINES - 1)        -- the status block
+           + PAD + BUTTON_HGT + BOTTOM_PAD              -- the button row
+end
+
+function TC_ATMWindow:new(x, y, w, h, playerNum, atm)
+    local o = ISCollapsableWindow:new(x, y, w, h)
+    setmetatable(o, self)
+    self.__index = self
+
+    o.playerNum = playerNum
+    o.player    = getSpecificPlayer(playerNum)
+    o.atm       = atm
+
+    o.screen     = TC.hasAccount(o.player) and PIN or WELCOME
+    o.pinMode    = "enter"          -- enter | new | confirm
+    o.pinBuffer  = ""
+    o.pinFirst   = ""
+    o.pinTries   = 0
+    o.amountMode = "deposit"
+    o.amount     = 0
+
+    o:setResizable(true)
+    o.minimumWidth  = minimumWidth()
+    o.minimumHeight = minimumHeight()
+    return o
+end
+
+--[[ The vertical stack every screen shares, walked down in one place.
+
+     Headline at the top, a row of buttons pinned to the bottom, a status line above them,
+     and whatever is left over in the middle is the body. Written as one walk so the
+     blocks cannot drift apart the way two copies of the arithmetic would -- the mistake
+     the arrival window's layout() exists to prevent. ]]
+function TC_ATMWindow:layout()
+    local L = {}
+    L.x         = PAD
+    L.w         = self.width - PAD * 2
+    L.headlineY = self:titleBarHeight() + PAD
+    L.bodyY     = L.headlineY + FONT_HGT_LARGE + PAD
+    L.buttonY   = self.height - BOTTOM_PAD - BUTTON_HGT
+
+    --[[ TWO lines of room for the status message, reserved whether or not there is one.
+
+         "Card not found - a replacement has been printed" does not fit on one line at the
+         size this window opens at, and a message that is allowed to grow downwards grows
+         into the button row. Reserved rather than measured per message, so the body above
+         does not jump half a line taller every time a message ages out. ]]
+    L.msgH  = FONT_HGT_SMALL * MSG_LINES + MSG_LEADING * (MSG_LINES - 1)
+    L.msgY  = L.buttonY - PAD - L.msgH
+    L.bodyH = math.max(0, L.msgY - PAD - L.bodyY)
+    return L
+end
+
+--[[ How tall the account screen's summary panel is: two label rows, a rule, the balance
+     in Large, and the cash-on-hand row under it. Measured off the fonts rather than
+     guessed, so the panel grows with the UI scale instead of clipping. ]]
+local function summaryHeight()
+    return PAD * 2 + FONT_HGT_SMALL * 3 + FONT_HGT_LARGE + LINE_GAP * 4
+end
+
+--[[ Where the quick-amount row, the typed field and the panel sit on the amount screen.
+     One function, called by both the layout pass and prerender, for the same reason. ]]
+function TC_ATMWindow:amountGeometry()
+    local L = self:layout()
+    local panelH = PAD * 2 + FONT_HGT_SMALL * 2 + LINE_GAP * 2 + FONT_HGT_LARGE
+
+    return {
+        panelY  = L.bodyY,
+        panelH  = panelH,
+        quickY  = L.bodyY + panelH + PAD * 2,
+        entryY  = L.bodyY + panelH + PAD * 2 + BUTTON_HGT + PAD * 2,
+        L       = L,
+    }
+end
+
+-- ---------------------------------------------------------------------------
+-- Building
+-- ---------------------------------------------------------------------------
+
+function TC_ATMWindow:mkButton(text, handler, internal)
+    local b = ISButton:new(0, 0, 10, BUTTON_HGT, text, self, handler)
+    b.internal = internal
+    b:initialise(); b:instantiate()
+    self:addChild(b)
+    return b
+end
+
+function TC_ATMWindow:createChildren()
+    ISCollapsableWindow.createChildren(self)
+
+    -- welcome
+    self.openBtn   = self:mkButton(getText("IGUI_TC_BankOpenAccount"), TC_ATMWindow.onOpenAccount)
+    self.leaveBtn  = self:mkButton(getText("IGUI_TC_BankCancel"),      TC_ATMWindow.onDone)
+
+    --[[ The keypad, built as twelve real buttons in reading order.
+
+         Digits carry their own character as `internal` and the two words carry a name, so
+         onKeypad reads one field rather than switching on a label that a translation would
+         change underneath it. ]]
+    self.keys = {}
+    local labels = { "1", "2", "3", "4", "5", "6", "7", "8", "9",
+                     getText("IGUI_TC_PinKeyClear"), "0", getText("IGUI_TC_PinKeyEnter") }
+    local codes  = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "CLEAR", "0", "ENTER" }
+
+    for i = 1, 12 do
+        self.keys[i] = self:mkButton(labels[i], TC_ATMWindow.onKeypad, codes[i])
+    end
+    self.pinCancelBtn = self:mkButton(getText("IGUI_TC_BankCancel"), TC_ATMWindow.onDone)
+
+    -- account
+    self.list = TC_StatementList:new(PAD, 0, self.width - PAD * 2, 10)
+    self.list:initialise(); self.list:instantiate()
+    self.list.itemheight = ROW_HGT
+    self.list.drawBorder = true
+    self.list.target = self
+    self:addChild(self.list)
+
+    self.depositBtn  = self:mkButton(getText("IGUI_TC_BankDeposit"),  TC_ATMWindow.onDeposit)
+    self.withdrawBtn = self:mkButton(getText("IGUI_TC_BankWithdraw"), TC_ATMWindow.onWithdraw)
+    self.doneBtn     = self:mkButton(getText("IGUI_TC_BankDone"),     TC_ATMWindow.onDone)
+
+    -- amount
+    self.quickBtns = {}
+    for i, n in ipairs(QUICK) do
+        self.quickBtns[i] = self:mkButton("$" .. n, TC_ATMWindow.onQuick, tostring(n))
+    end
+    self.quickBtns[#QUICK + 1] = self:mkButton(getText("IGUI_TC_BankAll"),
+                                               TC_ATMWindow.onQuick, "ALL")
+
+    self.customEntry = ISTextEntryBox:new("0", PAD, 0, 120, BUTTON_HGT)
+    self.customEntry:initialise(); self.customEntry:instantiate()
+    self.customEntry:setOnlyNumbers(true)
+    -- Seven digits is $9,999,999, which is more money than a save will ever hold and
+    -- still short enough that the figure cannot outgrow the panel it is drawn in.
+    self.customEntry:setMaxTextLength(7)
+    self.customEntry.onTextChange = function() self:onAmountTyped() end
+    self:addChild(self.customEntry)
+
+    self.confirmBtn = self:mkButton(getText("IGUI_TC_BankConfirm"), TC_ATMWindow.onConfirmAmount)
+    self.backBtn    = self:mkButton(getText("IGUI_TC_BankBack"),    TC_ATMWindow.onBack)
+
+    self:refreshStatement()
+    self:applyScreen()
+end
+
+-- ---------------------------------------------------------------------------
+-- Screens
+-- ---------------------------------------------------------------------------
+
+function TC_ATMWindow:setScreen(screen)
+    self.screen = screen
+    if screen == ACCOUNT then self:refreshStatement() end
+    self:applyScreen()
+end
+
+--[[ Show what belongs to the current screen and hide everything else, then place it.
+
+     Every widget exists for the whole life of the window, which is what makes this a
+     visibility switch rather than a teardown: the alternative -- destroying and rebuilding
+     children on every step -- is how a UI ends up holding a reference to a button that is
+     no longer in the tree. ]]
+function TC_ATMWindow:applyScreen()
+    local s = self.screen
+
+    self.openBtn:setVisible(s == WELCOME)
+    self.leaveBtn:setVisible(s == WELCOME)
+
+    for _, b in ipairs(self.keys) do b:setVisible(s == PIN) end
+    self.pinCancelBtn:setVisible(s == PIN)
+
+    self.list:setVisible(s == ACCOUNT)
+    self.depositBtn:setVisible(s == ACCOUNT)
+    self.withdrawBtn:setVisible(s == ACCOUNT)
+    self.doneBtn:setVisible(s == ACCOUNT)
+
+    for _, b in ipairs(self.quickBtns) do b:setVisible(s == AMOUNT) end
+    self.customEntry:setVisible(s == AMOUNT)
+    self.confirmBtn:setVisible(s == AMOUNT)
+    self.backBtn:setVisible(s == AMOUNT)
+
+    self:layoutWidgets()
+end
+
+--[[ Place everything for the screen that is showing. Called from applyScreen and again
+     from onResize, so a drag moves the keypad the same way it moves the list. ]]
+function TC_ATMWindow:layoutWidgets()
+    -- onResize can fire before createChildren has run -- setting a width on a window is
+    -- enough to trigger it -- and every branch below reaches for a child that would not
+    -- exist yet. The rail guards itself the same way in TC.layoutRail.
+    if not self.keys then return end
+
+    local L = self:layout()
+    local s = self.screen
+
+    if s == WELCOME then
+        local slots = TC.buttonRow(L.x, L.w, { getText("IGUI_TC_BankOpenAccount"),
+                                               getText("IGUI_TC_BankCancel") }, UIFont.Medium)
+        self:place(self.openBtn,  slots[1], L.buttonY)
+        self:place(self.leaveBtn, slots[2], L.buttonY)
+
+    elseif s == PIN then
+        local kw  = keyWidth()
+        local kx0 = L.x + math.floor((L.w - keypadWidth()) / 2)
+        -- The keypad hangs off the BOTTOM of the body rather than the top, so that the
+        -- prompt and the PIN boxes above it get whatever slack a taller window gives and
+        -- the keys stay a constant distance from the buttons under them.
+        local ky0 = L.bodyY + L.bodyH - (BUTTON_HGT * 4 + KEY_GAP * 3)
+
+        for i, b in ipairs(self.keys) do
+            local col = (i - 1) % 3
+            local row = math.floor((i - 1) / 3)
+            b:setX(kx0 + col * (kw + KEY_GAP))
+            b:setY(ky0 + row * (BUTTON_HGT + KEY_GAP))
+            b:setWidth(kw)
+            b:setHeight(BUTTON_HGT)
+        end
+
+        --[[ One button, centred rather than run through TC.buttonRow.
+
+             buttonRow lays a row out from x0 and puts the slack into the GAPS between
+             buttons; with a single label there are no gaps, so it would sit hard against
+             the left border with the rest of the row empty beside it. Sized by the same
+             rule buttonRow uses -- the label plus BTN_PAD -- and then centred. ]]
+        local label = getText("IGUI_TC_BankCancel")
+        local bw    = getTextManager():MeasureStringX(UIFont.Medium, label) + TC.UI.BTN_PAD
+        self:place(self.pinCancelBtn,
+                   { x = L.x + math.floor((L.w - bw) / 2), w = bw, text = label },
+                   L.buttonY)
+
+    elseif s == ACCOUNT then
+        local listY = L.bodyY + summaryHeight() + PAD * 2 + HEADER_HGT
+        self.list:setX(L.x)
+        self.list:setY(listY)
+        self.list:setWidth(L.w)
+        self.list:setHeight(math.max(ROW_HGT, L.bodyY + L.bodyH - listY))
+
+        local slots = TC.buttonRow(L.x, L.w, { getText("IGUI_TC_BankDeposit"),
+                                               getText("IGUI_TC_BankWithdraw"),
+                                               getText("IGUI_TC_BankDone") }, UIFont.Medium)
+        self:place(self.depositBtn,  slots[1], L.buttonY)
+        self:place(self.withdrawBtn, slots[2], L.buttonY)
+        self:place(self.doneBtn,     slots[3], L.buttonY)
+
+    elseif s == AMOUNT then
+        local G = self:amountGeometry()
+
+        local labels = {}
+        for i, n in ipairs(QUICK) do labels[i] = "$" .. n end
+        labels[#QUICK + 1] = getText("IGUI_TC_BankAll")
+
+        local slots = TC.buttonRow(L.x, L.w, labels, UIFont.Medium)
+        for i, b in ipairs(self.quickBtns) do
+            self:place(b, slots[i], G.quickY)
+        end
+
+        -- The typed field sits under the row it is an alternative to, indented past its
+        -- own label so the two read as one line rather than as a stray box.
+        local labelW = getTextManager():MeasureStringX(UIFont.Small,
+                                                       getText("IGUI_TC_BankCustom")) + PAD
+        self.customEntry:setX(L.x + labelW)
+        self.customEntry:setY(G.entryY)
+        self.customEntry:setWidth(math.max(80, math.min(160, L.w - labelW)))
+
+        local btm = TC.buttonRow(L.x, L.w, { getText("IGUI_TC_BankConfirm"),
+                                             getText("IGUI_TC_BankBack") }, UIFont.Medium)
+        self:place(self.confirmBtn, btm[1], L.buttonY)
+        self:place(self.backBtn,    btm[2], L.buttonY)
+    end
+end
+
+--[[ Put a button in the slot TC.buttonRow worked out for it.
+
+     The title is re-set along with the width: below a certain window size buttonRow
+     truncates the labels to fit, and growing the window has to give the words back. The
+     cart window learned this the hard way and does the same thing in its onResize. ]]
+function TC_ATMWindow:place(button, slot, y)
+    button:setX(slot.x)
+    button:setY(y)
+    button:setWidth(slot.w)
+    button:setHeight(BUTTON_HGT)
+    button:setTitle(slot.text)
+end
+
+function TC_ATMWindow:refreshStatement()
+    self.list:clear()
+    for _, entry in ipairs(TC.statement(self.player)) do
+        self.list:addItem(entry.when or "", entry)
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- The keypad
+-- ---------------------------------------------------------------------------
+
+function TC_ATMWindow:onKeypad(button)
+    local code = button and button.internal
+    if not code then return end
+
+    if code == "CLEAR" then
+        self.pinBuffer = ""
+        return
+    end
+
+    if code == "ENTER" then
+        self:submitPin()
+        return
+    end
+
+    -- Silently ignored once four digits are in rather than beeping about it: the keypad
+    -- submits on Enter, so an over-full buffer is a state the player can see and fix by
+    -- pressing Clear.
+    if #self.pinBuffer < TC.PIN_LENGTH then
+        self.pinBuffer = self.pinBuffer .. code
+    end
+end
+
+--[[ What Enter means depends on which question was asked.
+
+     Three modes, and they are deliberately one screen rather than three: the keypad, the
+     four boxes and the prompt are identical in all of them, and only the sentence above
+     them and what happens on Enter change. ]]
+function TC_ATMWindow:submitPin()
+    if not TC.isValidPin(self.pinBuffer) then
+        self:setMessage(getText("IGUI_TC_PinTooShort", TC.PIN_LENGTH), true)
+        return
+    end
+
+    if self.pinMode == "new" then
+        self.pinFirst  = self.pinBuffer
+        self.pinBuffer = ""
+        self.pinMode   = "confirm"
+        self:setMessage(nil, false)
+        return
+    end
+
+    if self.pinMode == "confirm" then
+        if self.pinBuffer ~= self.pinFirst then
+            -- Back to the start of the pair, not to the confirmation: the player does not
+            -- know which of the two they mistyped, so asking them to confirm a PIN they
+            -- may not have meant would be the wrong half to keep.
+            self.pinBuffer = ""
+            self.pinFirst  = ""
+            self.pinMode   = "new"
+            self:setMessage(getText("IGUI_TC_PinMismatch"), true)
+            return
+        end
+
+        local acct = TC.openAccount(self.player, self.pinBuffer)
+        self.pinBuffer = ""
+        self.pinFirst  = ""
+
+        if not acct then
+            self:setMessage(getText("IGUI_TC_BankOpenFailed"), true)
+            return
+        end
+
+        TC.playSound(self.player, "cash")
+        self:setScreen(ACCOUNT)
+        self:setMessage(getText("IGUI_TC_BankOpened"), false)
+        return
+    end
+
+    -- "enter": the ordinary case, unlocking an account that already exists.
+    if not TC.checkPin(self.player, self.pinBuffer) then
+        self.pinBuffer = ""
+        self.pinTries  = self.pinTries + 1
+
+        if self.pinTries >= MAX_TRIES then
+            -- The card is NOT retained. See the header: a mod that eats the only way into
+            -- your savings over three typos is a mod nobody keeps installed.
+            HaloTextHelper.addBadText(self.player, getText("IGUI_TC_PinLockedOut"))
+            self:close()
+            return
+        end
+
+        self:setMessage(getText("IGUI_TC_PinWrong", MAX_TRIES - self.pinTries), true)
+        return
+    end
+
+    self.pinBuffer = ""
+    self.pinTries  = 0
+
+    --[[ Right PIN, no card on the player: print one on the way through.
+
+         This is the whole reason the balance does not live on the card. The account was
+         reached with the credential that identifies its holder, so the plastic is a
+         convenience being replaced, not a key being forged. ]]
+    local reissued = false
+    if not TC.findCard(self.player) then
+        reissued = TC.issueCard(self.player) ~= nil
+    end
+
+    self:setScreen(ACCOUNT)
+    if reissued then
+        self:setMessage(getText("IGUI_TC_BankCardReissued"), false)
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Buttons
+-- ---------------------------------------------------------------------------
+
+function TC_ATMWindow:onOpenAccount()
+    self.pinMode   = "new"
+    self.pinBuffer = ""
+    self.pinFirst  = ""
+    self:setScreen(PIN)
+end
+
+function TC_ATMWindow:onDeposit()  self:startAmount("deposit")  end
+function TC_ATMWindow:onWithdraw() self:startAmount("withdraw") end
+
+--[[ Open the amount screen with nothing filled in.
+
+     Zero rather than a remembered figure, and rather than the maximum. A screen that
+     opens with a number already in it is a screen where Confirm can move money the player
+     did not choose, and this one has exactly one irreversible button on it. ]]
+function TC_ATMWindow:startAmount(mode)
+    self.amountMode = mode
+    self.amount     = 0
+    self.customEntry:setText("0")
+    self:setScreen(AMOUNT)
+end
+
+function TC_ATMWindow:onBack()
+    self:setScreen(ACCOUNT)
+end
+
+--[[ How much this screen may move: cash in the player's pockets going in, money in the
+     account coming out. Everything on the amount screen is measured against it. ]]
+function TC_ATMWindow:available()
+    if self.amountMode == "deposit" then
+        return TC.getBalance(self.player)
+    end
+    return TC.bankBalance(self.player)
+end
+
+function TC_ATMWindow:setAmount(n)
+    self.amount = math.max(0, math.floor(n or 0))
+    self.customEntry:setText(tostring(self.amount))
+end
+
+function TC_ATMWindow:onQuick(button)
+    local code = button and button.internal
+    if not code then return end
+
+    if code == "ALL" then
+        self:setAmount(self:available())
+        return
+    end
+    self:setAmount(tonumber(code) or 0)
+end
+
+--[[ Typed figures are NOT clamped as they are typed.
+
+     Clamping on every keystroke means a player whose account holds $5 cannot type "50" --
+     the 5 is accepted, the 0 is clamped away, and the field fights them. The figure is
+     taken as typed, the panel turns the resulting balance red, and Confirm is the thing
+     that refuses. Same treatment the buy window gives an unaffordable order. ]]
+function TC_ATMWindow:onAmountTyped()
+    self.amount = math.max(0, math.floor(tonumber(self.customEntry:getInternalText()) or 0))
+end
+
+function TC_ATMWindow:onConfirmAmount()
+    local amount = self.amount
+
+    if amount <= 0 then
+        self:setMessage(getText("IGUI_TC_BankBadAmount"), true)
+        return
+    end
+
+    local ok, why
+    if self.amountMode == "deposit" then
+        ok, why = TC.bankDeposit(self.player, amount)
+    else
+        ok, why = TC.bankWithdraw(self.player, amount)
+    end
+
+    if not ok then
+        self:setMessage(why or getText("IGUI_TC_BankBadAmount"), true)
+        return
+    end
+
+    self:setScreen(ACCOUNT)
+    if self.amountMode == "deposit" then
+        self:setMessage(getText("IGUI_TC_BankDeposited", amount), false)
+    else
+        self:setMessage(getText("IGUI_TC_BankWithdrew", amount), false)
+    end
+end
+
+function TC_ATMWindow:onDone()
+    self:close()
+end
+
+-- ---------------------------------------------------------------------------
+-- Drawing
+-- ---------------------------------------------------------------------------
+
+--[[ A label on the left and a value on the right of the same line, which is the shape
+     every figure in this mod is presented in. Returns the y the next line starts at, so a
+     block of them is written as a walk rather than as a column of hand-added offsets. ]]
+function TC_ATMWindow:statLine(left, right, y, label, value, font, r, g, b)
+    font = font or UIFont.Small
+    local h  = getTextManager():getFontHeight(font)
+    local vw = getTextManager():MeasureStringX(font, value)
+
+    self:drawText(label, left, y + math.floor((h - FONT_HGT_SMALL) / 2),
+                  0.68, 0.68, 0.72, 1, UIFont.Small)
+    self:drawText(value, right - vw, y, r or 0.92, g or 0.92, b or 0.95, 1, font)
+
+    return y + math.max(h, FONT_HGT_SMALL) + LINE_GAP
+end
+
+function TC_ATMWindow:headline()
+    if self.screen == WELCOME then return getText("IGUI_TC_ATMWelcome") end
+
+    if self.screen == PIN then
+        if self.pinMode == "new"     then return getText("IGUI_TC_PinChoose") end
+        if self.pinMode == "confirm" then return getText("IGUI_TC_PinConfirm") end
+        return getText("IGUI_TC_PinEnter")
+    end
+
+    if self.screen == AMOUNT then
+        if self.amountMode == "deposit" then return getText("IGUI_TC_BankDeposit") end
+        return getText("IGUI_TC_BankWithdraw")
+    end
+
+    local acct = TC.account(self.player)
+    return getText("IGUI_TC_BankGreeting", (acct and acct.holder) or "")
+end
+
+function TC_ATMWindow:prerender()
+    ISCollapsableWindow.prerender(self)
+
+    -- Walking away ends the session. Checked on a timer rather than every frame, the same
+    -- way the buy window checks that the catalogue is still in the bag.
+    local now = getTimestampMs()
+    if not self.lastRangeCheck or (now - self.lastRangeCheck) >= RANGE_CHECK_MS then
+        self.lastRangeCheck = now
+        if not self:stillAtMachine() then
+            self:close()
+            return
+        end
+    end
+
+    local L = self:layout()
+
+    TC.drawCentred(self, TC.truncate(UIFont.Large, self:headline(), L.w),
+                   L.x, L.w, L.headlineY, UIFont.Large, 0.85, 1, 0.85)
+
+    if     self.screen == WELCOME then self:drawWelcome(L)
+    elseif self.screen == PIN     then self:drawPin(L)
+    elseif self.screen == ACCOUNT then self:drawAccount(L)
+    elseif self.screen == AMOUNT  then self:drawAmount(L)
+    end
+
+    local msgText, msgErr = self:activeMessage()
+    if msgText then
+        local r, g, b = 0.6, 1, 0.6
+        if msgErr then r, g, b = 1, 0.3, 0.3 end
+
+        --[[ Wrapped, then bottom-anchored inside the block reserved for it.
+
+             Bottom-anchored so that a one-line message sits just above the buttons where a
+             one-line message always sat, and a two-line one grows UPWARD into the space
+             that was already being held for it. Anchored to the top instead, every short
+             message would float a line clear of the buttons and read as unrelated to
+             them. ]]
+        local lines = TC.wrapText(UIFont.Small, msgText, L.w)
+        local shown = math.min(#lines, MSG_LINES)
+
+        -- Past the reserved lines the message is cut from the END, not the start: losing
+        -- the tail of a sentence still leaves it readable, and dropping the first line
+        -- leaves the reader looking at the middle of something.
+        if #lines > MSG_LINES then
+            lines[shown] = TC.truncate(UIFont.Small, lines[shown] .. "...", L.w)
+        end
+
+        local y = L.msgY + L.msgH - shown * FONT_HGT_SMALL - (shown - 1) * MSG_LEADING
+
+        for i = 1, shown do
+            TC.drawCentred(self, lines[i], L.x, L.w, y, UIFont.Small, r, g, b)
+            y = y + FONT_HGT_SMALL + MSG_LEADING
+        end
+    end
+end
+
+--[[ The four lines of sales patter, WRAPPED and not truncated.
+
+     They were truncated, and at the size the window actually opens at the first two came
+     out as "...at any cash machine in the cou..." and "...cannot be dropped or lo...".
+     Truncation is for a table cell, where the column is the promise; a sentence that is
+     being read has to be laid out instead. See TC.wrapText.
+
+     Each sentence keeps its own paragraph gap and its wrapped continuations are set at a
+     tighter leading, so four sentences over seven lines still read as four sentences. ]]
+function TC_ATMWindow:drawWelcome(L)
+    self:drawRect(L.x, L.bodyY, L.w, L.bodyH, 0.45, 0, 0, 0)
+    self:drawRectBorder(L.x, L.bodyY, L.w, L.bodyH, 0.5, 0.4, 0.4, 0.4)
+
+    local textW = L.w - PAD * 4
+
+    -- Laid out once into a flat list of { text, gapAfter }, so the height of the block is
+    -- known before a single line is drawn and the whole thing can be centred in the panel.
+    local rows, blockH = {}, 0
+    for p, key in ipairs(PITCH) do
+        local lines = TC.wrapText(UIFont.Small, getText(key), textW)
+        for i, line in ipairs(lines) do
+            local last = (i == #lines)
+            local gap  = 0
+            if not last then gap = MSG_LEADING
+            elseif p < #PITCH then gap = LINE_GAP end
+
+            table.insert(rows, { text = line, gap = gap })
+            blockH = blockH + FONT_HGT_SMALL + gap
+        end
+    end
+
+    -- Centred in the panel, but never above its top edge: on a window dragged to its
+    -- minimum the block can be taller than the frame, and starting inside it and running
+    -- out of the bottom loses the last line rather than the first two.
+    local y = L.bodyY + math.max(PAD, math.floor((L.bodyH - blockH) / 2))
+    local floorY = L.bodyY + L.bodyH - PAD
+
+    for _, row in ipairs(rows) do
+        if y + FONT_HGT_SMALL > floorY then return end
+        TC.drawCentred(self, row.text, L.x, L.w, y, UIFont.Small, 0.78, 0.78, 0.82)
+        y = y + FONT_HGT_SMALL + row.gap
+    end
+end
+
+--[[ The four PIN boxes.
+
+     A filled box is drawn as a small SQUARE and not as a bullet character, for the reason
+     TC.drawSortArrow gives about its triangles: the game's bitmap fonts have no guaranteed
+     coverage for those code points, and a missing glyph renders as nothing at all -- which
+     here would mean a PIN field that never appears to accept anything. Rectangles always
+     draw. ]]
+function TC_ATMWindow:drawPin(L)
+    -- Sized off the same font height a keypad key is, rather than off a pixel number, so
+    -- the row of boxes stays in proportion with the keys under it at any UI scale.
+    local boxH = FONT_HGT_MEDIUM + 12
+    local boxW = math.floor(boxH * 0.85)
+    local gap  = KEY_GAP
+    local total = boxW * TC.PIN_LENGTH + gap * (TC.PIN_LENGTH - 1)
+
+    local promptY = L.bodyY
+    TC.drawCentred(self, TC.truncate(UIFont.Small, getText("IGUI_TC_PinPrompt"), L.w),
+                   L.x, L.w, promptY, UIFont.Small, 0.68, 0.68, 0.72)
+
+    local x = L.x + math.floor((L.w - total) / 2)
+    local y = promptY + FONT_HGT_SMALL + PAD
+
+    for i = 1, TC.PIN_LENGTH do
+        local bx = x + (i - 1) * (boxW + gap)
+        self:drawRect(bx, y, boxW, boxH, 0.5, 0, 0, 0)
+        self:drawRectBorder(bx, y, boxW, boxH, 0.6, 0.45, 0.45, 0.45)
+
+        if i <= #self.pinBuffer then
+            local dot = 8
+            self:drawRect(bx + (boxW - dot) / 2, y + (boxH - dot) / 2, dot, dot,
+                          0.95, 0.85, 1, 0.85)
+        end
+    end
+end
+
+function TC_ATMWindow:drawAccount(L)
+    local acct = TC.account(self.player)
+    if not acct then return end
+
+    local panelH = summaryHeight()
+    self:drawRect(L.x, L.bodyY, L.w, panelH, 0.45, 0, 0, 0)
+    self:drawRectBorder(L.x, L.bodyY, L.w, panelH, 0.5, 0.4, 0.4, 0.4)
+
+    local left  = L.x + PAD
+    local right = L.x + L.w - PAD
+    local y     = L.bodyY + PAD
+
+    y = self:statLine(left, right, y, getText("IGUI_TC_BankAccountNo"),
+                      acct.number or "?", UIFont.Small, 0.72, 0.72, 0.76)
+    y = self:statLine(left, right, y, getText("IGUI_TC_BankHolder"),
+                      TC.truncate(UIFont.Small, acct.holder or "?", L.w / 2),
+                      UIFont.Small, 0.72, 0.72, 0.76)
+
+    self:drawRect(left, y, L.w - PAD * 2, 1, 0.35, 1, 1, 1)
+    y = y + LINE_GAP
+
+    y = self:statLine(left, right, y, getText("IGUI_TC_BankBalance"),
+                      "$" .. TC.bankBalance(self.player), UIFont.Large, 0.78, 0.98, 0.78)
+    self:statLine(left, right, y, getText("IGUI_TC_BankOnHand"),
+                  "$" .. TC.getBalance(self.player), UIFont.Small, 0.72, 0.72, 0.76)
+
+    -- The statement's own header strip, drawn on the window rather than inside the list
+    -- box, exactly as the other three tables in this mod do it.
+    local headerY = L.bodyY + panelH + PAD * 2
+    local c = statementColumns(L.w)
+
+    self:drawRect(L.x, headerY, L.w, HEADER_HGT, 0.75, 0.13, 0.13, 0.15)
+    self:drawRectBorder(L.x, headerY, L.w, HEADER_HGT, 0.5, 0.4, 0.4, 0.4)
+
+    local hy = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
+    local F  = UIFont.Small
+    for _, x in ipairs(c.rules) do
+        self:drawRect(L.x + x, headerY, 1, HEADER_HGT, 0.4, 1, 1, 1)
+    end
+
+    self:drawText(getText("IGUI_TC_LedgerWhen"), L.x + c.whenLeft, hy, 0.72, 0.72, 0.76, 1, F)
+    self:drawText(getText("IGUI_TC_LedgerWhat"), L.x + c.whatLeft, hy, 0.72, 0.72, 0.76, 1, F)
+    TC.drawRight(self, getText("IGUI_TC_LedgerAmount"),   L.x + c.amtRight, hy, F, 0.72, 0.72, 0.76)
+    TC.drawRight(self, getText("IGUI_TC_BankColBalance"), L.x + c.balRight, hy, F, 0.72, 0.72, 0.76)
+
+    if #self.list.items == 0 then
+        TC.drawCentred(self, getText("IGUI_TC_BankNoActivity"), L.x, L.w,
+                       self.list:getY() + PAD, UIFont.Small, 0.55, 0.55, 0.6)
+    end
+end
+
+function TC_ATMWindow:drawAmount(L)
+    local G     = self:amountGeometry()
+    local avail = self:available()
+
+    self:drawRect(L.x, G.panelY, L.w, G.panelH, 0.45, 0, 0, 0)
+    self:drawRectBorder(L.x, G.panelY, L.w, G.panelH, 0.5, 0.4, 0.4, 0.4)
+
+    local left  = L.x + PAD
+    local right = L.x + L.w - PAD
+    local y     = G.panelY + PAD
+
+    local availKey = (self.amountMode == "deposit") and "IGUI_TC_BankOnHand"
+                                                    or "IGUI_TC_BankBalance"
+    y = self:statLine(left, right, y, getText(availKey), "$" .. avail,
+                      UIFont.Small, 0.72, 0.72, 0.76)
+
+    -- Red the moment the figure is more than the screen can move, so the refusal is
+    -- visible before Confirm is ever pressed rather than after it.
+    local over = self.amount > avail
+    if over then
+        y = self:statLine(left, right, y, getText("IGUI_TC_BankAmount"),
+                          "$" .. self.amount, UIFont.Large, 1, 0.35, 0.35)
+    else
+        y = self:statLine(left, right, y, getText("IGUI_TC_BankAmount"),
+                          "$" .. self.amount, UIFont.Large, 0.78, 0.98, 0.78)
+    end
+
+    --[[ What a withdrawal will cost you to carry, stated before you take it.
+
+         TC.cashWeight is the same arithmetic the buy window uses to warn about a heavy
+         purchase: bundles at half a kilo, loose notes at a hundredth. $10,000 is a
+         hundred bundles and fifty kilos, and that is worth knowing at the machine rather
+         than at the door. ]]
+    if self.amountMode == "withdraw" then
+        self:statLine(left, right, y, getText("IGUI_TC_BankToCarry"),
+                      string.format("%.1f", TC.cashWeight(self.amount)),
+                      UIFont.Small, 0.72, 0.72, 0.76)
+    else
+        self:statLine(left, right, y, getText("IGUI_TC_BankBalanceAfter"),
+                      "$" .. (TC.bankBalance(self.player) + self.amount),
+                      UIFont.Small, 0.72, 0.72, 0.76)
+    end
+
+    self:drawText(getText("IGUI_TC_BankCustom"), L.x,
+                  G.entryY + (BUTTON_HGT - FONT_HGT_SMALL) / 2,
+                  0.68, 0.68, 0.72, 1, UIFont.Small)
+
+    -- A quick amount you cannot afford is disabled rather than left to fail on Confirm.
+    -- "All" is the one that means "whatever there is", so it only goes out at zero.
+    for i, b in ipairs(self.quickBtns) do
+        if b.internal == "ALL" then
+            b:setEnable(avail > 0)
+        else
+            b:setEnable((tonumber(b.internal) or 0) <= avail)
+        end
+    end
+    self.confirmBtn:setEnable(self.amount > 0 and not over)
+end
+
+-- ---------------------------------------------------------------------------
+-- Life cycle
+-- ---------------------------------------------------------------------------
+
+--[[ Is the player still in front of the machine?
+
+     A flat box in tiles rather than a true distance, because the squares either side of a
+     wall-mounted ATM are as much "at the machine" as the one in front of it, and because
+     a couple of comparisons beat a square root on a check that runs several times a
+     second. The z test is what stops a player operating the ATM from the floor above. ]]
+function TC_ATMWindow:stillAtMachine()
+    if not self.player then return false end
+    if not self.atm then return true end
+
+    local square = self.atm:getSquare()
+    if not square then return false end
+    if math.floor(self.player:getZ()) ~= square:getZ() then return false end
+
+    return math.abs(self.player:getX() - (square:getX() + 0.5)) <= RANGE_TILES
+       and math.abs(self.player:getY() - (square:getY() + 0.5)) <= RANGE_TILES
+end
+
+function TC_ATMWindow:onResize()
+    ISCollapsableWindow.onResize(self)
+    self:layoutWidgets()
+end
+
+function TC_ATMWindow:close()
+    -- The buffer is wiped before the window goes, so nothing of the PIN survives in a
+    -- table that something else might still be holding a reference to.
+    self.pinBuffer = ""
+    self.pinFirst  = ""
+
+    TC.playSound(self.player, "atmClose")
+    ISCollapsableWindow.close(self)
+    self:removeFromUIManager()
+    TC_ATMWindow.instances[self.playerNum] = nil
+end
+
+TC.applyMessageBehaviour(TC_ATMWindow)
+
+--[[ Open the machine, or bring the one already open forward.
+
+     Centred rather than remembered. TC.frameRect is where the catalogue's three panes
+     keep their shared rectangle, and this window is deliberately not part of that set: it
+     is a different size, it has no rail, and it belongs to a place rather than to the
+     book. Sharing the frame would drag the catalogue's size onto it and back again. ]]
+function TC.openATMWindow(playerNum, atm)
+    local player = getSpecificPlayer(playerNum)
+    if not player then return nil end
+
+    local existing = TC_ATMWindow.instances[playerNum]
+    if existing then
+        existing.atm = atm or existing.atm
+        existing:setVisible(true)
+        existing:bringToTop()
+        return existing
+    end
+
+    local sw, sh = getCore():getScreenWidth(), getCore():getScreenHeight()
+    local w = math.min(620, sw - 80)
+    local h = math.min(640, sh - 80)
+
+    local win = TC_ATMWindow:new((sw - w) / 2, (sh - h) / 2, w, h, playerNum, atm)
+    win:initialise(); win:instantiate()
+    win:setTitle(getText("IGUI_TC_ATMTitle"))
+    win:addToUIManager()
+    TC_ATMWindow.instances[playerNum] = win
+
+    TC.playSound(player, "atmOpen")
+    return win
+end

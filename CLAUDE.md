@@ -14,8 +14,8 @@ that line first. It has already caught one round of feedback given on a stale bu
 
     42/mod.info                      version, versionMin
     42/media/scripts/thecatalogue.txt   item + model definitions
-    42/media/lua/shared/TheCatalogue/   pricing, orders, config, UI helpers
-    42/media/lua/client/TheCatalogue/   the four windows, money, context menu
+    42/media/lua/shared/TheCatalogue/   pricing, orders, bank, config, UI helpers
+    42/media/lua/client/TheCatalogue/   the five windows, money, two context menus
     42/media/lua/shared/Translate/EN/   JSON, not the old .txt
     tools/                           generators + check.sh
     art/                             icon sources, so renders are reproducible
@@ -81,6 +81,18 @@ A version bump therefore touches three places: `42/mod.info`, `TC.VERSION` in
   the world, which was an infinite-money duplication bug. Always use `TC.removeItem`.
 - There is **no save/quit hook** in Lua beyond `OnPlayerDeath`. Anything that must
   survive a save lives on `player:getModData()`.
+- **World-object menus are a different event from inventory menus.** `OnFillWorldObject-`
+  `ContextMenu` fires TWICE -- once with `test = true` only to ask whether anything wants
+  to add an option -- and the first pass must be answered with
+  `ISWorldObjectContextMenu.setTest()`. Get it wrong and the whole menu is suppressed or
+  built twice.
+- **A tile is identified by its SPRITE NAME and nothing else.** The four vanilla ATMs
+  carry no `CustomName` and no `GroupName`; the six sprites in the same tileset that DO
+  look like an ATM set -- `Vault`, two wall and four standing -- are safe-deposit boxes.
+  The way to settle it is to pull the tileset out of `media/texturepacks/Tiles1x.pack`
+  and look at the pictures; the format is `PZPK`, a version int, a page count, then per
+  page a name, a texture count, an int, that many `name + 8 ints` records, and a
+  length-prefixed PNG.
 - Every window is resizable: **measure text, never hardcode pixel offsets.** Three
   separate overflow bugs came from fixed offsets. `TC.buttonRow` and the `columnStops()`
   helpers exist for this. Remember `TC.UI.SCROLL_GUTTER` when a column is right-aligned.

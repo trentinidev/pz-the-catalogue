@@ -5,16 +5,23 @@ What is deliberately not built yet, and why. Everything here was considered and
 parked on purpose -- none of it is rejected. Landed work lives in CHANGELOG.md;
 this file is the other half of that story.
 
-Current version: 0.13.0-alpha. 1.0.0 is reserved for the first build that has been
+Current version: 0.1.1-beta. 1.0.0 is reserved for the first build that has been
 played end to end. It does NOT promise a dedicated server: server authority is
 deferred past 1.0 rather than half-done before it, and the README says the same.
 
-WHAT MOVES THIS TO BETA. Named by Vitor on 2026-08-29: the alpha ends when the work
-turns to how the thing LOOKS and how far it reaches, rather than what it does. That
-means textured window art in the manner of Knox Chronicles, the hand-made icons and
-models for the catalogue and the parcels (item 9 below), and the first real look at
-multiplayer (item 2). Until those start, new work is still alpha however it is
-numbered.
+The number went DOWN at the alpha/beta line, on purpose: the alpha line ended at
+0.13.0 and the beta line starts its own count at 0.1.0. Nothing has been released,
+so no install anywhere reads it as a downgrade. See the CHANGELOG entry.
+
+WHAT MOVED THIS TO BETA. Named by Vitor on 2026-08-29: the alpha ends when the work
+turns to how the thing LOOKS and how far it REACHES, rather than what it does. The
+banking feature in 0.1.0-beta is the reach half of that -- the mod stopped being a
+book in a bag and acquired a place in the world you have to walk to.
+
+The look half has NOT started and is still owed: textured window art in the manner
+of Knox Chronicles, and the hand-made icons and models for the catalogue and the
+parcels (item 9 below). The first real look at multiplayer (item 2) is still after
+1.0 and is unaffected by the numbering.
 
 
 BEFORE 1.0
@@ -71,6 +78,21 @@ CONTENT AND ECONOMY
    climb, decoration falls. Cheap to fake with a multiplier over TC_PriceTable,
    expensive to make feel deliberate rather than random.
 
+6a. Paying for an order from the account
+
+   Banking landed in 0.1.0-beta and the two halves do not touch yet: an order is
+   still settled out of the notes in your pockets, and the account is only a place
+   to leave them. Named by Vitor as the point of the feature, so this is a WHEN and
+   not an IF.
+
+   It is parked rather than done because it is a design question and not a wiring
+   one. If the catalogue can charge the account from anywhere, cash stops mattering
+   and the walk to the machine was for nothing; if it can only charge it while you
+   are standing at a machine, the catalogue becomes a thing you use at ATMs. The
+   third reading -- the card is what the catalogue bills, and having it on you is
+   the requirement -- is the one worth trying first, and it wants the card to be
+   losable in a way that costs something.
+
 7. Catalogue inserts
 
    Flavour pages bound into the catalogue -- adverts, notices, a company voice.
@@ -107,3 +129,5 @@ Kept here so nothing on the list gets proposed twice:
   - Requiring the catalogue in hand while the window is open
   - Mod-item integration: other mods' items priced by the same rules and
     filterable by source mod
+  - Cash machines: a bank account on the character, a credit card bound to it
+    with a PIN, and deposits and withdrawals in real notes at any vanilla ATM
