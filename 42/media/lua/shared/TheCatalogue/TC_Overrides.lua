@@ -114,8 +114,50 @@ TheCatalogue.PRICE_OVERRIDES = {
     ["Base.WeldingMask"]    = 35,
     ["Base.Loupe"]          = 25,
 
+    --[[ DIRTY / CLEAN / STERILISED -----------------------------------------
+
+         Four families in vanilla come in a dirty and a clean form, and one of them in a
+         sterilised form as well. Nothing in the generator knows they are related, so
+         they were priced independently and came out nonsense: a dirty bandage cost $11
+         and a clean one $2, because the clean one carried a hand override of 1 from an
+         earlier scale and its two siblings fell through to the formula at 6.
+
+         Set as a family here, from the ratios in the 42.20.4 reference table (see
+         CHANGELOG 0.11.0): dirty runs about 60-65% of clean, a bundle about three to
+         four times a single, and the reference prices a sterilised bandage the same as
+         a clean one. That last is the one place this departs from it -- a sterilised
+         bandage is a clean one with disinfectant spent on it, so it costs more here.
+
+         Written as fractions because TC.PRICE_SCALE multiplies by 1.75 on the way out;
+         each value is the reference figure divided by that, so the shown price is the
+         reference's own number.
+
+         WHAT ROUNDING EATS. roundPrice floors at $1, so the single strips below all
+         show $1 whether dirty or clean -- the reference puts them at $0.75 and $1.25
+         and there is no room between those. The distinction survives where it matters,
+         on the bundles. A strip of dirty cloth being worth about a dollar is the right
+         answer even if it is not a distinguishable one. ]]
+    ["Base.BandageDirty"]                 = 6.50 / 1.75,   -- $7
+    ["Base.Bandage"]                      = 10.00 / 1.75,  -- $10
+    ["Base.AlcoholBandage"]               = 12.00 / 1.75,  -- $12, clean plus the alcohol
+
+    ["Base.RippedSheetsDirty"]            = 0.75 / 1.75,
+    ["Base.RippedSheets"]                 = 1.25 / 1.75,
+    ["Base.RippedSheetsDirtyBundle"]      = 2.50 / 1.75,   -- $3
+    ["Base.RippedSheetsBundle"]           = 4.00 / 1.75,   -- $4
+    ["Base.RippedSheetsSterilizedBundle"] = 5.00 / 1.75,   -- $5
+
+    ["Base.DenimStripsDirty"]             = 1.00 / 1.75,
+    ["Base.DenimStrips"]                  = 1.75 / 1.75,
+    ["Base.DenimStripsDirtyBundle"]       = 4.00 / 1.75,   -- $4
+    ["Base.DenimStripsBundle"]            = 7.00 / 1.75,   -- $7
+
+    ["Base.LeatherStripsDirty"]           = 1.00 / 1.75,
+    ["Base.LeatherStrips"]                = 1.75 / 1.75,
+    ["Base.LeatherStripsDirtyBundle"]     = 4.00 / 1.75,   -- $4
+    ["Base.LeatherStripsBundle"]          = 7.00 / 1.75,   -- $7
+
     -- MEDICAL -------------------------------------------------------------
-    ["Base.Bandage"]              = 1,
     ["Base.BandageBox"]           = 9,
     ["Base.Bandaid"]              = 1,
     ["Base.AdhesiveBandageBox"]   = 5,
