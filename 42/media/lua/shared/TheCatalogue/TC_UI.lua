@@ -522,45 +522,44 @@ end
 function TC.layoutRail(win)
     if not win.railBtns then return end
 
-    local x   = win.width - win.railW + TC.UI.RAIL_PAD
-    local w   = win.railW - TC.UI.RAIL_PAD * 2
     local hgt = railButtonHeight()
     local gap = TC.UI.RAIL_GAP
+    local w   = win.railW - TC.UI.RAIL_PAD * 2
 
-    --[[ The reporting group is placed FIRST, because the doing group is centred in
-         whatever it leaves behind.
+    --[[ Centred in the gap it actually sits in, which is wider than the rail.
 
-         It hangs off the CENTRE LINE of the window's own bottom button row rather than
-         off the window's bottom edge. The two are not the same: the rail button is
-         shorter than a Rush or a Place order, so sharing a bottom margin left it sitting
-         low and reading as something that had slid down the edge rather than as the last
-         entry of a column. Matching centres puts it on the same line as the row beside
-         it at any font size. ]]
+         Every one of these windows ends its content block at `innerW - PAD`: the buy
+         window's detail panel, and the full-width list in the sell window and the
+         ledger, all stop there. So the empty strip the rail lives in runs from that
+         edge to the window's border and is railW + PAD across -- not railW.
+
+         Insetting by RAIL_PAD from the rail's own left edge therefore left 28px of air
+         on the left of a button and 14 on the right, and the column read as pushed
+         against the frame. Splitting the real gap puts an equal 21 either side. ]]
+    local gapLeft = TC.innerW(win) - TC.UI.PAD
+    local x = gapLeft + math.floor(((win.width - gapLeft) - w) / 2)
+
+    --[[ The reporting group hangs off the CENTRE LINE of the window's own bottom button
+         row rather than off the window's bottom edge. The two are not the same: a rail
+         button is shorter than a Rush or a Place order, so sharing a bottom margin left
+         it sitting low and reading as something that had slid down the edge rather than
+         as the last entry of a column. Matching centres puts it on the same line as the
+         row beside it at any font size. ]]
     local rowMid = win.height - TC.UI.PAD * 2 - bottomRowHeight() / 2
     local by     = math.floor(rowMid - hgt / 2)
 
     -- Upwards, so the LAST name in RAIL_BOTTOM ends up lowest.
-    local bottomBlockTop = by
     for i = #RAIL_BOTTOM, 1, -1 do
         local b = win.railBtns[RAIL_BOTTOM[i]]
         b:setX(x); b:setY(by); b:setWidth(w); b:setHeight(hgt)
-        bottomBlockTop = by
         by = by - hgt - gap
     end
 
-    --[[ The doing group, centred in the space between the title bar and that block.
-
-         Centred rather than stacked under the title bar: the rail is as tall as the
-         window and three buttons at the top of it left the column looking top-heavy
-         against a list that fills the whole height.
-
-         The space is measured to the RESERVED top of the bottom block, not to whatever
-         is currently visible, so a delivery arriving does not re-centre the group above
-         it. Nothing on this rail moves because something else appeared. ]]
-    local top     = win:titleBarHeight() + TC.UI.PAD
-    local avail   = (bottomBlockTop - gap) - top
-    local blockH  = #RAIL_TOP * hgt + (#RAIL_TOP - 1) * gap
-    local y       = top + math.max(0, math.floor((avail - blockH) / 2))
+    --[[ The doing group, from the top down, level with the first row of the pane beside
+         it. It was briefly centred in the rail's free height; up here is where it reads
+         as the start of the column, and it means Buy sits on the same line as the search
+         box rather than floating on its own in the middle of the frame. ]]
+    local y = win:titleBarHeight() + TC.UI.PAD
 
     for _, id in ipairs(RAIL_TOP) do
         local b = win.railBtns[id]
