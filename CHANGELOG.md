@@ -12,6 +12,23 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.10.3-alpha — 2026-08-29
+
+### Changed
+- **The rail is centred in the gap it actually occupies.** Every one of these windows
+  ends its content block at `innerW - PAD` -- the buy window's detail panel, and the
+  full-width list in the sell window and the ledger -- so the empty strip the rail lives
+  in is `railW + PAD` across, not `railW`. Insetting from the rail's own edge therefore
+  left 28px of air to the left of a button and 14 to the right, and the column read as
+  pushed against the frame. Splitting the real gap puts an equal 21 either side; the
+  buttons move 7px left.
+- **Buy, Sell and Cart are back at the top of the rail.** 0.10.2 centred them in the
+  rail's free height, which left them floating in the middle of the frame. At the top,
+  Buy sits level with the search box beside it and the column reads as having a start.
+  The Ledger keeps the bottom, on the centre line of the button row next to it.
+
+---
+
 ## 0.10.2-alpha — 2026-08-29
 
 ### Changed
