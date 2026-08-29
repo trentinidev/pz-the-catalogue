@@ -62,7 +62,12 @@ A version bump therefore touches three places: `42/mod.info`, `TC.VERSION` in
 
 ## Parked until after 1.0
 
-PT-BR translation, multiplayer/server authority, stock and scarcity, Workshop packaging
-(`workshop.txt`, `preview.png`), used/clearance goods, dynamic economy, catalogue inserts.
-The user is making the oversized parcel models by hand; the three tiers currently share
-vanilla's `Base.Parcel_ExtraLarge` mesh and differ only by icon.
+`ROADMAP.md` holds the list and the reasoning -- keep it there, not here, so the two do
+not drift. In short: multiplayer/server authority and Workshop packaging block 1.0;
+stock and scarcity, used/clearance goods, dynamic economy, catalogue inserts, PT-BR and
+the hand-made parcel models come after. Its closing section lists what has already
+shipped, so nothing gets proposed twice.
+
+One of those is a code fact worth having up front: the three delivery tiers share
+vanilla's `Base.Parcel_ExtraLarge` mesh and differ only by icon, because the user is
+still modelling the oversized parcels by hand.
