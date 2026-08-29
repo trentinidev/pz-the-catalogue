@@ -1,5 +1,13 @@
 <#
-  Pricing rules. Dot-sourced by gen_prices.ps1.
+  Pricing rules.
+
+  NO LONGER GENERATE ANYTHING. tools/gen_prices.ps1 dot-sourced this file to build
+  TC_PriceTable.lua; since 0.11.1 that table is imported from the vanilla price study by
+  tools/import_prices.sh and the generator is gone.
+
+  This file is kept because it is the readable twin of TC_ModPricing.lua, which prices
+  items from OTHER mods at runtime and encodes these same judgements. The study will
+  never cover those. Change the two together.
 
   Everything here is early-90s Kentucky retail, priced by WHAT THE THING IS. Weight is
   used only as a gentle modifier inside a class, never as the main signal -- that was

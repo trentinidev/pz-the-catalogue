@@ -1,242 +1,44 @@
 --[[ The Catalogue -- hand-set prices.
 
-     The formula in TC_Prices.lua covers all ~5,000 vanilla items, but a formula that
-     reads only category and weight cannot know that a hunting rifle matters more than
-     a fireplace poker of similar mass. This table is where judgement goes.
+     Nearly empty on purpose. Read the next four paragraphs before adding to it.
 
-     Scale is early-90s Kentucky retail, the anchors being:
-         canned beans  $1      an axe        $30
-         a shotgun     $250    a generator   $600
+     This file used to hold 186 prices, and it held them for a good reason: the price
+     table was computed by a formula that could see what an item DECLARES -- category,
+     weight, calories, MaxDamage, Capacity -- and nothing about what an item is FOR. It
+     put a hunting rifle and a fireplace poker of the same mass in the same place, so
+     186 entries existed to argue with it, one item at a time.
 
-     Anything absent falls through to the formula. Anything present wins outright,
-     before the sandbox PriceMultiplier is applied.
+     Since 0.11.1 the table is imported from tools/reference/PZ_prices_B42.20.4.md, which
+     prices all 5,092 vanilla ids individually from 1993 replacement cost and then
+     survival utility in Knox County. It reasons about exactly what the formula could
+     not, which means the overrides were arguing a case that had already been won. They
+     were retired wholesale rather than reconciled one by one: keeping a hand price that
+     merely agrees with the table is how the two drift apart later.
 
-     Every id here is checked against the game scripts by tools/verify_ids.sh -- a
-     mistyped id is not a runtime error, it is silently ignored, which is worse.
+     WHAT BELONGS HERE NOW. Only a price where this mod deliberately disagrees with the
+     study, with the disagreement written down. Two, at the time of writing.
+
+     Values are in dollars: TC.PRICE_SCALE is 1.0, so what is written here is what the
+     player is shown, before the sandbox PriceMultiplier. Every id is checked against the
+     game's own scripts by tools/verify_ids.sh -- a mistyped id is not a runtime error,
+     it is silently ignored, which is worse.
 ]]
 
 TheCatalogue = TheCatalogue or {}
 
 TheCatalogue.PRICE_OVERRIDES = {
 
-    -- ANCHORS -------------------------------------------------------------
-    ["Base.TinnedBeans"]  = 1,
-    ["Base.Axe"]          = 30,
-    ["Base.Shotgun"]      = 250,
-    ["Base.Generator"]    = 600,
+    --[[ A sterilised bandage costs more than a clean one.
 
-    -- FIREARMS ------------------------------------------------------------
-    -- Street prices for used civilian guns, with military hardware marked up
-    -- hard because the catalogue is the only reliable way to get one.
-    ["Base.Pistol"]                     = 300,
-    ["Base.Pistol2"]                    = 340,
-    ["Base.Pistol3"]                    = 260,
-    ["Base.Revolver"]                   = 220,
-    ["Base.Revolver_Long"]              = 280,
-    ["Base.Revolver_Short"]             = 180,
-    ["Base.ShotgunSawnoff"]             = 160,
-    ["Base.DoubleBarrelShotgun"]        = 190,
-    ["Base.DoubleBarrelShotgunSawnoff"] = 140,
-    ["Base.HuntingRifle"]               = 420,
-    ["Base.VarmintRifle"]               = 210,
-    ["Base.AssaultRifle"]               = 750,
-    ["Base.AssaultRifle2"]              = 520,
-    ["Base.JS14_Rifle"]                 = 400,
-    ["Base.JS3T_Shotgun"]               = 300,
-    ["Base.L92_Carbine"]                = 480,
-    ["Base.L94_Rifle"]                  = 560,
-    ["Base.MSR7T_Rifle"]                = 620,
-    ["Base.TrapperCarbine"]             = 350,
+         The study prices Base.Bandage and Base.AlcoholBandage identically, at $10. In
+         game they are not the same object: the sterilised one is a clean bandage with
+         disinfectant spent on it, and Disinfectant is itself worth $6 a bottle. Pricing
+         the two alike would mean the alcohol went in for free, and would make the
+         sterilised version the obvious buy at no cost -- which removes a decision the
+         game otherwise poses. ]]
+    ["Base.AlcoholBandage"] = 12,
 
-    -- MAGAZINES -----------------------------------------------------------
-    ["Base.9mmClip"]   = 25,
-    ["Base.44Clip"]    = 30,
-    ["Base.45Clip"]    = 28,
-    ["Base.556Clip"]   = 40,
-    ["Base.M14Clip"]   = 45,
-    ["Base.JS14_Clip"] = 40,
-
-    -- AMMUNITION ----------------------------------------------------------
-    -- Loose rounds priced per round, boxes and cartons at a bulk discount so
-    -- buying in bulk is the sane play, as it is in real life.
-    ["Base.Bullets9mm"]  = 1,   ["Base.Bullets9mmBox"]  = 22,  ["Base.Bullets9mmCarton"]  = 190,
-    ["Base.Bullets38"]   = 1,   ["Base.Bullets38Box"]   = 24,  ["Base.Bullets38Carton"]   = 205,
-    ["Base.Bullets44"]   = 2,   ["Base.Bullets44Box"]   = 38,  ["Base.Bullets44Carton"]   = 330,
-    ["Base.Bullets45"]   = 1,   ["Base.Bullets45Box"]   = 28,  ["Base.Bullets45Carton"]   = 240,
-    ["Base.Bullets357"]  = 2,   ["Base.Bullets357Box"]  = 34,  ["Base.Bullets357Carton"]  = 295,
-    ["Base.ShotgunShells"] = 1, ["Base.ShotgunShellsBox"] = 20, ["Base.ShotgunShellsCarton"] = 170,
-    ["Base.308Bullets"]  = 2,   ["Base.308Box"]         = 40,  ["Base.308Carton"]         = 350,
-    ["Base.556Bullets"]  = 2,   ["Base.556Box"]         = 36,  ["Base.556Carton"]         = 310,
-    ["Base.3030Bullets"] = 2,   ["Base.3030Box"]        = 42,  ["Base.3030Carton"]        = 365,
-
-    -- BLADES --------------------------------------------------------------
-    ["Base.Katana"]         = 160,
-    ["Base.Sword"]          = 120,
-    ["Base.ShortSword"]     = 85,
-    ["Base.MacheteKnife"]   = 45,
-    ["Base.HuntingKnife"]   = 24,
-    ["Base.FightingKnife"]  = 32,
-    ["Base.SwitchKnife"]    = 14,
-    ["Base.KnifeButterfly"] = 16,
-    ["Base.KnifePocket"]    = 8,
-    ["Base.SmallKnife"]     = 5,
-    ["Base.LargeKnife"]     = 12,
-    ["Base.Multitool"]      = 30,
-    ["Base.Handiknife"]     = 10,
-
-    -- HAND TOOLS ----------------------------------------------------------
-    ["Base.Hammer"]         = 12,
-    ["Base.BallPeenHammer"] = 14,
-    ["Base.ClubHammer"]     = 16,
-    ["Base.Screwdriver"]    = 4,
-    ["Base.Wrench"]         = 10,
-    ["Base.PipeWrench"]     = 22,
-    ["Base.Ratchet"]        = 18,
-    ["Base.Pliers"]         = 9,
-    ["Base.Saw"]            = 18,
-    ["Base.GardenSaw"]      = 14,
-    ["Base.SmallSaw"]       = 10,
-    ["Base.Crowbar"]        = 16,
-    ["Base.BoltCutters"]    = 40,
-    ["Base.Sledgehammer"]   = 55,
-    ["Base.Sledgehammer2"]  = 55,
-    ["Base.WoodAxe"]        = 38,
-    ["Base.HandAxe"]        = 20,
-    ["Base.PickAxe"]        = 35,
-    ["Base.SnowShovel"]     = 15,
-    ["Base.File"]           = 6,
-    ["Base.Whetstone"]      = 5,
-    ["Base.MeasuringTape"]  = 7,
-    ["Base.Needle"]         = 1,
-    ["Base.Thimble"]        = 1,
-    ["Base.Zipties"]        = 2,
-    ["Base.BlowTorch"]      = 60,
-    ["Base.WeldingMask"]    = 35,
-    ["Base.Loupe"]          = 25,
-
-    --[[ DIRTY / CLEAN / STERILISED -----------------------------------------
-
-         Four families in vanilla come in a dirty and a clean form, and one of them in a
-         sterilised form as well. Nothing in the generator knows they are related, so
-         they were priced independently and came out nonsense: a dirty bandage cost $11
-         and a clean one $2, because the clean one carried a hand override of 1 from an
-         earlier scale and its two siblings fell through to the formula at 6.
-
-         Set as a family here, from the ratios in the 42.20.4 reference table (see
-         CHANGELOG 0.11.0): dirty runs about 60-65% of clean, a bundle about three to
-         four times a single, and the reference prices a sterilised bandage the same as
-         a clean one. That last is the one place this departs from it -- a sterilised
-         bandage is a clean one with disinfectant spent on it, so it costs more here.
-
-         Written as fractions because TC.PRICE_SCALE multiplies by 1.75 on the way out;
-         each value is the reference figure divided by that, so the shown price is the
-         reference's own number.
-
-         WHAT ROUNDING EATS. roundPrice floors at $1, so the single strips below all
-         show $1 whether dirty or clean -- the reference puts them at $0.75 and $1.25
-         and there is no room between those. The distinction survives where it matters,
-         on the bundles. A strip of dirty cloth being worth about a dollar is the right
-         answer even if it is not a distinguishable one. ]]
-    ["Base.BandageDirty"]                 = 6.50 / 1.75,   -- $7
-    ["Base.Bandage"]                      = 10.00 / 1.75,  -- $10
-    ["Base.AlcoholBandage"]               = 12.00 / 1.75,  -- $12, clean plus the alcohol
-
-    ["Base.RippedSheetsDirty"]            = 0.75 / 1.75,
-    ["Base.RippedSheets"]                 = 1.25 / 1.75,
-    ["Base.RippedSheetsDirtyBundle"]      = 2.50 / 1.75,   -- $3
-    ["Base.RippedSheetsBundle"]           = 4.00 / 1.75,   -- $4
-    ["Base.RippedSheetsSterilizedBundle"] = 5.00 / 1.75,   -- $5
-
-    ["Base.DenimStripsDirty"]             = 1.00 / 1.75,
-    ["Base.DenimStrips"]                  = 1.75 / 1.75,
-    ["Base.DenimStripsDirtyBundle"]       = 4.00 / 1.75,   -- $4
-    ["Base.DenimStripsBundle"]            = 7.00 / 1.75,   -- $7
-
-    ["Base.LeatherStripsDirty"]           = 1.00 / 1.75,
-    ["Base.LeatherStrips"]                = 1.75 / 1.75,
-    ["Base.LeatherStripsDirtyBundle"]     = 4.00 / 1.75,   -- $4
-    ["Base.LeatherStripsBundle"]          = 7.00 / 1.75,   -- $7
-
-    -- MEDICAL -------------------------------------------------------------
-    ["Base.BandageBox"]           = 9,
-    ["Base.Bandaid"]              = 1,
-    ["Base.AdhesiveBandageBox"]   = 5,
-    ["Base.Disinfectant"]         = 6,
-    ["Base.AlcoholWipes"]         = 3,
-    ["Base.CottonBalls"]          = 1,
-    ["Base.CottonBallsBox"]       = 4,
-    ["Base.Antibiotics"]          = 28,
-    ["Base.AntibioticsBox"]       = 220,
-    ["Base.Pills"]                = 6,
-    ["Base.PillsVitamins"]        = 5,
-    ["Base.PillsSleepingTablets"] = 9,
-    ["Base.PillsAntiDep"]         = 12,
-    ["Base.PillsBeta"]            = 12,
-    ["Base.SutureNeedle"]         = 8,
-    ["Base.SutureNeedleHolder"]   = 15,
-    ["Base.Tweezers"]             = 4,
-    ["Base.Splint"]               = 2,
-    ["Base.Coldpack"]             = 3,
-    ["Base.Stethoscope"]          = 30,
-    ["Base.Gloves_Surgical"]      = 2,
-
-    -- ELECTRONICS ---------------------------------------------------------
-    ["Base.Generator_Yellow"] = 600,
-    ["Base.Generator_Blue"]   = 600,
-    ["Base.Generator_Old"]    = 380,
-    ["Base.Battery"]          = 3,
-    ["Base.BatteryBox"]       = 10,
-    ["Base.LightBulb"]        = 2,
-    ["Base.LightBulbBox"]     = 7,
-    ["Base.ElectronicsScrap"] = 2,
-    ["Base.ElectricWire"]     = 4,
-    ["Base.Amplifier"]        = 35,
-    ["Base.RadioReceiver"]    = 25,
-    ["Base.RadioTransmitter"] = 45,
-    ["Base.MotionSensor"]     = 55,
-    ["Base.HomeAlarm"]        = 40,
-    ["Base.Speaker"]          = 15,
-    ["Base.CDplayer"]         = 60,
-    ["Base.VideoGame"]        = 45,
-
-    -- RADIO AND TV --------------------------------------------------------
-    ["Base.RadioBlack"]    = 40,
-    ["Base.RadioRed"]      = 40,
-    ["Base.WalkieTalkie1"] = 45,
-    ["Base.WalkieTalkie2"] = 60,
-    ["Base.WalkieTalkie3"] = 80,
-    ["Base.WalkieTalkie4"] = 110,
-    ["Base.WalkieTalkie5"] = 150,
-    ["Base.HamRadio1"]     = 180,
-    ["Base.HamRadio2"]     = 260,
-    ["Base.ManPackRadio"]  = 320,
-    ["Base.TvBlack"]       = 200,
-    ["Base.TvAntique"]     = 120,
-    ["Base.TvWideScreen"]  = 450,
-
-    -- LIGHT ---------------------------------------------------------------
-    ["Base.HandTorch"]            = 12,
-    ["Base.FlashLight_AngleHead"] = 20,
-    ["Base.PenLight"]             = 6,
-    ["Base.Torch"]                = 2,
-    ["Base.Candle"]               = 1,
-    ["Base.CandleBox"]            = 6,
-    ["Base.Lantern_Hurricane"]    = 22,
-    ["Base.Lantern_Propane"]      = 35,
-    ["Base.Propane_Refill"]       = 18,
-
-    -- BAGS ----------------------------------------------------------------
-    ["Base.Bag_Schoolbag"]       = 25,
-    ["Base.Bag_DuffelBag"]       = 35,
-    ["Base.Bag_NormalHikingBag"] = 55,
-    ["Base.Bag_BigHikingBag"]    = 90,
-    ["Base.Bag_ALICEpack"]       = 130,
-    ["Base.Bag_ALICEpack_Army"]  = 150,
-    ["Base.Bag_SurvivorBag"]     = 110,
-    ["Base.Bag_MedicalBag"]      = 70,
-    ["Base.Bag_ToolBag"]         = 45,
-    ["Base.Bag_Military"]        = 120,
-    ["Base.Bag_Satchel"]         = 20,
-    ["Base.Bag_FannyPackFront"]  = 12,
-    ["Base.Toolbox_Mechanic"]    = 60,
+    --[[ Same argument, same family. The study puts the sterilised bundle level with the
+         clean one at $4; the sterilising is work and materials someone did. ]]
+    ["Base.RippedSheetsSterilizedBundle"] = 5,
 }

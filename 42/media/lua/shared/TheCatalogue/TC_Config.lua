@@ -12,22 +12,29 @@ TC.ITEM_FULL    = "Catalogue.Catalogue"
 TC.MONEY        = "Base.Money"
 TC.MONEY_BUNDLE = "Base.MoneyBundle"
 
---[[ Global scale on every buy price.
+--[[ Global scale on every buy price. 1.0 since 0.11.1, and it stays here for the
+     sandbox multiplier to compose with rather than because it still corrects anything.
 
-     The catalogue was too generous: buying was cheap enough that a modest pile of
-     looted cash bought most of what mattered, and selling at 90% meant loot converted
-     to money almost losslessly. 1.75 on the way in and a much harder spread on the way
-     out (see SellRatio) is the correction.
+     It was 1.75 while TC_PriceTable held BASE prices that a formula had worked out and
+     that were, as a body, too generous. The table is imported from the vanilla price
+     study now (tools/import_prices.sh) and the study's figures are already in dollars,
+     so there is nothing left to scale: what is written in the table is what the player
+     is shown. ]]
+TC.PRICE_SCALE = 1.0
 
-     Applied HERE, in one place, rather than baked into TC_PriceTable.lua, because this
-     is the only spot that reaches all four pricing layers at once -- hand-set
-     overrides, the generated table, modded items and the fallback formula. Baking it
-     into the generated table would have needed a matching copy inside TC_ModPricing to
-     keep modded items in step, which is exactly the kind of duplication that drifts.
+--[[ ...except for the two layers that are still a formula.
 
-     Note this means the numbers in TC_PriceTable.lua are BASE prices: what the game
-     shows is that figure times this scale times the sandbox PriceMultiplier. ]]
-TC.PRICE_SCALE = 1.75
+     Items from other mods have never been in the study and never will be. They are
+     priced by TC_ModPricing, which encodes the old judgements at the old base scale, so
+     dropping PRICE_SCALE to 1.0 would leave every modded item cheap against a vanilla
+     table that did not move with it.
+
+     0.75 is measured, not chosen: across the 4,905 ids both sets price, the study's
+     median figure is 0.43x what this mod used to SHOW, and it used to show base x 1.75.
+     0.43 x 1.75 is 0.75, so this is the factor that puts a formula price on the study's
+     footing. It corrects the level, not the shape -- the formula still cannot tell a
+     rifle from a poker, which is the whole reason vanilla stopped using it. ]]
+TC.MOD_PRICE_SCALE = 0.75
 
 -- Vanilla UnbundleMoney turns one bundle into exactly this many loose notes.
 -- Read straight off media/scripts/generated/recipes/recipes_packing.txt; if the
@@ -145,7 +152,7 @@ end
      A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
      sandbox option and this line has to be there whether or not anyone turned it on.
      tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
-TC.VERSION = "0.11.0-alpha"
+TC.VERSION = "0.11.1-alpha"
 print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging

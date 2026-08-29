@@ -22,12 +22,20 @@ that line first. It has already caught one round of feedback given on a stale bu
 
 ## Read this before opening files
 
-`TC_PriceTable.lua` is **179 KB of generated data** -- roughly a quarter of a context
+`TC_PriceTable.lua` is **180 KB of generated data** -- roughly a quarter of a context
 window. Never read it whole. `grep` it for the fullType you care about. It is rewritten
-wholesale by `tools/gen_prices.ps1` from the rules in `tools/rules.ps1`; to change one
-price permanently use `TC_Overrides.lua`, which wins over the table.
+wholesale by `sh tools/import_prices.sh` from `tools/reference/PZ_prices_B42.20.4.md`,
+a **1.1 MB** study that is even less readable whole -- grep that too. To change one price
+permanently use `TC_Overrides.lua`, which wins over the table, and say there why the
+study is wrong; that file is nearly empty on purpose.
 
-`CHANGELOG.md` (34 KB) is append-only history: read the top, not the file.
+`CHANGELOG.md` (37 KB) is append-only history: read the top, not the file.
+
+Prices are **imported, not computed**, since 0.11.1. `tools/gen_prices.ps1` is gone.
+`tools/rules.ps1` survives only as the readable twin of `TC_ModPricing.lua`, which prices
+items from OTHER mods at runtime -- the study will never cover those. Those two formula
+layers are multiplied by `TC.MOD_PRICE_SCALE` (0.75) to sit on the study's footing;
+`TC.PRICE_SCALE` is 1.0 and the table is in plain dollars.
 
 ## Before every commit
 
