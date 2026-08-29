@@ -8,7 +8,7 @@ A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 > server it is trivially cheatable; server authority is deliberately deferred until
 > after 1.0 rather than half-done before it. 1.0.0 is reserved for the first build that
 > has been played end to end.
-> See [CHANGELOG.md](CHANGELOG.md) for what has landed, and [ROADMAP.md](ROADMAP.md)
+> See [CHANGELOG.md](CHANGELOG.md) for what has landed, and [ROADMAP.txt](ROADMAP.txt)
 > for what is deliberately still missing.
 
 Craft a **Shop Catalogue** from a Notebook, right-click it, and trade with the world's

@@ -62,7 +62,7 @@ A version bump therefore touches three places: `42/mod.info`, `TC.VERSION` in
 
 ## Parked until after 1.0
 
-`ROADMAP.md` holds the list and the reasoning -- keep it there, not here, so the two do
+`ROADMAP.txt` holds the list and the reasoning -- keep it there, not here, so the two do
 not drift. In short: multiplayer/server authority and Workshop packaging block 1.0;
 stock and scarcity, used/clearance goods, dynamic economy, catalogue inserts, PT-BR and
 the hand-made parcel models come after. Its closing section lists what has already
