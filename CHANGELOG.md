@@ -12,6 +12,44 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.12.1-alpha — 2026-08-29
+
+### Fixed
+- **Clicking a column header crashed the buy window** with `Stack overflow`, three hundred
+  and fifty frames deep inside Kahlua's `quicksort_comp`. The mod's comparator was fine;
+  the sort under it was not, and this data is its worst case on two counts at once:
+
+  - **Enormous runs of an identical key.** 899 vanilla items are priced $1, 465 at $2, 321
+    at $5. Sorting by price is sorting one long plateau.
+  - **The array is already sorted by the tie-break.** `TC.entries` is built in name order
+    and every comparator falls through to the name, so inside that plateau the comparator
+    says "already in order" for every pair -- the textbook pivot-degenerate input, where
+    recursion depth becomes the LENGTH of the run instead of its logarithm. 899 frames of
+    quicksort on top of the outer levels is more stack than the VM has.
+
+  Sorting is done by a **bottom-up merge sort** in `TC_Prices.lua` now: no recursion at
+  all, O(n log n) on every input rather than on lucky ones, and stable, so the name order
+  the entries arrive in survives as the tie-break for free. Measured on the exact shape
+  that crashed -- 5,179 entries, 899 sharing a price, pre-sorted by name -- it sorts in
+  about a millisecond, and re-sorting an already-sorted array and sorting descending are
+  both fine.
+
+  This got worse as the prices got better. The old generated table spread its values
+  thinly enough that no plateau was long enough to overflow; the imported study rounds a
+  great many genuinely cheap things to the same dollar, which is correct and which is what
+  made the latent bug reachable.
+- The comparators are strict **total** orders now -- category, weight and price all fall
+  through name to `fullType`, as the name comparator already did. Two different items can
+  share a display name, so without that last step a pair could compare equal in both
+  directions.
+
+### Internal
+- The index build's own sort moved to the same merge sort. It was never the one that
+  overflowed -- `getAllItems()` order is not pathological -- but there is no reason to
+  keep a second, riskier sort in the file.
+
+---
+
 ## 0.12.0-alpha — 2026-08-29
 
 ### Added
