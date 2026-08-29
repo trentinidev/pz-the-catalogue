@@ -19,16 +19,17 @@ local function firstCatalogue(items)
     return nil
 end
 
-local function onBuy(playerNum, item)
+--[[ One entry, and it lands on Buy.
+
+     There used to be three -- Buy, Sell, Ledger -- and they were three because that is
+     how the windows are built, not because the player thinks in threes. A right-click
+     menu in this game is regularly twenty entries long before a mod adds anything, and
+     three of them competing for the same glance is worse than one that always works.
+
+     Buy is the landing pane because it is the one you want nine times out of ten, and
+     because the rail down its right edge reaches the other three in a click. ]]
+local function onOpen(playerNum, item)
     TC.openBuyWindow(playerNum, item)
-end
-
-local function onSell(playerNum, item)
-    TC.openSellWindow(playerNum, item)
-end
-
-local function onHistory(playerNum, item)
-    TC.openHistoryWindow(playerNum)
 end
 
 local function onCollect(playerNum, item)
@@ -59,23 +60,14 @@ local function addOptions(playerNum, context, items)
     local catalogue = firstCatalogue(items)
 
     if catalogue then
-        -- Both entries sit at the top level rather than under a submenu. Two options
-        -- is not enough to be worth an extra hover, and this is the item's purpose.
-        --
         -- addOption returns the option table, and ISContextMenu draws option.iconTexture
         -- to the left of the label when one is set. Using the catalogue's own inventory
-        -- texture ties the two entries to the item they came from, which matters on a
-        -- right-click menu that may already be twenty entries long.
+        -- texture ties the entry to the item it came from, which matters on a right-click
+        -- menu that may already be twenty entries long.
         local tex = catalogue:getTex()
 
-        local buy = context:addOption(getText("ContextMenu_TC_Buy"), playerNum, onBuy, catalogue)
-        if buy and tex then buy.iconTexture = tex end
-
-        local sell = context:addOption(getText("ContextMenu_TC_Sell"), playerNum, onSell, catalogue)
-        if sell and tex then sell.iconTexture = tex end
-
-        local hist = context:addOption(getText("ContextMenu_TC_History"), playerNum, onHistory, catalogue)
-        if hist and tex then hist.iconTexture = tex end
+        local open = context:addOption(getText("ContextMenu_TC_Open"), playerNum, onOpen, catalogue)
+        if open and tex then open.iconTexture = tex end
 
         --[[ Only while something is actually standing at the door. Closing the arrival
              window is not refusing the delivery, so there has to be a way back to it --

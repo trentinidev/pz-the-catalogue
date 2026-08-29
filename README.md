@@ -4,15 +4,15 @@ A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
 [![checks](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml/badge.svg)](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml)
 
-> **Alpha — 0.9.2, single-player.** Not released, and the version number says so
+> **Alpha — 0.10.0, single-player.** Not released, and the version number says so
 > deliberately: it works and it is played, but parts of it have never been exercised.
 > [What to expect](#what-to-expect) sets out the limits before you install.
 > See [CHANGELOG.md](CHANGELOG.md) for what has landed, and [ROADMAP.txt](ROADMAP.txt)
 > for what is deliberately still missing.
 
-Craft a **Shop Catalogue** from a Notebook, right-click it, and trade with the world's
-last mail-order company. Every vanilla item has a price. You pay in real banknotes and
-you get paid in real banknotes.
+Craft **The Catalogue** from a Notebook, right-click it, pick **Open Catalogue**, and
+trade with the world's last mail-order company. Every vanilla item has a price. You pay
+in real banknotes and you get paid in real banknotes.
 
 ---
 
@@ -64,6 +64,14 @@ bartering. See [What to expect](#what-to-expect).
 
 ## What it does
 
+**One window, four faces** -- right-clicking the catalogue offers a single **Open
+Catalogue**, which lands on Buy. A rail down the right edge switches the same frame to
+Sell or the Ledger without it moving or resizing, and carries the numbers with it: how
+many items are in the cart, how many orders are still in flight, and a **Delivery** entry
+that appears only when something is at the door. The cart opens beside the window rather
+than inside it, so you can watch the total while you keep adding to it; the rail entry
+toggles it shut again.
+
 **Buy** — a searchable, filterable table of all 5,092 vanilla items with prices on an
 early-90s scale. Pick an item, pick a quantity (1–100), and the cost is deducted from
 the `Base.Money` and `Base.MoneyBundle` actually sitting in your inventory.
@@ -93,7 +101,7 @@ so you cannot kit yourself out mid-horde.
 leaves immediately; when the lead time is up a window opens to say what has turned up,
 and the parcels are set down at your feet only when you press **Receive**. Closing that
 window is not refusing the delivery — it waits, through a save and a reload, until you
-collect it from the catalogue's right-click menu.
+collect it from the rail's Delivery entry, or the catalogue's right-click menu.
 
 How long an order takes is mostly about **bulk**, and bulk compounds: one pistol round
 is about twenty minutes, a hundred of them about two and a half hours, a crate of
@@ -101,7 +109,7 @@ medical supplies most of a morning, a generator several days. Value counts for a
 and sheer item count for a little, so something small and precious is handled slightly
 more carefully than something small and cheap. **Rush** delivery skips the wait for a
 surcharge and hands the goods straight across the counter. Pending orders and completed
-ones share one ledger, opened from the catalogue's right-click menu.
+ones share one ledger, opened from the rail.
 
 **Changing your mind** — a pending order can be cancelled from the ledger, with the small
 red **✕** on its row, for a **full refund**. Once it has arrived that ✕ is gone and the

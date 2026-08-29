@@ -122,16 +122,22 @@ function TC_BuyWindow:new(x, y, w, h, playerNum)
     o.dragCol = nil
     o.sortKey = "name"                       -- name | cat | mid (weight) | price
     o.sortAsc = true
-    o.cart = {}
+    -- Set HERE and not in buildRail: createChildren asks listGeometry for its widths
+    -- before the rail exists, so a nil railW would build the list at full width and
+    -- only the first resize would correct it.
+    o.railW = TC.railWidth()
+    -- The cart used to live here, on the instance. It is keyed by player in TC_Cart
+    -- now, because a rail click closes this window and a cart owned by it would be
+    -- emptied by switching to the ledger and back.
     o:setResizable(true)
-    o.minimumWidth = 900
+    o.minimumWidth = 900 + TC.railWidth()
     o.minimumHeight = 740
     return o
 end
 
 function TC_BuyWindow:listGeometry()
     local top   = self:titleBarHeight() + PAD
-    local listW = self.width - DETAIL_W - PAD * 3
+    local listW = TC.innerW(self) - DETAIL_W - PAD * 3
     local listY = top + BUTTON_HGT + PAD + HEADER_HGT
     local listH = self.height - listY - BOTTOM_PAD - FONT_HGT_SMALL - PAD
     return top, listW, listY, listH
@@ -213,7 +219,7 @@ function TC_BuyWindow:createChildren()
     self.list.onmousedown = TC_BuyWindow.onSelectItem
     self:addChild(self.list)
 
-    local dx = self.width - DETAIL_W - PAD
+    local dx = TC.innerW(self) - DETAIL_W - PAD
     local by = self.height - BOTTOM_PAD - BUTTON_HGT
 
     self.minusBtn = ISButton:new(dx + PAD, by - BUTTON_HGT - PAD, 34, BUTTON_HGT, "-",
@@ -240,19 +246,18 @@ function TC_BuyWindow:createChildren()
     self.wishBtn:initialise(); self.wishBtn:instantiate()
     self:addChild(self.wishBtn)
 
-    -- Middle row: the two ways to spend that are not "buy this one now".
-    local half = (DETAIL_W - PAD * 2 - PAD) / 2
+    --[[ Middle row: adding to the cart, and nothing else.
+
+         There was an "Open cart" button beside it, sharing the row half and half. The
+         rail carries the cart now, with the count on it, so the button next to it was
+         a second door to the same room -- and the one that stayed is the one that acts
+         on the item you have selected, which is what this panel is about. ]]
     local midY = by - (BUTTON_HGT + PAD) * 2
 
-    self.cartAddBtn = ISButton:new(dx + PAD, midY, half, BUTTON_HGT,
+    self.cartAddBtn = ISButton:new(dx + PAD, midY, DETAIL_W - PAD * 2, BUTTON_HGT,
                                    getText("IGUI_TC_AddToCart"), self, TC_BuyWindow.onAddToCart)
     self.cartAddBtn:initialise(); self.cartAddBtn:instantiate()
     self:addChild(self.cartAddBtn)
-
-    self.cartBtn = ISButton:new(dx + PAD + half + PAD, midY, half, BUTTON_HGT,
-                                getText("IGUI_TC_OpenCart"), self, TC_BuyWindow.onOpenCart)
-    self.cartBtn:initialise(); self.cartBtn:instantiate()
-    self:addChild(self.cartBtn)
 
     -- Two ways to buy, side by side, so the trade-off is visible at the moment of
     -- deciding rather than hidden behind a setting.
@@ -267,6 +272,8 @@ function TC_BuyWindow:createChildren()
                                 getText("IGUI_TC_Rush"), self, TC_BuyWindow.onRush)
     self.rushBtn:initialise(); self.rushBtn:instantiate()
     self:addChild(self.rushBtn)
+
+    TC.buildRail(self, "buy")
 
     self:populateCategories()
     self:refreshList()
@@ -290,7 +297,7 @@ function TC_BuyWindow:onAddToCart()
         return
     end
 
-    for _, line in ipairs(self.cart) do
+    for _, line in ipairs(TC.cart(self.playerNum)) do
         if line.fullType == entry.fullType then
             line.qty = line.qty + self.quantity
             self:setMessage(getText("IGUI_TC_AddedToCart", self.quantity, entry.name), false)
@@ -299,7 +306,7 @@ function TC_BuyWindow:onAddToCart()
         end
     end
 
-    table.insert(self.cart, {
+    table.insert(TC.cart(self.playerNum), {
         fullType = entry.fullType,
         name     = entry.name,
         weight   = entry.weight or 0,
@@ -307,10 +314,6 @@ function TC_BuyWindow:onAddToCart()
     })
     self:setMessage(getText("IGUI_TC_AddedToCart", self.quantity, entry.name), false)
     self:syncCart()
-end
-
-function TC_BuyWindow:onOpenCart()
-    TC.openCartWindow(self.playerNum, self)
 end
 
 -- Keep an open cart window in step with a line added from here.
@@ -681,6 +684,8 @@ local CATALOGUE_CHECK_MS = 1000
 function TC_BuyWindow:prerender()
     ISCollapsableWindow.prerender(self)
 
+    TC.refreshRail(self)
+
     local now = getTimestampMs()
     if not self.lastCatalogueCheck or (now - self.lastCatalogueCheck) >= CATALOGUE_CHECK_MS then
         self.lastCatalogueCheck = now
@@ -701,7 +706,7 @@ function TC_BuyWindow:prerender()
                       0.45, 0.45, 0.5, 1, UIFont.Small)
     end
 
-    local dx = self.width - DETAIL_W - PAD
+    local dx = TC.innerW(self) - DETAIL_W - PAD
     local dy = self:titleBarHeight() + PAD
     local dh = self.height - dy - PAD
 
@@ -859,7 +864,7 @@ function TC_BuyWindow:onResize()
     self.list:setWidth(listW)
     self.list:setHeight(listH)
 
-    local dx = self.width - DETAIL_W - PAD
+    local dx = TC.innerW(self) - DETAIL_W - PAD
     local by = self.height - BOTTOM_PAD - BUTTON_HGT
     self.minusBtn:setX(dx + PAD);        self.minusBtn:setY(by - BUTTON_HGT - PAD)
     self.qtyEntry:setX(dx + PAD + 40);   self.qtyEntry:setY(by - BUTTON_HGT - PAD)
@@ -870,13 +875,15 @@ function TC_BuyWindow:onResize()
     self.rushBtn:setWidth(DETAIL_W - PAD * 3 - buyW)
     self.wishBtn:setX(dx + PAD + SPINNER_W + PAD); self.wishBtn:setY(by - BUTTON_HGT - PAD)
     self.wishBtn:setWidth(DETAIL_W - PAD * 3 - SPINNER_W)
-    local half = (DETAIL_W - PAD * 2 - PAD) / 2
     local midY = by - (BUTTON_HGT + PAD) * 2
-    self.cartAddBtn:setX(dx + PAD);              self.cartAddBtn:setY(midY); self.cartAddBtn:setWidth(half)
-    self.cartBtn:setX(dx + PAD + half + PAD);    self.cartBtn:setY(midY);    self.cartBtn:setWidth(half)
+    self.cartAddBtn:setX(dx + PAD); self.cartAddBtn:setY(midY)
+    self.cartAddBtn:setWidth(DETAIL_W - PAD * 2)
+
+    TC.layoutRail(self)
 end
 
 function TC_BuyWindow:close()
+    TC.saveFrame(self)
     ISCollapsableWindow.close(self)
     self:removeFromUIManager()
     TC_BuyWindow.instances[self.playerNum] = nil
@@ -892,10 +899,8 @@ function TC.openBuyWindow(playerNum, catalogueItem)
         return existing
     end
 
-    local w = math.min(1240, getCore():getScreenWidth()  - 80)
-    local h = math.min(760,  getCore():getScreenHeight() - 80)
-    local x = (getCore():getScreenWidth()  - w) / 2
-    local y = (getCore():getScreenHeight() - h) / 2
+    local x, y, w, h = TC.frameRect(playerNum, 1240, 760,
+                                    900 + TC.railWidth(), 740)
 
     local started = getTimestampMs()
 

@@ -226,11 +226,13 @@ function TC_HistoryWindow:new(x, y, w, h, playerNum)
     o.playerNum = playerNum
     o.player = getSpecificPlayer(playerNum)
     o:setResizable(true)
+    o.railW = TC.railWidth()   -- before createChildren asks listGeometry, see TC_BuyWindow
 
     -- Wide enough for the three fixed columns plus a readable stretch of What, so the
     -- elastic column can never be squeezed out of existence by a drag.
     local c = columnStops()
-    o.minimumWidth = math.max(620, PAD * 2 + c.what + 200 + c.amount + TC.UI.SCROLL_GUTTER)
+    o.minimumWidth = TC.railWidth()
+                   + math.max(620, PAD * 2 + c.what + 200 + c.amount + TC.UI.SCROLL_GUTTER)
     o.minimumHeight = 380
     return o
 end
@@ -245,13 +247,15 @@ function TC_HistoryWindow:createChildren()
     ISCollapsableWindow.createChildren(self)
 
     local listY, listH = self:listGeometry()
-    self.list = TC_HistoryList:new(PAD, listY, self.width - PAD * 2, listH)
+    self.list = TC_HistoryList:new(PAD, listY, TC.innerW(self) - PAD * 2, listH)
     self.list:initialise(); self.list:instantiate()
     self.list.itemheight = ROW_HGT
     self.list.drawBorder = true
     self.list.target = self
     self.list.parentWindow = self
     self:addChild(self.list)
+
+    TC.buildRail(self, "ledger")
 
     self:refreshList()
 end
@@ -310,6 +314,8 @@ end
 function TC_HistoryWindow:prerender()
     ISCollapsableWindow.prerender(self)
 
+    TC.refreshRail(self)
+
     -- The countdown redraws itself every frame, but a delivered order has to LEAVE the
     -- list, and that only happens on a rebuild. Watching the pending count is enough:
     -- it is the only thing that changes the rows while the window sits open.
@@ -320,7 +326,7 @@ function TC_HistoryWindow:prerender()
     end
 
     local listY, listH = self:listGeometry()
-    local listW = self.width - PAD * 2
+    local listW = TC.innerW(self) - PAD * 2
     local headerY = listY - HEADER_HGT
 
     self:drawRect(PAD, headerY, listW, HEADER_HGT, 0.75, 0.13, 0.13, 0.15)
@@ -345,7 +351,7 @@ function TC_HistoryWindow:prerender()
     if #self.list.items == 0 then
         local hint = getText("IGUI_TC_LedgerEmpty")
         local hw = getTextManager():MeasureStringX(UIFont.Medium, hint)
-        self:drawText(hint, (self.width - hw) / 2, listY + listH / 2 - FONT_HGT_MEDIUM,
+        self:drawText(hint, (TC.innerW(self) - hw) / 2, listY + listH / 2 - FONT_HGT_MEDIUM,
                       0.6, 0.6, 0.64, 1, UIFont.Medium)
     end
 
@@ -367,11 +373,13 @@ end
 function TC_HistoryWindow:onResize()
     ISCollapsableWindow.onResize(self)
     local listY, listH = self:listGeometry()
-    self.list:setWidth(self.width - PAD * 2)
+    TC.layoutRail(self)
+    self.list:setWidth(TC.innerW(self) - PAD * 2)
     self.list:setHeight(listH)
 end
 
 function TC_HistoryWindow:close()
+    TC.saveFrame(self)
     ISCollapsableWindow.close(self)
     self:removeFromUIManager()
     TC_HistoryWindow.instances[self.playerNum] = nil
@@ -389,11 +397,8 @@ function TC.openHistoryWindow(playerNum)
         return existing
     end
 
-    local w = math.min(760, getCore():getScreenWidth() - 80)
-    local h = math.min(480, getCore():getScreenHeight() - 80)
-    local win = TC_HistoryWindow:new((getCore():getScreenWidth() - w) / 2,
-                                     (getCore():getScreenHeight() - h) / 2,
-                                     w, h, playerNum)
+    local x, y, w, h = TC.frameRect(playerNum, 760, 480, TC.railWidth() + 620, 380)
+    local win = TC_HistoryWindow:new(x, y, w, h, playerNum)
     win:initialise(); win:instantiate()
     win:setTitle(getText("IGUI_TC_LedgerTitle"))
     win:addToUIManager()

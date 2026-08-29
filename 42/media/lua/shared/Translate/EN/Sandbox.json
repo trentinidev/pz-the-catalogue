@@ -26,10 +26,10 @@
     "Sandbox_TheCatalogue_OrderSeconds_tooltip": "How long the character spends filling in an order before it completes, as an interruptible action. Set to 0 for instant purchases.",
 
     "Sandbox_TheCatalogue_CatalogueLootMultiplier": "Catalogue loot frequency",
-    "Sandbox_TheCatalogue_CatalogueLootMultiplier_tooltip": "How common the Shop Catalogue is in world loot -- post offices, desks, magazine racks. Set to 0 to remove it from loot and leave crafting as the only route.",
+    "Sandbox_TheCatalogue_CatalogueLootMultiplier_tooltip": "How common the Catalogue is in world loot -- post offices, desks, magazine racks. Set to 0 to remove it from loot and leave crafting as the only route.",
 
     "Sandbox_TheCatalogue_RequireCatalogueOnPerson": "Require the catalogue on you",
-    "Sandbox_TheCatalogue_RequireCatalogueOnPerson_tooltip": "When on, both windows close if you no longer have a Shop Catalogue in your inventory or a bag. Turn it off for an arcade-style game where the catalogue is a menu rather than an object you carry.",
+    "Sandbox_TheCatalogue_RequireCatalogueOnPerson_tooltip": "When on, the catalogue window closes if you no longer have a Catalogue in your inventory or a bag. Turn it off for an arcade-style game where the catalogue is a menu rather than an object you carry.",
 
     "Sandbox_TheCatalogue_MinConditionToSell": "Minimum condition to sell",
     "Sandbox_TheCatalogue_MinConditionToSell_tooltip": "Items below this fraction of condition are refused. 0.0 accepts anything, including near-broken gear and rotten food."

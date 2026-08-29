@@ -95,13 +95,14 @@ end
 TC_CartWindow = ISCollapsableWindow:derive("TC_CartWindow")
 TC_CartWindow.instances = TC_CartWindow.instances or {}
 
-function TC_CartWindow:new(x, y, w, h, playerNum, buyWindow)
+function TC_CartWindow:new(x, y, w, h, playerNum)
     local o = ISCollapsableWindow:new(x, y, w, h)
     setmetatable(o, self)
     self.__index = self
     o.playerNum = playerNum
     o.player = getSpecificPlayer(playerNum)
-    o.buyWindow = buyWindow
+    -- No back-reference to the buy window any more: the cart it shows is the
+    -- player's, and this window outlives any one pane. See TC_Cart.lua.
     o.message = nil
     o.messageIsError = false
     o:setResizable(true)
@@ -167,8 +168,14 @@ function TC_CartWindow:createChildren()
     self:refreshList()
 end
 
+--[[ Keyed by player, not reached through the window that opened this one.
+
+     It used to be `self.buyWindow.cart`, which was fine while the buy window was both
+     the only way in and guaranteed to outlive this one. The rail is neither: it closes
+     the buy window to show the ledger, and the cart is meant to stay open across that.
+     See TC_Cart.lua. ]]
 function TC_CartWindow:cart()
-    return self.buyWindow and self.buyWindow.cart or {}
+    return TC.cart(self.playerNum)
 end
 
 function TC_CartWindow:refreshList()
@@ -400,7 +407,37 @@ function TC_CartWindow:close()
     TC_CartWindow.instances[self.playerNum] = nil
 end
 
-function TC.openCartWindow(playerNum, buyWindow)
+--[[ Where the cart goes: beside the catalogue, not on top of it.
+
+     The point of the cart being its own window rather than a fourth rail pane is that
+     you can see it AND the list you are adding to. Opening it centred would put it
+     over the list and give that up, so it docks to whichever railed window is open --
+     to the right of it, or to the left when there is no room to the right.
+
+     Falls back to centred when the cart is somehow opened with no catalogue window
+     around, which is not a route that exists today but is one line to survive. ]]
+local function dockPosition(w, h)
+    local sw, sh = getCore():getScreenWidth(), getCore():getScreenHeight()
+    local GAP = 8
+
+    local frame
+    for _, cls in ipairs({ TC_BuyWindow, TC_SellWindow, TC_HistoryWindow }) do
+        for _, win in pairs(cls and cls.instances or {}) do
+            frame = win
+            break
+        end
+        if frame then break end
+    end
+    if not frame then return (sw - w) / 2, (sh - h) / 2 end
+
+    local x = frame.x + frame.width + GAP
+    if x + w > sw then x = frame.x - w - GAP end
+    x = math.max(0, math.min(x, sw - w))
+
+    return x, math.max(0, math.min(frame.y, sh - h))
+end
+
+function TC.openCartWindow(playerNum)
     local existing = TC_CartWindow.instances[playerNum]
     if existing then
         existing:refreshList()
@@ -411,9 +448,8 @@ function TC.openCartWindow(playerNum, buyWindow)
 
     local w = math.min(680, getCore():getScreenWidth() - 80)
     local h = math.min(520, getCore():getScreenHeight() - 80)
-    local win = TC_CartWindow:new((getCore():getScreenWidth() - w) / 2,
-                                  (getCore():getScreenHeight() - h) / 2,
-                                  w, h, playerNum, buyWindow)
+    local x, y = dockPosition(w, h)
+    local win = TC_CartWindow:new(x, y, w, h, playerNum)
     win:initialise(); win:instantiate()
     win:setTitle(getText("IGUI_TC_CartTitle"))
     win:addToUIManager()
@@ -421,3 +457,17 @@ function TC.openCartWindow(playerNum, buyWindow)
     return win
 end
 TC.applyMessageBehaviour(TC_CartWindow)
+
+--[[ The rail's cart entry: open it if it is shut, shut it if it is open.
+
+     A toggle rather than an open, because the cart is the one thing on the rail that
+     sits BESIDE the catalogue rather than inside it. Once it is docked there, the
+     button that opened it is the only obvious way to get the space back. ]]
+function TC.toggleCartWindow(playerNum)
+    local existing = TC_CartWindow.instances[playerNum]
+    if existing then
+        existing:close()
+        return nil
+    end
+    return TC.openCartWindow(playerNum)
+end

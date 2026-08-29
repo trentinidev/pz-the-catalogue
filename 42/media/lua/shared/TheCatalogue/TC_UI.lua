@@ -325,3 +325,228 @@ function TC.drawCentred(panel, text, left, width, y, font, r, g, b, a)
     local w = getTextManager():MeasureStringX(font, text)
     panel:drawText(text, left + math.floor((width - w) / 2), y, r, g, b, a or 1, font)
 end
+
+
+--[[ =====================================================================
+     THE RAIL -- the pane switcher down the right edge of every window.
+     =====================================================================
+
+     There is one catalogue window, and Buy, Sell and Ledger are three faces of it.
+     What actually happens is that clicking a rail entry closes the window you are on
+     and opens the next one AT THE SAME RECTANGLE. Nothing moves and nothing resizes,
+     so the frame under the cursor is where it was and it reads as a pane swap. The
+     alternative -- one host window owning three ISPanels -- is the same picture for a
+     rewrite of every layout offset in three files, and those offsets have already
+     produced three overflow bugs between them.
+
+     Two entries do NOT switch, and both for the same reason: they are wanted ALONGSIDE
+     a pane rather than instead of one.
+
+       Cart      because it is the running total for the list you are still adding to,
+                 and a tab would hide the thing being counted. It toggles a second
+                 window beside this one.
+       Delivery  because it can arrive while no catalogue window is open at all, and
+                 because turning it away is a decision that deserves its own window.
+]]
+
+TC.UI.RAIL_PAD = 8      -- inset between the rail and the window edge
+TC.UI.RAIL_GAP = 5      -- between one rail button and the next
+
+--[[ The switchable panes, in the order they are drawn.
+
+     `open` is the NAME of the opener rather than the function itself, because this
+     file is shared and loads long before the client windows that define them. Looking
+     it up on TC at click time is what lets the rail live down here with the rest of
+     the layout instead of in one of the windows it switches between. ]]
+TC.RAIL_PANES = {
+    { id = "buy",    label = "IGUI_TC_RailBuy",    open = "openBuyWindow"     },
+    { id = "sell",   label = "IGUI_TC_RailSell",   open = "openSellWindow"    },
+    { id = "ledger", label = "IGUI_TC_RailLedger", open = "openHistoryWindow" },
+}
+
+local function railEntries()
+    local out = {}
+    for _, p in ipairs(TC.RAIL_PANES) do
+        table.insert(out, { id = p.id, text = getText(p.label) })
+    end
+    table.insert(out, { id = "cart",     text = getText("IGUI_TC_RailCart")     })
+    table.insert(out, { id = "delivery", text = getText("IGUI_TC_RailDelivery") })
+    return out
+end
+
+--[[ Measured, never assumed. Every label plus room for the widest count it can carry,
+     so a rail entry never truncates and the three windows agree on what the rail costs
+     them in width. ]]
+function TC.railWidth()
+    local tm = getTextManager()
+    local w  = 0
+    for _, entry in ipairs(railEntries()) do
+        w = math.max(w, tm:MeasureStringX(UIFont.Small, entry.text .. "  99"))
+    end
+    return w + TC.UI.BTN_PAD + TC.UI.RAIL_PAD * 2
+end
+
+--[[ How wide the window's own content may be. Every horizontal layout expression in a
+     railed window goes through this instead of reading self.width directly. ]]
+function TC.innerW(win)
+    return win.width - (win.railW or 0)
+end
+
+local function railCount(playerNum, id)
+    if id == "cart" then
+        return TC.cartCount(playerNum)
+    end
+    local player = getSpecificPlayer(playerNum)
+    if not player then return 0 end
+    if id == "ledger"   then return TC.pendingCount(player) or 0 end
+    if id == "delivery" then return TC.arrivedCount(player) or 0 end
+    return 0
+end
+
+--[[ ISButton hands the BUTTON to onclick as the first argument after the target, so
+     which pane was clicked rides on the button rather than in a bound argument. Same
+     trap the cart window's rush flag fell into. ]]
+function TC.onRailClick(win, button)
+    local id = button and button.internal
+    if not id or id == win.railId then return end
+
+    if id == "cart" then
+        TC.toggleCartWindow(win.playerNum)
+        return
+    end
+
+    if id == "delivery" then
+        TC.openArrivalWindow(win.playerNum)
+        return
+    end
+
+    for _, p in ipairs(TC.RAIL_PANES) do
+        if p.id == id then
+            local playerNum = win.playerNum
+            TC.saveFrame(win)
+            win:close()
+            TC[p.open](playerNum)
+            return
+        end
+    end
+end
+
+--[[ Build the rail as real children of `win`. `activeId` is the pane the window IS; it
+     is drawn disabled, because a button that reopens the window you are looking at is
+     a button that appears to do nothing. ]]
+function TC.buildRail(win, activeId)
+    win.railId   = activeId
+    win.railW    = TC.railWidth()
+    win.railBtns = {}
+
+    local hgt = FONT_HGT_SMALL + 10
+
+    for _, entry in ipairs(railEntries()) do
+        local b = ISButton:new(0, 0, 10, hgt, entry.text, win, TC.onRailClick)
+        b.internal = entry.id
+        b:initialise()
+        b:instantiate()
+        b.baseText = entry.text
+        if entry.id == activeId then b:setEnable(false) end
+        win:addChild(b)
+        win.railBtns[entry.id] = b
+    end
+
+    TC.layoutRail(win)
+end
+
+--[[ Position every rail button. Called from createChildren and again from onResize, so
+     the rail follows a drag the way the list does.
+
+     Delivery is pinned to the BOTTOM rather than flowing with the rest. It is the only
+     entry that is usually absent, and an entry that appears and disappears in the
+     middle of a column shoves everything under it down half a button. Pinned, it
+     arrives in space of its own and nothing else moves. ]]
+function TC.layoutRail(win)
+    if not win.railBtns then return end
+
+    local x   = win.width - win.railW + TC.UI.RAIL_PAD
+    local w   = win.railW - TC.UI.RAIL_PAD * 2
+    local hgt = FONT_HGT_SMALL + 10
+    local y   = win:titleBarHeight() + TC.UI.PAD
+
+    for _, p in ipairs(TC.RAIL_PANES) do
+        local b = win.railBtns[p.id]
+        b:setX(x); b:setY(y); b:setWidth(w); b:setHeight(hgt)
+        y = y + hgt + TC.UI.RAIL_GAP
+    end
+
+    -- A gap above the cart: it is the one entry here that opens something beside the
+    -- window rather than inside it, and the space says so without a label.
+    local cart = win.railBtns.cart
+    cart:setX(x); cart:setY(y + TC.UI.RAIL_GAP)
+    cart:setWidth(w); cart:setHeight(hgt)
+
+    local del = win.railBtns.delivery
+    del:setX(x); del:setY(win.height - TC.UI.PAD - hgt)
+    del:setWidth(w); del:setHeight(hgt)
+end
+
+--[[ Put the live numbers on the rail: what is in the cart, what is still on order, and
+     whether anything is at the door. This is the part that earns the rail its width --
+     you stop having to open the ledger to find out whether you have anything coming.
+
+     Cheap enough to run every prerender: three integers and a string compare, against
+     a list that redraws several thousand rows in the same frame. ]]
+function TC.refreshRail(win)
+    if not win.railBtns then return end
+
+    for id, b in pairs(win.railBtns) do
+        local n    = railCount(win.playerNum, id)
+        local want = (n > 0) and (b.baseText .. "  " .. tostring(n)) or b.baseText
+        if b:getTitle() ~= want then b:setTitle(want) end
+    end
+
+    win.railBtns.delivery:setVisible(railCount(win.playerNum, "delivery") > 0)
+end
+
+
+--[[ =====================================================================
+     WHERE THE WINDOW WAS
+     =====================================================================
+
+     The rail's whole trick is that the next pane opens exactly where the last one
+     stood. That has to outlast the click: a player who sized the catalogue to suit
+     their screen and then quit expects to find it that size, so the rectangle rides on
+     modData the way the pending orders do.
+
+     One frame per player, not one per pane -- there is only one window, and it has
+     three faces. ]]
+function TC.saveFrame(win)
+    local player = getSpecificPlayer(win.playerNum)
+    if not player then return end
+    player:getModData().TC_frame = {
+        x = win.x, y = win.y, w = win.width, h = win.height,
+    }
+end
+
+--[[ Where a pane should open: the remembered frame when there is one, else centred at
+     the size asked for.
+
+     Clamped at both ends. A frame saved on a wider monitor, or saved by a roomier pane
+     than the one now opening, must not put a window's controls off the screen or
+     squeeze a pane below the width its own button row needs. ]]
+function TC.frameRect(playerNum, defW, defH, minW, minH)
+    local sw, sh = getCore():getScreenWidth(), getCore():getScreenHeight()
+
+    local w = math.min(defW, sw - 80)
+    local h = math.min(defH, sh - 80)
+    local x, y = (sw - w) / 2, (sh - h) / 2
+
+    local player = getSpecificPlayer(playerNum)
+    local saved  = player and player:getModData().TC_frame
+
+    if type(saved) == "table" and type(saved.w) == "number" and type(saved.h) == "number" then
+        w = math.max(minW or 0, math.min(saved.w, sw))
+        h = math.max(minH or 0, math.min(saved.h, sh))
+        x = math.max(0, math.min(saved.x or x, sw - w))
+        y = math.max(0, math.min(saved.y or y, sh - h))
+    end
+
+    return x, y, w, h
+end
