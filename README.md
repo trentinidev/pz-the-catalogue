@@ -2,18 +2,61 @@
 
 A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
-> **Alpha — 0.9.2.** Not released, and the version number says so deliberately. It works
-> and it is played, but parts of it have never been exercised.
-> **Single-player only.** All transaction logic runs client-side, so on a dedicated
-> server it is trivially cheatable; server authority is deliberately deferred until
-> after 1.0 rather than half-done before it. 1.0.0 is reserved for the first build that
-> has been played end to end.
+> **Alpha — 0.9.2, single-player.** Not released, and the version number says so
+> deliberately: it works and it is played, but parts of it have never been exercised.
+> [What to expect](#what-to-expect) sets out the limits before you install.
 > See [CHANGELOG.md](CHANGELOG.md) for what has landed, and [ROADMAP.txt](ROADMAP.txt)
 > for what is deliberately still missing.
 
 Craft a **Shop Catalogue** from a Notebook, right-click it, and trade with the world's
 last mail-order company. Every vanilla item has a price. You pay in real banknotes and
 you get paid in real banknotes.
+
+---
+
+## Contents
+
+- [What it is for](#what-it-is-for) — the problem, and why the answer is a catalogue
+- [What it does](#what-it-does) — the features, one paragraph each
+- [What to expect](#what-to-expect) — the honest limits, before you install
+- [Installing](#installing) and [Sandbox options](#sandbox-options)
+- [Design notes](#design-notes) — why the awkward parts are shaped the way they are
+- [Prices](#prices) — where any given number comes from
+- [For other mod authors](#for-other-mod-authors), [Checks](#checks),
+  [Requirements](#requirements)
+
+---
+
+## What it is for
+
+Knox County is full of money. It is in every till, every wallet and every safe, and by
+the end of the first week it is the one kind of loot nobody stoops for, because there is
+nothing to spend it on. Meanwhile the opposite problem is filling your safehouse: eleven
+spare hammers, four hundred nails and a wardrobe of clothes you will never wear. **The
+Catalogue exists to connect those two facts** — to give money somewhere to go and
+hoarded loot somewhere to come from.
+
+The obvious version of that idea is a shopkeeper, and the obvious version is the one the
+game cannot support. Project Zomboid has no merchants: no NPC to haggle with, no
+shopfront to travel to, and writing either means building a social system out of nothing.
+A **mail-order catalogue** needs none of that. You order from wherever you happen to be
+standing, and the company never has to exist on screen.
+
+That framing is also what keeps it from breaking the game, because a catalogue can charge
+you in the currencies a magic shop menu would not:
+
+- **Cash is physical and heavy.** Banknotes are real items with real weight, so there is
+  a hard ceiling on what you can carry to spend — around $5,000 with a good backpack.
+  You cannot simply buy your way out of the apocalypse.
+- **Goods take time.** An order books, the money leaves immediately, and the van arrives
+  when the bulk of what you ordered says it arrives — twenty minutes for a pistol round,
+  several days for a generator. You cannot re-equip in the middle of a horde.
+- **The company buys low and sells high.** Selling pays 30% of catalogue price, so
+  clearing out a safehouse is a way to convert junk into cash, never a way to farm it.
+
+**What it is deliberately not:** a trader mod with NPCs, an economy simulation, or an
+item spawner with a price tag on it. Prices are fixed, stock is infinite, and there is no
+bartering. See [What to expect](#what-to-expect).
 
 ---
 
@@ -75,6 +118,44 @@ test the sale itself applies.
 **Finding a catalogue** — one spawns rarely in post office sorting racks, office desks,
 magazine racks and living rooms, so the mail-order company existed before you started
 writing your own. `CatalogueLootMultiplier` tunes how common, and 0 turns it off.
+
+---
+
+## What to expect
+
+The limits worth knowing before you install. None of these are oversights; each one is a
+decision, and [ROADMAP.txt](ROADMAP.txt) says what is planned about it.
+
+**Single-player.** Every price, payment and order is worked out on your own machine.
+On a dedicated server that makes the mod trivially cheatable, so it is documented as
+single-player and the mod description says so too. Moving the logic behind server
+commands is one job that has to be done all at once, and it is deliberately deferred
+past 1.0 rather than half-done before it.
+
+**Stock is infinite.** The catalogue never runs out and never restocks. If you can carry
+the cash, you can buy the item — the brake on buying is money, weight and delivery time,
+not scarcity. Finite stock needs levels that survive a save, which is real work rather
+than a missing checkbox.
+
+**Prices never move.** They do not drift with the weeks you have survived, they do not
+respond to what you buy, and there is no haggling. A hammer costs $21 in week one and
+$21 in year two.
+
+**Everything arrives mint.** There are no used, damaged or clearance goods; the
+condition system runs on the selling side only.
+
+**Delivery costs time, not freight.** Lead time is worked out from bulk. There is no
+shipping fee by weight and no named delivery tiers — the only paid option is **Rush**,
+which skips the wait entirely for a surcharge.
+
+**The first Buy window of a session can take a few seconds** if you run a lot of item
+mods, while every modded item is priced properly instead of guessed at. Every open after
+that is instant, and vanilla-only games never pay it at all.
+
+**It is an alpha.** 0.9.2 has been played, but not every path has. 1.0.0 is reserved for
+the first build that has been played end to end.
+
+---
 
 ## For other mod authors
 
