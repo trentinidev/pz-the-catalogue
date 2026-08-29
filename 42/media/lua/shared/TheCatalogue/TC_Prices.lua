@@ -152,6 +152,7 @@ function TC.buildIndex()
     local overrides = TC.PRICE_OVERRIDES or {}
     local skipped = 0
     local n = 0
+    local packs = {}   -- boxes waiting for the price of what they hold
 
     for i = 0, all:size() - 1 do
         local si = all:get(i)
@@ -206,13 +207,36 @@ function TC.buildIndex()
                  Applied at index time rather than at display time because only these two
                  layers want it, and TC.PRICE_SCALE at display time cannot tell which
                  layer a stored price came from. ]]
+            local packStem, packCount, packOuter = nil, nil, nil
+
             if not price then
-                price = TC.priceUnknownItem(si, fullType) or priceFromFormula(si, fullType)
+                --[[ One instance, two questions. priceUnknownItem builds the instance to
+                     read the rich properties and returns the pack spec from the same one,
+                     because building a second would double the cost that already makes
+                     the first open of the buy window take a moment.
+
+                     Written out rather than chained with `or`, which would discard every
+                     return but the first. ]]
+                price, packStem, packCount, packOuter = TC.priceUnknownItem(si, fullType)
+                if not price then price = priceFromFormula(si, fullType) end
                 if price then price = price * (TC.MOD_PRICE_SCALE or 1) end
             end
 
             if price then
                 TC.priceByType[fullType] = price
+
+                -- Resolved after the loop: the sibling this box holds may not be priced
+                -- yet, and a carton of boxes needs its boxes done first.
+                if packStem then
+                    packs[#packs + 1] = {
+                        fullType = fullType,
+                        module   = si:getModuleName() or "Base",
+                        stem     = packStem,
+                        count    = packCount,
+                        outer    = packOuter,
+                        index    = n + 1,
+                    }
+                end
 
                 local name = si:getDisplayName() or fullType
                 local module = si:getModuleName() or "Base"
@@ -234,6 +258,67 @@ function TC.buildIndex()
                 skipped = skipped + 1
             end
         end
+    end
+
+    --[[ Now price the packs, at count times what they hold.
+
+         Deferred to here for two reasons. The sibling a box holds may come later in
+         getAllItems() than the box does, so asking during the loop would miss it. And a
+         carton of boxes has to wait for its boxes: the mod that prompted this ships
+         cartons of twelve boxes of six, so the chain is two deep.
+
+         Hence the repeat. Three passes settle any chain three levels deep, and it stops
+         early the moment a pass changes nothing, so the ordinary case costs one pass over
+         a list that is empty in a vanilla-only game.
+
+         The sibling is looked for in Base first and then in the box's own module: nearly
+         every pack in practice holds a vanilla item, and a mod that packs its own gets
+         the second try. Anything unresolved keeps the price the ordinary rules gave it. ]]
+    --[[ Which fullTypes are packs that have not been settled yet.
+
+         A carton must not read its box's price until the box has been resolved: in the
+         first pass that price is still whatever the ordinary rules guessed, and reading
+         it then would fix the carton at twelve times a guess and mark it done. This is
+         the whole reason the passes exist. ]]
+    local pending = {}
+    for _, p in ipairs(packs) do pending[p.fullType] = p end
+
+    local function unitPrice(fullType)
+        local p = pending[fullType]
+        if p and not p.done then return nil end     -- a pack still waiting on its own
+        return TC.priceByType[fullType]
+    end
+
+    local resolved = 0
+    for _ = 1, 3 do
+        local changed = 0
+        for _, p in ipairs(packs) do
+            if not p.done then
+                local unit
+                if p.outer then
+                    -- A carton holds boxes. Look for the box before the bare item.
+                    unit = unitPrice(p.module .. "." .. p.stem .. "Box")
+                        or unitPrice("Base." .. p.stem .. "Box")
+                end
+                unit = unit
+                    or unitPrice("Base." .. p.stem)
+                    or unitPrice(p.module .. "." .. p.stem)
+                if unit then
+                    local price = unit * p.count
+                    TC.priceByType[p.fullType] = price
+                    local e = TC.entries[p.index]
+                    if e and e.fullType == p.fullType then e.price = price end
+                    p.done = true
+                    changed = changed + 1
+                end
+            end
+        end
+        resolved = resolved + changed
+        if changed == 0 then break end
+    end
+
+    if #packs > 0 then
+        TC.log("priced %d of %d packs from what they hold", resolved, #packs)
     end
 
     table.sort(TC.entries, function(a, b)

@@ -12,6 +12,47 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.12.0-alpha — 2026-08-29
+
+### Added
+- **A pack is now worth what is in it.** A box of six BBQ sauces costs six times a BBQ
+  sauce; a box of 24 costs 24 times. The bulk factor in 0.11.3 got the ORDER of these
+  right and could never get the ANSWER right, because only the recipe knows the count.
+
+  Two things the game will tell us, and neither needs the recipe API:
+
+  - **the count** — an item that unpacks declares `DoubleClickRecipe`, and the convention
+    across packing mods is to name the recipe after its yield: `UnpackFoodBox6`,
+    `UnpackBox12`, `OCP_UnpackCarton12`. The trailing number is the count.
+  - **the content** — strip `Box`/`Carton`/`Crate`/`Case`/`Pack` off the id and look for a
+    sibling. `OCP.BBQSauceBox` → `Base.BBQSauce`, `OCP.Seasoning_BasilBox` →
+    `Base.Seasoning_Basil`.
+
+  Measured against a 306-box packing mod: **294 of its 296 packs resolve**, and the two
+  that do not keep the price the ordinary rules gave them. There is no per-mod table and
+  no mod-specific code — the rule is the study's own rule for vanilla packs, and it holds
+  for any mod that names an unpack recipe after its yield.
+- **A carton holds boxes, not units.** These mods ship both a `RadioTransmitterBox` of
+  twelve and a `RadioTransmitterCarton` of twelve boxes. Matching the bare stem for both
+  would have priced the carton at twelve transmitters instead of a hundred and forty-four
+  — twelvefold short. Outer packs look for the inner pack first, so a carton of twelve
+  boxes of twelve comes out at 144 units.
+
+### Internal
+- Packs are resolved in a second pass after the index loop, not inline: the sibling a box
+  holds may come later in `getAllItems()` than the box does, and a carton has to wait for
+  its boxes. Up to three passes, stopping as soon as one changes nothing, so a
+  vanilla-only game pays for one pass over an empty list.
+- An outer pack will not read an inner pack's price until that one is settled. In the
+  first pass it is still whatever the ordinary rules guessed, and reading it then would
+  fix the carton at twelve times a guess and mark it done. That is the whole reason the
+  passes exist.
+- `TC.priceUnknownItem` returns the pack spec alongside the price, from the instance it
+  already built. Building a second one would have doubled the cost that makes the first
+  open of the buy window take a moment with many item mods installed.
+
+---
+
 ## 0.11.3-alpha — 2026-08-29
 
 ### Fixed
