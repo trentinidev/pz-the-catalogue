@@ -367,8 +367,25 @@ local function railButtonHeight()
     return railBtnH
 end
 
-TC.UI.RAIL_PAD = 8      -- inset between the rail and the window edge
+--[[ The rail's inset from the window edge. TC.UI.PAD, not a number of its own, because
+     it is the same margin every other block in these windows keeps from the border --
+     at 8 the buttons sat noticeably tighter to the frame than the list opposite them. ]]
+TC.UI.RAIL_PAD = TC.UI.PAD
 TC.UI.RAIL_GAP = 5      -- between one rail button and the next
+
+--[[ The height of the window's own bottom button row -- Buy/Rush, Sell, Place order.
+
+     Each window file declares this as `local BUTTON_HGT = FONT_HGT_MEDIUM + 12`, and
+     those are file locals a shared file cannot see (the mistake that crashed 0.10.0, and
+     what the `consts` check in tools/check.sh now catches). Repeated here on purpose,
+     lazily, so the last rail entry can line up with a row this file cannot ask about. ]]
+local bottomRowH
+local function bottomRowHeight()
+    if not bottomRowH then
+        bottomRowH = getTextManager():getFontHeight(UIFont.Medium) + 12
+    end
+    return bottomRowH
+end
 
 --[[ The switchable panes, in the order they are drawn.
 
@@ -508,23 +525,47 @@ function TC.layoutRail(win)
     local x   = win.width - win.railW + TC.UI.RAIL_PAD
     local w   = win.railW - TC.UI.RAIL_PAD * 2
     local hgt = railButtonHeight()
+    local gap = TC.UI.RAIL_GAP
 
-    -- The doing group, down from under the title bar.
-    local y = win:titleBarHeight() + TC.UI.PAD
-    for _, id in ipairs(RAIL_TOP) do
-        local b = win.railBtns[id]
-        b:setX(x); b:setY(y); b:setWidth(w); b:setHeight(hgt)
-        y = y + hgt + TC.UI.RAIL_GAP
-    end
+    --[[ The reporting group is placed FIRST, because the doing group is centred in
+         whatever it leaves behind.
 
-    -- The reporting group, up from the bottom edge, so the LAST name in RAIL_BOTTOM
-    -- ends up lowest. Both are anchored down here rather than flowing from the top,
-    -- which is what lets Delivery come and go without moving anything else.
-    local by = win.height - TC.UI.PAD - hgt
+         It hangs off the CENTRE LINE of the window's own bottom button row rather than
+         off the window's bottom edge. The two are not the same: the rail button is
+         shorter than a Rush or a Place order, so sharing a bottom margin left it sitting
+         low and reading as something that had slid down the edge rather than as the last
+         entry of a column. Matching centres puts it on the same line as the row beside
+         it at any font size. ]]
+    local rowMid = win.height - TC.UI.PAD * 2 - bottomRowHeight() / 2
+    local by     = math.floor(rowMid - hgt / 2)
+
+    -- Upwards, so the LAST name in RAIL_BOTTOM ends up lowest.
+    local bottomBlockTop = by
     for i = #RAIL_BOTTOM, 1, -1 do
         local b = win.railBtns[RAIL_BOTTOM[i]]
         b:setX(x); b:setY(by); b:setWidth(w); b:setHeight(hgt)
-        by = by - hgt - TC.UI.RAIL_GAP
+        bottomBlockTop = by
+        by = by - hgt - gap
+    end
+
+    --[[ The doing group, centred in the space between the title bar and that block.
+
+         Centred rather than stacked under the title bar: the rail is as tall as the
+         window and three buttons at the top of it left the column looking top-heavy
+         against a list that fills the whole height.
+
+         The space is measured to the RESERVED top of the bottom block, not to whatever
+         is currently visible, so a delivery arriving does not re-centre the group above
+         it. Nothing on this rail moves because something else appeared. ]]
+    local top     = win:titleBarHeight() + TC.UI.PAD
+    local avail   = (bottomBlockTop - gap) - top
+    local blockH  = #RAIL_TOP * hgt + (#RAIL_TOP - 1) * gap
+    local y       = top + math.max(0, math.floor((avail - blockH) / 2))
+
+    for _, id in ipairs(RAIL_TOP) do
+        local b = win.railBtns[id]
+        b:setX(x); b:setY(y); b:setWidth(w); b:setHeight(hgt)
+        y = y + hgt + gap
     end
 end
 

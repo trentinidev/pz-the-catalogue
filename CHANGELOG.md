@@ -12,6 +12,25 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.10.2-alpha — 2026-08-29
+
+### Changed
+- **The rail sits off the frame edge.** Its inset is now `TC.UI.PAD`, the same margin
+  every other block in these windows keeps from the border, rather than a smaller number
+  of its own -- at 8 the buttons read as tighter to the frame than the list opposite
+  them.
+- **Buy, Sell and Cart are centred in the rail** instead of stacked under the title bar,
+  which left the column looking top-heavy against a list that fills the whole height.
+  The space is measured to the RESERVED top of the bottom block rather than to what is
+  currently visible, so a delivery arriving cannot re-centre the group above it.
+- **The Ledger lines up with the bottom button row.** It hung off the window's bottom
+  EDGE, and since a rail button is shorter than a Rush or a Place order, sharing a margin
+  left it sitting low -- reading as something that had slid down the edge rather than as
+  the last entry of a column. It now shares that row's centre line, which holds at any
+  font size.
+
+---
+
 ## 0.10.1-alpha — 2026-08-29
 
 0.10.0 crashed on open and never really ran; this is the first working build of the
