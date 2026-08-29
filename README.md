@@ -2,6 +2,8 @@
 
 A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
+[![checks](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml/badge.svg)](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml)
+
 > **Alpha — 0.9.2, single-player.** Not released, and the version number says so
 > deliberately: it works and it is played, but parts of it have never been exercised.
 > [What to expect](#what-to-expect) sets out the limits before you install.
@@ -358,6 +360,13 @@ was merely cloned, so on a new machine enable it once:
 ```sh
 git config core.hooksPath .githooks
 ```
+
+Because that opt-in is exactly as reliable as somebody remembering it, the same script
+also runs on GitHub through [`.github/workflows/checks.yml`](.github/workflows/checks.yml),
+on every push to `main` and every pull request. The hook is still the real gate — it
+refuses the commit before it exists — and the workflow is the backstop for the clone
+where the hook was never enabled. It needs nothing but a POSIX shell and LuaJIT, so the
+workflow is an `apt-get install luajit` and the same `sh tools/check.sh` you run locally.
 
 **What it does not catch.** Anything that is valid Lua and wrong anyway. The bug that
 took down the ledger in 0.6.4 — a cached function whose two exits returned different

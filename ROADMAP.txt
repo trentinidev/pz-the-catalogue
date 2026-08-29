@@ -15,8 +15,13 @@ BEFORE 1.0
 
 1. Workshop packaging
 
-   workshop.txt and preview.png, plus making trentinidev/pz-the-catalogue public.
-   Mechanical work, but it is what turns the mod from a folder into a release.
+   What the mod still lacks is the Steam Workshop wrapper: a workshop.txt at the
+   upload root naming the item, its tags and its visibility, and a preview image
+   beside it. Do not confuse that preview with 42/preview.png, which already
+   exists -- that one is the poster mod.info points at, drawn by the game's own
+   mod browser. The Workshop needs its own, at the root, outside 42/.
+
+   (The repo itself is already public, so that part is done.)
 
 
 AFTER 1.0
