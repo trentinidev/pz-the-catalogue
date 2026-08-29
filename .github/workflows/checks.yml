@@ -1,0 +1,30 @@
+# The same nine checks .githooks/pre-commit runs, on a machine that is not yours.
+#
+# The hook is the fast feedback and the real gate: it refuses the commit before it
+# exists. But git will not run a hook that was merely cloned -- every clone has to opt
+# in with `git config core.hooksPath .githooks` -- so the hook is exactly as reliable as
+# somebody's memory. This is the backstop for the clone where that never happened.
+#
+# tools/check.sh needs nothing but a POSIX shell and LuaJIT. It cd's to the repo root
+# itself and exits non-zero on the first failure, so there is nothing to translate here.
+
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # LuaJIT 2.1 rather than Lua 5.4: the game runs Kahlua, a 5.1 VM, and a 5.4 parser
+      # accepts goto, integer division and bitwise operators that Kahlua rejects at load.
+      - name: Install LuaJIT
+        run: sudo apt-get update && sudo apt-get install -y luajit
+
+      - name: Run the checks
+        run: sh tools/check.sh
