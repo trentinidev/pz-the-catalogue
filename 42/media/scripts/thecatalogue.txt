@@ -129,7 +129,29 @@ module Catalogue
         }
     }
 
-    /* One Notebook in, one Catalogue out. The notebook is consumed.
+    /* One bound notebook and something to write with. The paper is consumed; the pen
+       is not.
+
+       THE PAPER. Vanilla's own marker for a blank writing surface is PageToWrite, and
+       five items carry it: Journal 20 pages, Notebook 10, Notepad 5, SheetPaper2 1 and
+       IndexCard 1. Only the bound three are accepted. A catalogue is a document with a
+       body to it, and letting a single index card become one would make the recipe free
+       -- the page counts are vanilla's own way of saying which of these is a pad and
+       which is a scrap. Doodle looks like paper and is not: it has no PageToWrite,
+       because it is a finished picture.
+
+       THE PEN. tags[base:write] rather than a list of ids. Vanilla applies that tag to
+       fourteen items -- every pen and colour, the Spiffo and fancy ones, pencils,
+       markers and crayons -- and it already excludes the two things that read as pens
+       and are not, PenLight being a torch and PencilCase a container. A tag also picks
+       up anything a future patch or another mod marks, which a hand-written list never
+       would. Curiously no vanilla recipe consumes base:write at all; the tag is applied
+       and unused, and this is the first thing to ask for it.
+
+       mode:keep, and no MayDegradeLight. The pen is a requirement to have, not a
+       consumable: a Pen has ConditionMax = 2, so real wear would break it within a
+       couple of catalogues and turn a nice detail into an errand.
+
        InHandCraft keeps it out of the workstation-only lists, and CanBeDoneInDark
        matches the vanilla paper recipes -- writing a shopping list needs no light. */
     craftRecipe MakeShopCatalogue
@@ -140,7 +162,8 @@ module Catalogue
         category = Miscellaneous,
         inputs
         {
-            item 1 [Base.Notebook],
+            item 1 [Base.Journal;Base.Notebook;Base.Notepad],
+            item 1 tags[base:write] mode:keep,
         }
         outputs
         {

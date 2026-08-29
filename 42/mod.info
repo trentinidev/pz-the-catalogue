@@ -1,9 +1,9 @@
 name=The Catalogue
 id=TheCatalogue
 author=trentini
-description=Craft The Catalogue from a Notebook and use it to buy and sell items for cash. Every vanilla item is priced individually; items added by other mods are priced by the same rules and can be filtered by source mod. NOTE: with many item mods installed, the first time you open the Buy window in a session takes a few seconds while every modded item is priced. It is instant afterwards. Buying deducts real Money and MoneyBundles; selling pays 30 percent of value by default, scaled by condition, adjustable in the sandbox options, and never destroys what it will not pay for. SINGLE-PLAYER: every transaction is worked out on your own machine, so on a dedicated server the prices and the payments can be tampered with. Server authority is planned for after 1.0.
+description=Craft The Catalogue from a notebook and any pen or pencil, then use it to buy and sell items for cash. Every vanilla item is priced individually; items added by other mods are priced by the same rules and can be filtered by source mod. NOTE: with many item mods installed, the first time you open the Buy window in a session takes a few seconds while every modded item is priced. It is instant afterwards. Buying deducts real Money and MoneyBundles; selling pays 30 percent of value by default, scaled by condition, adjustable in the sandbox options, and never destroys what it will not pay for. SINGLE-PLAYER: every transaction is worked out on your own machine, so on a dedicated server the prices and the payments can be tampered with. Server authority is planned for after 1.0.
 icon=icon.png
 poster=poster.png
 category=features
-modversion=0.12.1-alpha
+modversion=0.13.0-alpha
 versionMin=42.20.0
