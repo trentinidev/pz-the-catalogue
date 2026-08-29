@@ -122,6 +122,61 @@ local function priceFromFormula(scriptItem, fullType)
     return roundPrice(price)
 end
 
+--[[ Our own sort, because table.sort here is a recursive quicksort that this data
+     reliably blows the stack of.
+
+     WHAT HAPPENED. Clicking a column header threw `Stack overflow` out of Kahlua's
+     quicksort_comp, three hundred and fifty frames deep. Two things compound to make
+     that the worst case it has:
+
+       1. Enormous runs of an identical key. 899 vanilla items are priced $1, 465 at $2,
+          321 at $5. Sorting by price is sorting one long plateau.
+       2. The array handed in is ALREADY SORTED by the tie-break. TC.entries is built in
+          name order and every comparator below falls through to the name, so inside that
+          plateau the comparator says "already in order" for every pair -- which is the
+          textbook pivot-degenerate input. Recursion depth goes to the length of the run
+          rather than to log of it.
+
+     A bottom-up merge sort has no recursion at all, is O(n log n) on every input rather
+     than on lucky ones, and is stable, so the name order the entries arrive in survives
+     as the tie-break for free. The extra array it needs is the price of not crashing.
+]]
+local function mergeSort(arr, less)
+    local n = #arr
+    if n < 2 then return arr end
+
+    local src, dst = arr, {}
+    local width = 1
+
+    while width < n do
+        local i = 1
+        while i <= n do
+            local mid = math.min(i + width - 1, n)
+            local hi  = math.min(i + width * 2 - 1, n)
+            local a, b, k = i, mid + 1, i
+
+            -- `less(b, a)` rather than `not less(a, b)`: on a tie this takes the LEFT
+            -- run first, which is what makes the sort stable.
+            while a <= mid and b <= hi do
+                if less(src[b], src[a]) then dst[k] = src[b]; b = b + 1
+                else                         dst[k] = src[a]; a = a + 1 end
+                k = k + 1
+            end
+            while a <= mid do dst[k] = src[a]; a = a + 1; k = k + 1 end
+            while b <= hi  do dst[k] = src[b]; b = b + 1; k = k + 1 end
+
+            i = i + width * 2
+        end
+        src, dst = dst, src
+        width = width * 2
+    end
+
+    if src ~= arr then
+        for i = 1, n do arr[i] = src[i] end
+    end
+    return arr
+end
+
 -- ---------------------------------------------------------------------------
 -- The index
 -- ---------------------------------------------------------------------------
@@ -321,7 +376,10 @@ function TC.buildIndex()
         TC.log("priced %d of %d packs from what they hold", resolved, #packs)
     end
 
-    table.sort(TC.entries, function(a, b)
+    -- mergeSort, not table.sort: see its header. This call has never been the one that
+    -- overflowed -- getAllItems order is not pathological -- but there is no reason to
+    -- keep a second, riskier sort in the file for it.
+    mergeSort(TC.entries, function(a, b)
         if a.name == b.name then return a.fullType < b.fullType end
         return a.name < b.name
     end)
@@ -395,7 +453,8 @@ local function comparatorFor(key, asc)
                 if asc then return a.category < b.category end
                 return a.category > b.category
             end
-            return a.name < b.name
+            if a.name ~= b.name then return a.name < b.name end
+            return a.fullType < b.fullType
         end
 
         if key == "mid" then
@@ -404,7 +463,8 @@ local function comparatorFor(key, asc)
                 if asc then return aw < bw end
                 return aw > bw
             end
-            return a.name < b.name
+            if a.name ~= b.name then return a.name < b.name end
+            return a.fullType < b.fullType
         end
 
         if key == "price" then
@@ -416,7 +476,8 @@ local function comparatorFor(key, asc)
                 if asc then return a.price < b.price end
                 return a.price > b.price
             end
-            return a.name < b.name
+            if a.name ~= b.name then return a.name < b.name end
+            return a.fullType < b.fullType
         end
 
         if a.name ~= b.name then
@@ -446,7 +507,7 @@ function TC.sortedEntries(key, asc)
 
     local arr = {}
     for i = 1, #TC.entries do arr[i] = TC.entries[i] end
-    table.sort(arr, comparatorFor(key, asc))
+    mergeSort(arr, comparatorFor(key, asc))
 
     TC.sortCache[cacheKey] = arr
     return arr

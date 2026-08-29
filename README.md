@@ -4,7 +4,7 @@ A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
 [![checks](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml/badge.svg)](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml)
 
-> **Alpha — 0.12.0, single-player.** Not released, and the version number says so
+> **Alpha — 0.12.1, single-player.** Not released, and the version number says so
 > deliberately: it works and it is played, but parts of it have never been exercised.
 > [What to expect](#what-to-expect) sets out the limits before you install.
 > See [CHANGELOG.md](CHANGELOG.md) for what has landed, and [ROADMAP.txt](ROADMAP.txt)
@@ -288,6 +288,22 @@ each — the base class culls nothing. With the full catalogue that would be 5,0
 and text draws per frame. Both lists test visibility first and return the next `y`
 without drawing. The loop still runs 5,000 times, but comparisons are cheap; it was the
 draw calls that hurt.
+
+### The lists sort themselves, too
+
+Kahlua's `table.sort` is a recursive quicksort, and this data is its worst case twice
+over. 899 vanilla items are priced $1, 465 at $2 — sorting by price is sorting one long
+plateau. And the array handed to it is already sorted by the tie-break, because the index
+is built in name order and every comparator falls through to the name, so inside that
+plateau the comparator says "already in order" for every pair. Recursion depth becomes the
+*length* of the run rather than its logarithm, and clicking a column header overflowed the
+stack.
+
+`TC_Prices.lua` sorts with a bottom-up merge sort instead: no recursion at all, O(n log n)
+on every input rather than on lucky ones, and stable, so the name order the entries arrive
+in survives as the tie-break for free. It got worse as the prices got better — the old
+generated table spread its values thinly enough that no plateau was long enough to
+overflow.
 
 ## Prices
 
