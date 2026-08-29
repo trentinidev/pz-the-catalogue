@@ -6,23 +6,28 @@ parked on purpose -- none of it is rejected. Landed work lives in CHANGELOG.md;
 this file is the other half of that story.
 
 Current version: 0.9.2-alpha. 1.0.0 is reserved for the first build that has been
-played end to end and is safe on a dedicated server.
+played end to end. It does NOT promise a dedicated server: server authority is
+deferred past 1.0 rather than half-done before it, and the README says the same.
 
 
-BLOCKING 1.0
-------------
+BEFORE 1.0
+----------
 
-1. Multiplayer / server authority
-
-   Every transaction runs client-side today, so on a dedicated server the mod is
-   trivially cheatable. Deferred rather than half-done: prices, money deduction
-   and order state all have to move behind server commands together.
-   Single-player is honest about this in the README and the mod description.
-
-2. Workshop packaging
+1. Workshop packaging
 
    workshop.txt and preview.png, plus making trentinidev/pz-the-catalogue public.
    Mechanical work, but it is what turns the mod from a folder into a release.
+
+
+AFTER 1.0
+---------
+
+2. Multiplayer / server authority
+
+   Every transaction runs client-side, so on a dedicated server the mod is
+   trivially cheatable. Prices, money deduction and order state all have to move
+   behind server commands together, which is why it is one job and not a series
+   of small ones. Until then the mod is documented as single-player only.
 
 
 CONTENT AND ECONOMY
@@ -35,19 +40,26 @@ CONTENT AND ECONOMY
    save hook, so the state has to live on player:getModData() like the ledger
    does.
 
-4. Used and clearance goods
+4. Shipping cost and named delivery tiers
+
+   Delivery today is one speed plus Rush, and Rush is the only thing that costs
+   extra (RushFeePercent, 20%). The parked idea is a real freight cost by weight
+   and bulk, with Economy / Standard / Express as named choices at checkout, so
+   that ordering an engine block is not priced like ordering a screwdriver.
+
+5. Used and clearance goods
 
    Occasional discounted offers at a predefined condition, so the catalogue is
    not always mint-condition stock. The condition-scaling code the sell window
    already uses would do most of the work.
 
-5. Dynamic economy
+6. Dynamic economy
 
    Prices and availability drifting with weeks survived: medicine and ammunition
    climb, decoration falls. Cheap to fake with a multiplier over TC_PriceTable,
    expensive to make feel deliberate rather than random.
 
-6. Catalogue inserts
+7. Catalogue inserts
 
    Flavour pages bound into the catalogue -- adverts, notices, a company voice.
    Pure presentation, no mechanics.
@@ -56,13 +68,13 @@ CONTENT AND ECONOMY
 PRESENTATION
 ------------
 
-7. PT-BR translation
+8. PT-BR translation
 
    English only for now. Cheap to revisit: the JSON translation format and the
    key-prefix-decides-the-file rule are both written down in CLAUDE.md, which is
    what made this expensive the first time.
 
-8. Hand-made parcel models
+9. Hand-made parcel models
 
    The three delivery tiers share vanilla's Base.Parcel_ExtraLarge mesh and
    differ only by icon. Vitor is modelling the oversized parcels by hand; the
@@ -74,8 +86,8 @@ STRUCK OFF -- ALREADY SHIPPED
 
 Kept here so nothing on the list gets proposed twice:
 
-  - Orders with delivery time, and physical delivery to a container
-  - Shipping cost and Economy / Standard / Express tiers
+  - Orders with a delivery wait, and physical delivery to a container
+  - Rush delivery: skip the wait for a surcharge over the order total
   - Cancelling an order, and refusing it at the door
   - The recipe that bundles 100 loose notes
   - Affordable / owned / not-owned filters, and the per-character wishlist
