@@ -13,7 +13,10 @@ local FONT_HGT_MEDIUM = getTextManager():getFontHeight(UIFont.Medium)
 
 local PAD        = 14
 local BOTTOM_PAD = PAD * 2
-local ROW_HGT    = 30
+-- 34, not 30, so a 26px inventory icon has the same breathing room it gets in the buy
+-- list. The icon size is the fixed thing here; the row follows it.
+local ROW_HGT    = 34
+local ICON       = TC.UI.ICON
 local BUTTON_HGT = FONT_HGT_MEDIUM + 12
 local HEADER_HGT = FONT_HGT_SMALL + 12
 
@@ -154,10 +157,27 @@ function TC_HistoryList:doDrawItem(y, item, alt)
         end
     end
 
+    --[[ The icon of what the row is about, at the head of the What column.
+
+         A transaction can hold several lines, and this shows the FIRST one's icon: the
+         summary beside it already reads "1 x ID Card, 1 x Belt, 1 x Jeans, ...", so the
+         picture is a marker for the row rather than a claim about all of it.
+
+         Rows written before 0.10.1 have no fullType on their lines and draw without an
+         icon. The ledger keeps two hundred entries, so old rows and new ones share the
+         list for a long time -- hence the text indents by the icon whether or not one
+         is actually there, so the column does not zigzag down the page. ]]
+    local icon = TC.iconFor(e.icon)
+    if icon then
+        self:drawTextureScaledAspect(icon, c.what, y + (ROW_HGT - ICON) / 2,
+                                     ICON, ICON, 1, 1, 1, 1)
+    end
+
     -- What is the elastic column: it gives up whatever the fixed ones need, so the
     -- figure on the right is never the thing that gets cut.
-    self:drawText(TC.truncate(UIFont.Small, e.summary or "", amountLeft - c.what - TC.UI.CELL_PAD),
-                  c.what, ty, 0.86, 0.86, 0.9, 1, UIFont.Small)
+    local textX = c.what + ICON + TC.UI.CELL_PAD
+    self:drawText(TC.truncate(UIFont.Small, e.summary or "", amountLeft - textX - TC.UI.CELL_PAD),
+                  textX, ty, 0.86, 0.86, 0.9, 1, UIFont.Small)
 
     TC.drawRight(self, sign .. "$" .. (e.total or 0), rightEdge, ty, UIFont.Small, r, g, b)
 
@@ -232,7 +252,8 @@ function TC_HistoryWindow:new(x, y, w, h, playerNum)
     -- elastic column can never be squeezed out of existence by a drag.
     local c = columnStops()
     o.minimumWidth = TC.railWidth()
-                   + math.max(620, PAD * 2 + c.what + 200 + c.amount + TC.UI.SCROLL_GUTTER)
+                   + math.max(620, PAD * 2 + c.what + ICON + TC.UI.CELL_PAD + 200
+                                       + c.amount + TC.UI.SCROLL_GUTTER)
     o.minimumHeight = 380
     return o
 end
@@ -296,6 +317,7 @@ function TC_HistoryWindow:refreshList()
             order   = order,
             total   = order.paid or 0,
             summary = table.concat(parts, ", "),
+            icon    = order.lines and order.lines[1] and order.lines[1].fullType,
         })
     end
 
@@ -307,6 +329,7 @@ function TC_HistoryWindow:refreshList()
             table.insert(parts, (line.qty or 1) .. " x " .. (line.name or "?"))
         end
         e.summary = table.concat(parts, ", ")
+        e.icon = e.lines and e.lines[1] and e.lines[1].fullType
         self.list:addItem(e.when or "", e)
     end
 end
@@ -343,7 +366,9 @@ function TC_HistoryWindow:prerender()
     end
     self:drawText(getText("IGUI_TC_LedgerWhen"), PAD + c.when, hy, 0.72, 0.72, 0.76, 1, F)
     self:drawText(getText("IGUI_TC_LedgerKind"), PAD + c.kind, hy, 0.72, 0.72, 0.76, 1, F)
-    self:drawText(getText("IGUI_TC_LedgerWhat"), PAD + c.what, hy, 0.72, 0.72, 0.76, 1, F)
+    -- Over the TEXT, not over the icon, the same way the buy list heads its Item column.
+    self:drawText(getText("IGUI_TC_LedgerWhat"), PAD + c.what + ICON + TC.UI.CELL_PAD,
+                  hy, 0.72, 0.72, 0.76, 1, F)
 
     -- Through the same helper the rows use, so the heading sits over its own figures.
     TC.drawRight(self, getText("IGUI_TC_LedgerAmount"), PAD + rightEdge, hy, F, 0.72, 0.72, 0.76)

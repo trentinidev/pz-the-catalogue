@@ -12,6 +12,40 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.10.1-alpha — 2026-08-29
+
+0.10.0 crashed on open and never really ran; this is the first working build of the
+rail. The fix is recorded under 0.10.0 where it was made, but the number is bumped so
+that two different builds are not both called 0.10.0 -- the log line is how a report
+gets matched to a build, and it has already misled once.
+
+### Added
+- **Item icons in the cart and the ledger**, at the same 26px the buy list uses. Both
+  rows grew from 30 to 34 to give the icon the same breathing room it has there: the
+  icon size is the fixed thing and the row follows it.
+- Ledger lines now carry the `fullType` alongside the name they already stored. The
+  summary is still built from the name -- it is a receipt, and the name is what the
+  player recognises -- but an icon needs the type. Entries written before this version
+  have no `fullType` and draw without an icon; the ledger keeps two hundred entries, so
+  old and new rows share the list for a while yet. The text indents past the icon either
+  way, so the column does not zigzag.
+- A ledger row shows the FIRST line's icon. A transaction can hold several, and the
+  summary beside it already says so ("1 x ID Card, 1 x Belt, ..."), so the picture marks
+  the row rather than claiming to describe all of it.
+
+### Changed
+- **The rail is regrouped.** Cart moves up into the third slot, where the Ledger was, and
+  the Ledger moves to the bottom of the rail. The top three are what you go to the
+  catalogue to do -- browse, sell, and look at what you have staged; the bottom two
+  report on what already happened -- what is on order and what has turned up. Both
+  bottom entries are anchored to the bottom edge rather than flowing from the top, which
+  is what keeps the Ledger still when a Delivery entry appears above it.
+- Both column headings now sit over the text rather than over the icon, matching how the
+  buy list heads its Item column. The ledger's minimum width grew by the icon, so the
+  summary is not squeezed to pay for it.
+
+---
+
 ## 0.10.0-alpha — 2026-08-29
 
 ### Changed

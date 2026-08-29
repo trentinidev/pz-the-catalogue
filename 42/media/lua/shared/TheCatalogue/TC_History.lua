@@ -63,14 +63,24 @@ function TC.logTransaction(player, kind, lines, total)
     end
 end
 
---[[ Collapse a list of items into { name, qty } lines, so a receipt reads
-     "5 x Hammer" instead of five identical rows. ]]
+--[[ Collapse a list of items into { name, qty, fullType } lines, so a receipt reads
+     "5 x Hammer" instead of five identical rows.
+
+     The fullType is carried for the icon and nothing else -- the summary text is still
+     built from the name, which is what the player recognises. Entries written before
+     0.10.1 have no fullType and simply draw without an icon; the ledger keeps two
+     hundred of them, so that is a real state and not a hypothetical one. ]]
 function TC.summariseItems(items)
     local order, byName = {}, {}
     for _, it in ipairs(items) do
-        local name = type(it) == "string" and it or it:getDisplayName()
+        local isString = type(it) == "string"
+        local name = isString and it or it:getDisplayName()
         if not byName[name] then
-            byName[name] = { name = name, qty = 0 }
+            byName[name] = {
+                name     = name,
+                qty      = 0,
+                fullType = (not isString) and it:getFullType() or nil,
+            }
             table.insert(order, byName[name])
         end
         byName[name].qty = byName[name].qty + 1
