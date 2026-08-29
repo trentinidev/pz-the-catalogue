@@ -12,6 +12,31 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.13.0-alpha — 2026-08-29
+
+### Changed
+- **Writing a catalogue now needs something to write with.** The recipe takes a bound
+  notebook and a pen; the paper is consumed and the pen is not.
+- **Three papers are accepted instead of one**: `Journal`, `Notebook`, `Notepad`. Vanilla's
+  own marker for a blank writing surface is `PageToWrite`, and five items carry it -- the
+  three above at 20, 10 and 5 pages, and `SheetPaper2` and `IndexCard` at one page each.
+  Only the bound three qualify: a catalogue is a document with a body to it, and letting a
+  single index card become one would make the recipe free. `Doodle` looks like paper and
+  is not -- no `PageToWrite`, because it is a finished picture.
+- **The pen is `tags[base:write]`, not a list of ids.** Vanilla applies that tag to
+  fourteen items: every pen and colour, the Spiffo and fancy ones, pencils, markers and
+  crayons. It already excludes the two things that read as pens and are not -- `PenLight`
+  is a torch and `PencilCase` a container -- and a tag picks up whatever a future patch or
+  another mod marks, which a hand-written list never would.
+
+  No vanilla recipe consumes `base:write` at all. The tag is applied and unused; this is
+  the first thing to ask for it.
+- **`mode:keep`, and no `MayDegradeLight`.** The pen is a requirement to have, not a
+  consumable. A `Pen` has `ConditionMax = 2`, so real wear would break it inside a couple
+  of catalogues and turn a nice detail into an errand.
+
+---
+
 ## 0.12.1-alpha — 2026-08-29
 
 ### Fixed

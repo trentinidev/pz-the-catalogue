@@ -4,15 +4,15 @@ A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
 [![checks](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml/badge.svg)](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml)
 
-> **Alpha — 0.12.1, single-player.** Not released, and the version number says so
+> **Alpha — 0.13.0, single-player.** Not released, and the version number says so
 > deliberately: it works and it is played, but parts of it have never been exercised.
 > [What to expect](#what-to-expect) sets out the limits before you install.
 > See [CHANGELOG.md](CHANGELOG.md) for what has landed, and [ROADMAP.txt](ROADMAP.txt)
 > for what is deliberately still missing.
 
-Craft **The Catalogue** from a Notebook, right-click it, pick **Open Catalogue**, and
-trade with the world's last mail-order company. Every vanilla item has a price. You pay
-in real banknotes and you get paid in real banknotes.
+Craft **The Catalogue** from a notebook and any pen, right-click it, pick **Open
+Catalogue**, and trade with the world's last mail-order company. Every vanilla item has
+a price. You pay in real banknotes and you get paid in real banknotes.
 
 ---
 
@@ -126,6 +126,13 @@ turn away.
 container in one click. Nothing leaves your possession until you confirm. Expand any
 staged bag to see its contents line by line, each marked as sold or kept, using the same
 test the sale itself applies.
+
+**Writing one** — a `Journal`, `Notebook` or `Notepad`, plus anything you can write
+with: any pen or colour, a pencil, a marker, even crayons. The paper is consumed and the
+pen is not. Vanilla marks writing implements with a `base:write` tag and blank pages with
+`PageToWrite`, so the recipe asks for those rather than naming items — which means a pen
+added by another mod works too, and a one-page index card does not become a whole
+catalogue.
 
 **Finding a catalogue** — one spawns rarely in post office sorting racks, office desks,
 magazine racks and living rooms, so the mail-order company existed before you started
