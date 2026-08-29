@@ -4,7 +4,7 @@ A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
 [![checks](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml/badge.svg)](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml)
 
-> **Alpha — 0.11.0, single-player.** Not released, and the version number says so
+> **Alpha — 0.11.1, single-player.** Not released, and the version number says so
 > deliberately: it works and it is played, but parts of it have never been exercised.
 > [What to expect](#what-to-expect) sets out the limits before you install.
 > See [CHANGELOG.md](CHANGELOG.md) for what has landed, and [ROADMAP.txt](ROADMAP.txt)
@@ -223,9 +223,17 @@ The mod therefore always pays out in bundles and settles the remainder in notes,
 always spends bundles first. $2,350 arrives as 23 bundles and 50 notes: 73 objects and
 12 kg, against 2,350 objects and 23.5 kg.
 
-The practical consequence is a hard ceiling: with a decent backpack you can carry
-roughly **$5,000**, which is what the price scale is built around: beans $2, a hammer
-$21, an axe $53, a shotgun $438, a generator $1,050.
+The practical consequence is a ceiling on what you can carry to spend — roughly
+**$5,000** with a decent backpack. Up to 0.11.1 the price scale was built around that
+number. It is not any more: prices come from the study now, and the study was written
+about 1993 Kentucky rather than about how much cash fits in a rucksack. A generator at
+$2,700 is over half a full load, and a gold bar at $38,900 is not purchasable in one
+trip at all.
+
+That is the intended reading rather than a problem to correct. The ceiling is a fact
+about carrying money, not a budget the catalogue has to fit inside, and the dearest
+things on the shelf being out of reach of a single trip is what makes them worth
+planning for.
 
 Note that vanilla can only *un*bundle, never re-bundle. The catalogue is the only thing
 in the game that hands out `MoneyBundle`.
@@ -283,31 +291,32 @@ draw calls that hurt.
 
 Three layers, most specific first, in `media/lua/shared/TheCatalogue/`:
 
-- **`TC_Overrides.lua`** — 171 hand-set prices covering firearms, ammunition, tools,
-  medicine, electronics, radios and bags. These win outright.
-- **`TC_PriceTable.lua`** — generated, covering all 4,916 tradeable vanilla items. Built
-  offline by `tools/gen_prices.ps1`, which reads everything the item scripts declare:
-  calories and macronutrients on food, `MaxDamage` and `ConditionMax` on weapons,
-  `BodyLocation` and the three defence ratings on clothing, `Capacity` and
-  `WeightReduction` on bags, `SkillTrained` on books, and the precious-material tags on
-  jewellery. Rules live in `tools/rules.ps1`.
-- **`TC_ModPricing.lua`** — items from other mods, which the offline generator never saw.
-  The rich properties it needs (`BodyLocation`, `Calories`, `Capacity`, `ConditionMax`,
-  the defence ratings) live on `InventoryItem`, not on the `ScriptItem` the index walks,
-  so one instance of each unknown item is built at index time to read them. It encodes
-  the same judgements as `tools/rules.ps1` and the two should be changed together.
-
-Changing `tools/rules.ps1` means `TC_PriceTable.lua` has to be regenerated, or the two
-disagree and the change looks done when it is not:
-
-```
-pwsh tools/gen_prices.ps1 "<PZ install>\media\scripts\generated\items"
-```
-
-The path is mandatory and points at an installed copy of the game, so this only runs on
-a machine that has Project Zomboid.
+- **`TC_Overrides.lua`** — hand-set, and now only where this mod deliberately disagrees
+  with the table below. Two entries, each with the disagreement written down.
+- **`TC_PriceTable.lua`** — all 5,092 vanilla items, **imported** from
+  [`tools/reference/PZ_prices_B42.20.4.md`](tools/reference/PZ_prices_B42.20.4.md), a
+  study that prices every id one at a time from 1993 US replacement cost and then
+  survival utility in Knox County. Rebuild it with `sh tools/import_prices.sh`; it needs
+  nothing but the checked-in document, so it runs on a clean clone.
+- **`TC_ModPricing.lua`** — items from other mods, which the study will never cover. The
+  rich properties it needs (`BodyLocation`, `Calories`, `Capacity`, `ConditionMax`, the
+  defence ratings) live on `InventoryItem`, not on the `ScriptItem` the index walks, so
+  one instance of each unknown item is built at index time to read them. It encodes the
+  same judgements as `tools/rules.ps1` and the two should be changed together.
 - **`TC_Prices.lua`** — the original category-and-weight formula, now a last resort for
   an item that refuses to instantiate at all.
+
+The last two are still formulas, so they are multiplied by `TC.MOD_PRICE_SCALE` (0.75)
+to land on the study's footing. That factor is measured rather than chosen: across the
+4,905 ids both sets price, the study's median figure is 0.43× what this mod used to
+show, and it used to show base × 1.75.
+
+**Why imported rather than computed.** The table used to be generated from the item
+scripts, and the generator could read everything an item *declares* — category, weight,
+calories, `MaxDamage`, `Capacity` — and nothing about what an item is *for*. It put a
+hunting rifle and a fireplace poker of the same mass in the same place, which is why 186
+hand overrides existed to argue with it. The study reasons about exactly what the formula
+could not, so the overrides were arguing a case that had already been won.
 
 > **A note on load time.** With a lot of item mods installed, the first time you open the
 > Buy window in a session takes a few seconds while every modded item is priced. It is
@@ -318,13 +327,21 @@ a machine that has Project Zomboid.
 Modded items can be filtered by source: the category dropdown lists **Vanilla items only**
 and then each installed mod under `Mod: <name>`, below the ordinary item categories.
 
-Prices are set by **what a thing is**, with weight as a minor modifier — except for
-building materials, where weight is the honest signal, since a kilo of nails really is
-worth twice what half a kilo is. Weight alone was the original mistake: it priced a gold
-necklace and a corkscrew at $4 apiece.
+Prices are set by **what a thing is**, and since 0.11.1 by what it is *for*: the study
+starts from a 1993 US replacement cost and then asks what the object is worth to someone
+thirty to ninety days into the Knox Event. Food, water, medicine, ammunition, fuel and
+tools go up; heavy furniture, mains-dependent electronics and luxury go down. Weight
+alone was the original mistake — it priced a gold necklace and a corkscrew at $4 apiece.
 
-Sanity check on the result: median item $9, 90th percentile $56, dearest item the
-assault rifle at $750. Food runs a median of $2, clothing $26, skill books $46.
+Sanity check on the result, over 5,092 items: median $9, 75th percentile $21, 90th $50,
+99th $245. An apple is $0.75, canned beans $2.50, a hammer $35, an axe $71, a shotgun
+$760, an assault rifle $1,890, a generator $2,700 — and the dearest thing in the game is
+a gold bar at $38,900.
+
+That last figure is the shape of the change. The old generated table topped out at
+$1,313 and had a median of $16; the catalogue is now **cheaper in the body and far
+steeper at the top**. Ordinary loot is ordinary, and the handful of things that are
+genuinely worth something are priced like it.
 
 Money, MoneyBundle and BareHands are excluded from the catalogue: a currency that can be
 bought and sold at any spread other than exactly 1.0 is an arbitrage loop. Corpses,

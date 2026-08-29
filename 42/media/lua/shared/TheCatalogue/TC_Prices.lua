@@ -177,9 +177,10 @@ function TC.buildIndex()
 
             --[[ Four layers, most specific first.
 
-                 TC_Overrides    hand-set, 171 items whose price carries balance weight
-                 TC_PriceTable   generated, every vanilla item, priced from everything
-                                 the scripts declare (see tools/gen_prices.ps1)
+                 TC_Overrides    hand-set, and now only where this mod deliberately
+                                 disagrees with the study -- two items
+                 TC_PriceTable   imported, every vanilla item, priced one at a time by
+                                 the study (tools/import_prices.sh)
                  priceUnknownItem  modded items: one instance is built so the same
                                  judgements can read BodyLocation, Calories, Capacity
                                  and the rest, which live on InventoryItem and are not
@@ -193,8 +194,22 @@ function TC.buildIndex()
                           or overrides[fullType]
                           or (TC.PRICE_TABLE and TC.PRICE_TABLE[fullType])
                           or (TC.runValueHandlers and TC.runValueHandlers(si, fullType))
-                          or TC.priceUnknownItem(si, fullType)
-                          or priceFromFormula(si, fullType)
+
+            --[[ The two formula layers are scaled here and the four above are not.
+
+                 Everything above states a price in dollars: a mod's registered price, a
+                 hand override, the imported study, a mod's own value handler. The two
+                 below WORK ONE OUT, and they do it with the judgements the old generated
+                 table used, on the old base scale. TC.MOD_PRICE_SCALE is what lands them
+                 on the study's footing; see the note on it in TC_Config.lua.
+
+                 Applied at index time rather than at display time because only these two
+                 layers want it, and TC.PRICE_SCALE at display time cannot tell which
+                 layer a stored price came from. ]]
+            if not price then
+                price = TC.priceUnknownItem(si, fullType) or priceFromFormula(si, fullType)
+                if price then price = price * (TC.MOD_PRICE_SCALE or 1) end
+            end
 
             if price then
                 TC.priceByType[fullType] = price

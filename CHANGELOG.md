@@ -12,6 +12,51 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.11.1-alpha — 2026-08-29
+
+The price table is no longer computed. It is imported.
+
+### Changed
+- **All 5,092 vanilla prices come from a study, not a formula.**
+  `tools/reference/PZ_prices_B42.20.4.md` prices every id one at a time, from 1993 US
+  replacement cost and then what the object is worth thirty to ninety days into the Knox
+  Event. `sh tools/import_prices.sh` builds `TC_PriceTable.lua` from it, and needs
+  nothing but the checked-in document, so it runs on a clean clone.
+
+  The generated table could read everything an item DECLARES -- category, weight,
+  calories, `MaxDamage`, `Capacity` -- and nothing about what an item is FOR. It put a
+  hunting rifle and a fireplace poker of the same mass in the same place. That is what
+  186 hand overrides existed to argue with.
+- **The catalogue is cheaper in the body and far steeper at the top.** Median falls from
+  $16 to $9, the 90th percentile from $98 to $50, the 99th from $705 to $245 -- while the
+  dearest item goes from $1,313 to a gold bar at $38,900. An apple is $0.75, beans $2.50,
+  a hammer $35, an axe $71, a shotgun $760, a generator $2,700. Ordinary loot is ordinary
+  now, and the few things genuinely worth something are priced like it.
+- **`TC_Overrides.lua` is nearly empty.** The 186 hand prices were retired wholesale
+  rather than reconciled one at a time: keeping a hand price that merely agrees with the
+  table is how the two drift apart later. Two remain, each where this mod deliberately
+  disagrees with the study, with the disagreement written down -- a sterilised bandage
+  and a sterilised bundle cost more than a clean one, because the disinfectant that went
+  into them is itself worth something.
+- **`TC.PRICE_SCALE` is 1.0.** The study's figures are already in dollars, so the table
+  is what the player is shown.
+- **`TC.MOD_PRICE_SCALE` (0.75) is new**, and applies only to the two layers that are
+  still a formula: items from other mods, which the study will never cover. Measured, not
+  chosen -- across the 4,905 ids both sets price, the study's median is 0.43x what this
+  mod used to show, and it used to show base x 1.75.
+- **The $5,000 carry ceiling is no longer the design anchor.** Prices used to be built
+  around how much cash fits in a rucksack; they are built around 1993 Kentucky now. A
+  generator is over half a full load and a gold bar cannot be bought in one trip at all.
+  That is the intended reading rather than a problem to correct.
+- `mod.info` still said "Craft a Shop Catalogue". Renamed with the rest of it.
+
+### Removed
+- `tools/gen_prices.ps1`. It rewrote `TC_PriceTable.lua` wholesale, so leaving it in the
+  tree meant one careless run would silently destroy the import. `tools/rules.ps1`
+  survives as the readable twin of `TC_ModPricing.lua`, which still prices modded items.
+
+---
+
 ## 0.11.0-alpha — 2026-08-29
 
 ### Fixed
