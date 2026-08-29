@@ -2,7 +2,7 @@
 
 A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
-> **Alpha — 0.9.1.** Not released, and the version number says so deliberately. It works
+> **Alpha — 0.9.2.** Not released, and the version number says so deliberately. It works
 > and it is played, but parts of it have never been exercised.
 > **Single-player only.** All transaction logic runs client-side, so on a dedicated
 > server it is trivially cheatable; server authority is deliberately deferred until
@@ -60,7 +60,7 @@ ones share one ledger, opened from the catalogue's right-click menu.
 **Changing your mind** — a pending order can be cancelled from the ledger, with the small
 red **✕** on its row, for a **full refund**. Once it has arrived that ✕ is gone and the
 choice is at the door instead: the delivery window's **Deny** turns it away for **75%**
-back. The quarter is the difference between calling something off before it was made up
+back, rounded down -- so a $2 order gives back $1 and refusing always costs something. The quarter is the difference between calling something off before it was made up
 and sending back something that was assembled and carried to you — and it is what stops
 "order everything, refuse what I no longer want" from being a free warehouse. Rush needs no
 rule of its own: it never becomes an order, so there is nothing to cancel and nothing to

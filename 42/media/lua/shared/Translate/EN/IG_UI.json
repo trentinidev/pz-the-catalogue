@@ -64,7 +64,7 @@
     "IGUI_TC_ArrivalSummary": "%1 item(s), %2 to carry",
     "IGUI_TC_Receive": "Receive",
     "IGUI_TC_Deny": "Deny",
-    "IGUI_TC_DenyTooltip": "Turn the delivery away and get %1% of what you paid back",
+    "IGUI_TC_DenyTooltip": "Turn the delivery away and get %1 of what you paid back, rounded down",
     "IGUI_TC_Denied": "Delivery refused - $%1 refunded",
     "IGUI_TC_DenyNothing": "Nothing waiting to refuse",
     "IGUI_TC_Received": "Delivery received (%1 parcel(s))",

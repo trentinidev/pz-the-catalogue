@@ -206,9 +206,14 @@ function TC_ArrivalWindow:createChildren()
                                 getText("IGUI_TC_Deny"), self, TC_ArrivalWindow.onDeny)
     self.denyBtn:initialise(); self.denyBtn:instantiate()
     self.denyBtn.backgroundColor = { r = 0.34, g = 0.14, b = 0.14, a = 0.9 }
-    -- The price of refusing, said before the click rather than after it.
+    --[[ The price of refusing, said before the click rather than after it.
+
+         The percent sign is part of the ARGUMENT, not of the translated string. PZ's
+         getText turns %1 into a format placeholder, so a literal % straight after it is
+         read as part of that placeholder and the tooltip came out as "75$s%". Keeping
+         the sign inside the value sidesteps the escape entirely. ]]
     self.denyBtn:setTooltip(getText("IGUI_TC_DenyTooltip",
-                                    math.floor(TC.DENY_REFUND * 100 + 0.5)))
+                                    math.floor(TC.DENY_REFUND * 100 + 0.5) .. "%"))
     self:addChild(self.denyBtn)
 
     self:refreshList()
