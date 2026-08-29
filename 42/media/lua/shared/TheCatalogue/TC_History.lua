@@ -34,8 +34,12 @@ end
 --[[ A world timestamp, not a real one.
 
      The ledger belongs to the character, so it is dated by the game's calendar. Zero
-     padding keeps the strings sortable and the column aligned. ]]
-local function stamp()
+     padding keeps the strings sortable and the column aligned.
+
+     Public, and named for the clock rather than for the ledger, because the bank
+     statement in TC_Bank.lua dates its lines the same way. Two copies of this would be
+     two calendars in one save file that could disagree about what a month is. ]]
+function TC.gameStamp()
     local gt = getGameTime()
     if not gt then return "?" end
     return string.format("%04d-%02d-%02d %02d:00",
@@ -54,7 +58,7 @@ function TC.logTransaction(player, kind, lines, total)
     table.insert(hist, 1, {
         kind  = kind,                 -- "buy" or "sell"
         total = math.floor((total or 0) + 0.5),
-        when  = stamp(),
+        when  = TC.gameStamp(),
         lines = lines or {},
     })
 

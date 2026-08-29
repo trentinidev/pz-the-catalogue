@@ -12,6 +12,13 @@ TC.ITEM_FULL    = "Catalogue.Catalogue"
 TC.MONEY        = "Base.Money"
 TC.MONEY_BUNDLE = "Base.MoneyBundle"
 
+--[[ The bank card is VANILLA's card. See TC.issueCard in TC_Bank.lua for why the mod
+     ships no plastic of its own: Base.CreditCard already has the icon, the world model
+     and base:fitswallet, and a card of ours would only look like a worse copy of it
+     sitting next to one on the floor of a bank. Ours is the same item with modData and a
+     name on it. ]]
+TC.CARD_ITEM = "Base.CreditCard"
+
 --[[ Global scale on every buy price. 1.0 since 0.11.1, and it stays here for the
      sandbox multiplier to compose with rather than because it still corrects anything.
 
@@ -154,6 +161,46 @@ function TC.isPackaging(item)
 end
 
 
+--[[ The cash machines.
+
+     Vanilla has exactly four ATM sprites and they are all in location_business_bank_01:
+     64 and 65 are the free-standing green machine seen from its two drawn angles, 66 and
+     67 the wall-mounted one. They carry NO CustomName and no GroupName -- the bank
+     tileset labels its counters and its safe-deposit walls and leaves these two anonymous
+     -- so there is nothing to match on but the sprite name itself.
+
+     WORKED OUT BY LOOKING. The tile properties are no help and the obvious candidates in
+     the same tileset are a trap: 40 to 45 are named "Vault", in a Wall group of two and a
+     Standing group of four, which is the exact shape an ATM set would have. They are
+     banks of safe-deposit boxes. The four below were confirmed by pulling the tileset out
+     of Tiles1x.pack and looking at the pictures, and the two with "ATM" printed on the
+     front are 64 and 65.
+
+     A sprite name is the only handle the engine offers here, so it is a literal list, and
+     a literal list goes stale if the tileset is ever renumbered. That is the trade, and
+     it is a cheap one to fix -- but it is why TC.isATMSprite also takes a guess at what
+     ANOTHER mod would call its machine. A tile called atm_01_3 or mall_atm_2 is almost
+     certainly one, and matching it costs nothing; the delimiter is required so that a
+     sprite with "atm" buried in a longer word is not swept up with them. ]]
+TC.ATM_SPRITES = {
+    ["location_business_bank_01_64"] = true,   -- free-standing, one facing
+    ["location_business_bank_01_65"] = true,   -- free-standing, the other
+    ["location_business_bank_01_66"] = true,   -- wall-mounted, one facing
+    ["location_business_bank_01_67"] = true,   -- wall-mounted, the other
+}
+
+function TC.isATMSprite(name)
+    if type(name) ~= "string" or name == "" then return false end
+    if TC.ATM_SPRITES[name] then return true end
+
+    local lower = string.lower(name)
+    if string.find(lower, "^atm[_%d]") then return true end
+    if string.find(lower, "_atm[_%d]") then return true end
+    if string.find(lower, "cashmachine", 1, true) then return true end
+    return false
+end
+
+
 --[[ Which build is actually running, printed into console.txt at load.
 
      Written after a round of testing was spent on a build that had already been replaced
@@ -165,7 +212,7 @@ end
      A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
      sandbox option and this line has to be there whether or not anyone turned it on.
      tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
-TC.VERSION = "0.13.0-alpha"
+TC.VERSION = "0.1.1-beta"
 print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging

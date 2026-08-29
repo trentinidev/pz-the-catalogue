@@ -322,6 +322,17 @@ function TC_SellWindow:canStage(item)
         return false, getText("IGUI_TC_RefuseCatalogue")
     end
 
+    --[[ A card bound to an account is not merchandise.
+
+         A CreditCard is worth about a dollar as an object, and the one in your wallet is
+         the way back into everything you have banked -- a spread the sell window would
+         otherwise be happy to take. Refused for ANY account and not only the player's own,
+         because the catalogue has no way to tell whose card it is holding, and refusing a
+         looted one costs a dollar while accepting your own costs the account. ]]
+    if TC.isBankCard(item) then
+        return false, getText("IGUI_TC_RefuseBankCard")
+    end
+
     local okFav, fav = pcall(function() return item:isFavorite() end)
     if okFav and fav then
         return false, getText("IGUI_TC_RefuseFavorite")

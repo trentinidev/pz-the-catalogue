@@ -12,6 +12,142 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.1.1-beta — 2026-08-29
+
+The first play of the cash machine. Everything below is a layout fault or a wording one:
+the banking itself behaved, and no money went missing.
+
+### Fixed
+- **Prose is WRAPPED now, not truncated.** The welcome screen read "The Catalogue banks
+  for you at any cash machine in the cou..." at the size the window actually opens at,
+  because everything in this mod went through `TC.truncate` — and truncation is for a
+  table cell, where the column is the promise and a name that will not fit has to give
+  way to the ones beside it. A sentence is not a table cell.
+
+  `TC.wrapText` is the counterpart, in `TC_UI.lua` beside the function it corrects:
+  greedy, one word at a time, falling back to truncation only for a single word too long
+  for the column. There is no hyphenation, and a mod that invented one would be guessing
+  at every language it gets translated into.
+
+  Because prose wraps, it no longer sets the window's minimum width either. It used to,
+  and it bought nothing: the window could not be dragged narrower than the longest line
+  of welcome text, and that line came out truncated anyway. Half of it is kept, so four
+  sentences wrap to about eight lines rather than to one word each.
+
+- **The status line has two lines of room, reserved whether or not there is a message.**
+  "Card not found — a replacement has been printed" does not fit on one line at a larger
+  UI scale, and a message allowed to grow downwards grows into the button row. Reserved
+  rather than measured per message, so the body above does not jump half a line taller
+  every time a message ages out; anchored to the BOTTOM of that block, so a one-line
+  message still sits exactly where a one-line message always sat. Past two lines it is
+  cut from the END — losing the tail of a sentence still leaves it readable, dropping
+  the first line leaves the reader looking at the middle of something.
+
+- **"Account opened" no longer recites the account number.** It made the longest message
+  in the mod out of a figure that is on the very next screen, in a row labelled *Account*.
+
+### Changed
+- **The right-click entry is *Use ATM*, with the catalogue's own icon beside it** — the
+  same one the inventory menu puts on *Open Catalogue*, so the two entries this mod adds
+  anywhere in the game are recognisably the same mod's. The icon is read off the item
+  SCRIPT rather than off an item instance, because there is no item involved here: the
+  menu is filled over a tile, and the player need not be carrying anything at all.
+
+---
+
+## 0.1.0-beta — 2026-08-29
+
+The version number goes DOWN, on purpose and for the second time. 1.x was reset to
+0.x when it became clear nothing had shipped; 0.13.0-alpha resets to 0.1.0-beta now
+because the alpha line is finished and beta starts its own count. ROADMAP.txt names
+the condition for beta -- work that is about how far the mod REACHES rather than what
+it does -- and a bank that sends the player out to a machine in a town is that.
+Nothing has been released, so no install anywhere sees this as a downgrade.
+
+### Added
+- **Cash machines, credit cards and a bank account.** Right-click a vanilla ATM and the
+  menu carries *Use cash machine*. The character walks to it, and a four-screen window
+  opens on it: open an account, enter a PIN, look at the balance and the statement, pay
+  money in or take it out.
+
+- **The account is on the character and the card is only the key.** The balance lives on
+  `player:getModData()` beside the wishlist and the ledger, because Lua still has no save
+  hook in this game. The card is a `Base.CreditCard` with the account number written into
+  its modData and the holder's name written on its face -- *Credit Card - Bob Smith*,
+  taken from the survivor descriptor rather than from a Steam login.
+
+  It would have been easier to keep the money ON the card, and it would have been wrong.
+  An item worth ten thousand dollars is an item lost with the bag it was in, which is the
+  exact problem an account is supposed to solve. Lose the card and the machine prints
+  another once the PIN is entered.
+
+- **No money is created or destroyed.** A deposit takes real notes and bundles off the
+  player through `TC.takeCash` and a withdrawal hands real ones back through
+  `TC.giveCash`, so the total cash in a save is what it always was -- the account only
+  changes where it is kept. No interest, no overdraft, no fee: all three would mint or
+  burn money the rest of the mod believes it can count.
+
+  The ordering of the two halves is not symmetric and cannot be. A deposit takes the cash
+  FIRST, because `takeCash` is the half that can fail and promises to touch nothing when
+  it does; crediting first would mint money on exactly that failure. A withdrawal debits
+  first, because `giveCash` cannot fail.
+
+- **Quick amounts and a typed one.** $1 / $5 / $10 / $20 / $50 / $100 / All, with a field
+  for anything else. A quick amount larger than the account or the wallet is disabled
+  rather than left to fail on Confirm; a TYPED one is not clamped as it is typed -- an
+  account holding $5 has to be able to accept the "5" in "50" -- so the panel turns the
+  figure red and Confirm is what refuses. A withdrawal states its weight before it
+  happens: $10,000 is a hundred bundles and fifty kilos.
+
+- **The statement.** The last fifty movements on the account, in the same table style as
+  the ledger: when, what, how much, and the balance afterwards. Money in is green, money
+  out is red, and the two lines that move nothing -- opening the account, printing a card
+  -- show a dash rather than $0, because a zero in a money column invites adding it up.
+
+- **The catalogue will not buy a bound card.** A `CreditCard` is worth about a dollar as
+  an object and an entire account as a key, and the sell window was happy to take that
+  spread. Refused for any account and not only the player's own: the catalogue has no way
+  to tell whose card it is holding, and refusing a looted one costs a dollar while
+  accepting your own costs everything.
+
+### The ATM sprites, and how they were found
+The four vanilla cash machines are `location_business_bank_01_64` through `_67` -- 64 and
+65 the free-standing green one, 66 and 67 the wall-mounted one. They carry no `CustomName`
+and no `GroupName`, so there is nothing to match on but the sprite name.
+
+The obvious candidates in the same tileset are a trap and were tried first. Sprites 40 to
+45 are named **Vault**, in a `Wall` group of two and a `Standing` group of four -- exactly
+the shape an ATM set would have, with the wall-mounted variant having two facings and the
+free-standing one four. They are banks of safe-deposit boxes. This was settled by pulling
+the tileset out of `Tiles1x.pack` and looking at the pictures, which is also the only
+reason the right answer is in this file rather than a plausible wrong one.
+
+`TC.isATMSprite` also accepts a sprite another mod would plausibly call an ATM -- `atm_01_3`,
+`mall_atm_2` -- with the delimiter required so that a longer word containing those three
+letters is not swept up.
+
+### Changed
+- `TC.gameStamp` is public and lives in `TC_History.lua` under a name about the clock
+  rather than about the ledger. The bank statement dates its lines with the same call;
+  two copies of it would be two calendars in one save file that could come to disagree.
+- Two sound intents, `atmOpen` and `atmClose`, both vanilla shop-counter clips. There is
+  deliberately no keypad beep: every short beep in the game belongs to something
+  announcing itself -- an alarm clock, a house alarm, a reversing van -- and none of them
+  is a clip that survives being fired twelve times while somebody types a PIN.
+
+### Notes
+- The PIN is asked for on every visit rather than once at opening, which is the only
+  reading under which it is a PIN at all. Three wrong tries end the session and the player
+  walks back to the machine. **The card is not retained** -- a mod that destroys the way
+  into your own savings over three typos is a mod that gets uninstalled.
+- Walking away closes the window. The account is money that is deliberately somewhere you
+  are not, and being able to bank from across the street would give that away.
+- Single-player, like the rest of the mod. Every balance is worked out on the player's own
+  machine, so on a dedicated server it is exactly as tamperable as the prices already are.
+  Server authority remains one job, after 1.0.
+
+---
+
 ## 0.13.0-alpha — 2026-08-29
 
 ### Changed

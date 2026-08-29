@@ -30,6 +30,19 @@ TC.SOUNDS = {
     orderSign   = "MapAddNote",          -- the pen: the order is written down
     orderCancel = "CloseBook",           -- interrupted, the book shuts
     cash        = "CashRegisterTransferItem",
+
+    --[[ The cash machine, opening and closing. Both are vanilla shop-counter clips, and
+         they are the register's drawer rather than anything electronic, which is as close
+         as this game gets to the noise an ATM makes.
+
+         THERE IS DELIBERATELY NO KEYPAD BEEP. Every short beep in the game belongs to
+         something that is announcing itself -- an alarm clock, a house alarm, a stove
+         timer, a reversing van -- and none of them is a clip that can be fired twelve
+         times while somebody types a PIN. A named sound that does not exist is not an
+         error either: playSound simply plays nothing, so a wrong guess here would be
+         silent rather than wrong, and silent is what it already is. ]]
+    atmOpen     = "CashRegisterOpen",
+    atmClose    = "CashRegisterClose",
 }
 
 --[[ Play one of the above, by intent rather than by clip name.

@@ -3,5 +3,6 @@
     "ContextMenu_TC_Collect": "Collect delivery (%1 waiting)",
     "ContextMenu_TC_AddToSell": "Add to sell box",
     "ContextMenu_TC_AddOneToSell": "Add one to sell box",
-    "ContextMenu_TC_AddToSellMany": "Add %1 items to sell box"
+    "ContextMenu_TC_AddToSellMany": "Add %1 items to sell box",
+    "ContextMenu_TC_UseATM": "Use ATM"
 }

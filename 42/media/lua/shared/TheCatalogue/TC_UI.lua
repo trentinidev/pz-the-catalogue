@@ -111,6 +111,50 @@ function TC.truncate(font, text, maxW)
     return out .. ellipsis
 end
 
+--[[ Break a sentence over as many lines as it needs, and return them.
+
+     THE COUNTERPART TO TC.truncate, AND NOT A REPLACEMENT FOR IT. Truncating is right for
+     a table cell, where the column is the promise and a name that will not fit has to give
+     way to the ones beside it. It is wrong for PROSE: the cash machine's welcome screen
+     read "The Catalogue banks for you at any cash machine in the cou..." at the size the
+     window actually opens at, which is a sentence that has been thrown away rather than
+     laid out. Anything written to be read as a sentence goes through this instead.
+
+     Greedy, one word at a time, which is what every fixed-width text layout in a game UI
+     does and is the only kind that is cheap enough to run in a prerender. A single word
+     too long for the width has nowhere to go, so THAT falls back to truncation -- there is
+     no hyphenation here and a mod that invented one would be guessing at every language it
+     was translated into.
+
+     string.gmatch is used by the game's own Lua in three places, so Kahlua has it. ]]
+function TC.wrapText(font, text, maxW)
+    local out = {}
+    if not text or text == "" or maxW <= 0 then return out end
+
+    local tm = getTextManager()
+    local line = nil
+
+    for word in string.gmatch(text, "%S+") do
+        local candidate = line and (line .. " " .. word) or word
+
+        if tm:MeasureStringX(font, candidate) <= maxW then
+            line = candidate
+        else
+            if line then table.insert(out, line) end
+
+            if tm:MeasureStringX(font, word) > maxW then
+                table.insert(out, TC.truncate(font, word, maxW))
+                line = nil
+            else
+                line = word
+            end
+        end
+    end
+
+    if line then table.insert(out, line) end
+    return out
+end
+
 --[[ Column geometry for a list of the given pixel width.
 
      Computed from the RIGHT edge inwards. The price is the number the player is
