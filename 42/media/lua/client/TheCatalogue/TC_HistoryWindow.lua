@@ -43,7 +43,8 @@ local function columnStops()
     -- ends up a few pixels short of the one case nobody checked.
     local kindW = 0
     for _, key in ipairs({ "IGUI_TC_LedgerBought", "IGUI_TC_LedgerSold",
-                           "IGUI_TC_LedgerPending" }) do
+                           "IGUI_TC_LedgerPending", "IGUI_TC_LedgerCanceled",
+                           "IGUI_TC_LedgerDenied" }) do
         kindW = math.max(kindW, tm:MeasureStringX(F, getText(key)))
     end
 
@@ -60,6 +61,19 @@ local function columnStops()
     stops.what   = stops.kind + kindW + gap
     stops.amount = amountW
     return stops
+end
+
+
+--[[ Where the cancel button sits on a row: a small square tucked inside the left edge
+     of the Amount column, vertically centred.
+
+     One function, used by both the drawing and the hit test, because a button you can see
+     in one place and click in another is worse than no button. ]]
+local function cancelRect(listW, rowY)
+    local size = math.min(ROW_HGT - 10, 14)
+    local c = columnStops()
+    local x = listW - TC.UI.SCROLL_GUTTER - c.amount + 2
+    return x, rowY + math.floor((ROW_HGT - size) / 2), size
 end
 
 TC_HistoryList = ISScrollingListBox:derive("TC_HistoryList")
@@ -109,10 +123,36 @@ function TC_HistoryList:doDrawItem(y, item, alt)
     self:drawText(when, c.when, ty, 0.6, 0.6, 0.64, 1, UIFont.Small)
 
     local label
-    if e.pending then label = getText("IGUI_TC_LedgerPending")
-    elseif isBuy then label = getText("IGUI_TC_LedgerBought")
-    else label = getText("IGUI_TC_LedgerSold") end
+    if e.kind == "cancel"   then label = getText("IGUI_TC_LedgerCanceled")
+    elseif e.kind == "deny" then label = getText("IGUI_TC_LedgerDenied")
+    elseif e.pending        then label = getText("IGUI_TC_LedgerPending")
+    elseif isBuy            then label = getText("IGUI_TC_LedgerBought")
+    else                         label = getText("IGUI_TC_LedgerSold") end
     self:drawText(label, c.kind, ty, 0.72, 0.72, 0.76, 1, UIFont.Small)
+
+    --[[ The cancel button, on rows that can still be called off.
+
+         Only while the order is in transit. Once it is at the door the ledger says "ready
+         to collect" and this disappears, because turning it away then is Deny's job and
+         costs a quarter -- offering a free X next to a delivery that has already arrived
+         would be offering the wrong price for the wrong thing.
+
+         Drawn rather than made an ISButton: the rows of an ISScrollingListBox are painted,
+         not built, so a real button would have to be created, moved and destroyed as rows
+         scroll. A rect and a hit test in onMouseDown is the whole of it. ]]
+    if e.pending and e.order and not e.order.arrived then
+        local bx, by, size = cancelRect(w, y)
+        local hot = self.cancelHover == item.index
+        self:drawRect(bx, by, size, size, hot and 0.95 or 0.7, 0.62, 0.2, 0.2)
+        self:drawRectBorder(bx, by, size, size, 0.8, 0.85, 0.5, 0.5)
+        -- An X from two rects rather than a glyph, for the same reason as the sort
+        -- arrows: the bitmap fonts have no guaranteed coverage and a missing glyph draws
+        -- nothing at all, which would leave a blank red square.
+        for i = 0, size - 7 do
+            self:drawRect(bx + 3 + i, by + 3 + i, 1, 1, 1, 1, 1, 1)
+            self:drawRect(bx + size - 4 - i, by + 3 + i, 1, 1, 1, 1, 1, 1)
+        end
+    end
 
     -- What is the elastic column: it gives up whatever the fixed ones need, so the
     -- figure on the right is never the thing that gets cut.
@@ -124,6 +164,56 @@ function TC_HistoryList:doDrawItem(y, item, alt)
     return y + ROW_HGT
 end
 
+
+--[[ A click on the cancel square calls the order off; anything else selects the row.
+
+     The row is worked out from the click's y rather than from self.selected, because
+     selection happens in the base class AFTER this returns -- reading it here would
+     cancel whichever order was highlighted a moment ago, which is the worst possible
+     off-by-one to ship. ]]
+function TC_HistoryList:onMouseDown(x, y)
+    local index = math.floor((y - self:getYScroll()) / ROW_HGT) + 1
+    local entry = self.items[index]
+    local e = entry and entry.item
+
+    if e and e.pending and e.order and not e.order.arrived then
+        local bx, by, size = cancelRect(self:getWidth(), (index - 1) * ROW_HGT)
+        local ry = y - self:getYScroll()
+        if x >= bx and x <= bx + size and ry >= by and ry <= by + size then
+            local refund = TC.cancelOrder(self.parentWindow.player, e.order)
+            if refund then
+                self.parentWindow:setMessage(getText("IGUI_TC_OrderCancelled2", refund), false)
+                self.parentWindow:refreshList()
+            end
+            return true
+        end
+    end
+
+    return ISScrollingListBox.onMouseDown(self, x, y)
+end
+
+--[[ Light the square under the cursor, so it reads as something you can press. ]]
+function TC_HistoryList:onMouseMove(dx, dy)
+    local y = self:getMouseY()
+    local index = math.floor((y - self:getYScroll()) / ROW_HGT) + 1
+    local entry = self.items[index]
+    local e = entry and entry.item
+    self.cancelHover = nil
+
+    if e and e.pending and e.order and not e.order.arrived then
+        local bx, by, size = cancelRect(self:getWidth(), (index - 1) * ROW_HGT)
+        local x, ry = self:getMouseX(), y - self:getYScroll()
+        if x >= bx and x <= bx + size and ry >= by and ry <= by + size then
+            self.cancelHover = index
+        end
+    end
+    return ISScrollingListBox.onMouseMove(self, dx, dy)
+end
+
+function TC_HistoryList:onMouseMoveOutside(dx, dy)
+    self.cancelHover = nil
+    return ISScrollingListBox.onMouseMoveOutside(self, dx, dy)
+end
 -- ---------------------------------------------------------------------------
 
 TC_HistoryWindow = ISCollapsableWindow:derive("TC_HistoryWindow")
@@ -160,6 +250,7 @@ function TC_HistoryWindow:createChildren()
     self.list.itemheight = ROW_HGT
     self.list.drawBorder = true
     self.list.target = self
+    self.list.parentWindow = self
     self:addChild(self.list)
 
     self:refreshList()
@@ -258,9 +349,19 @@ function TC_HistoryWindow:prerender()
                       0.6, 0.6, 0.64, 1, UIFont.Medium)
     end
 
+    local footY = self.height - BOTTOM_PAD - FONT_HGT_SMALL
     self:drawText(getText("IGUI_TC_LedgerCount", #self.list.items),
-                  PAD, self.height - BOTTOM_PAD - FONT_HGT_SMALL,
-                  0.6, 0.6, 0.64, 1, UIFont.Small)
+                  PAD, footY, 0.6, 0.6, 0.64, 1, UIFont.Small)
+
+    -- A refund is worth confirming in words: the money lands silently in the inventory
+    -- and the row simply vanishes, which on its own looks like the click did nothing.
+    local msgText, msgErr = self:activeMessage()
+    if msgText then
+        local r, g, b = 0.6, 1, 0.6
+        if msgErr then r, g, b = 1, 0.3, 0.3 end
+        TC.drawRight(self, TC.truncate(UIFont.Small, msgText, listW * 0.7),
+                     PAD + listW, footY, UIFont.Small, r, g, b)
+    end
 end
 
 function TC_HistoryWindow:onResize()
@@ -276,6 +377,9 @@ function TC_HistoryWindow:close()
     TC_HistoryWindow.instances[self.playerNum] = nil
 end
 
+
+-- Status lines that clear themselves, shared with every other window here.
+TC.applyMessageBehaviour(TC_HistoryWindow)
 function TC.openHistoryWindow(playerNum)
     local existing = TC_HistoryWindow.instances[playerNum]
     if existing then

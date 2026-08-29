@@ -5,5 +5,5 @@ description=Craft a Shop Catalogue from a Notebook and use it to buy and sell it
 icon=icon.png
 poster=poster.png
 category=features
-modversion=0.9.0-alpha
+modversion=0.9.1-alpha
 versionMin=42.20.0
