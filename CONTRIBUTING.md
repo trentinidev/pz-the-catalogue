@@ -35,8 +35,9 @@ price permanently use `TC_Overrides.lua`, which wins over the table.
 
 Ten checks: LuaJIT syntax, JSON balance and duplicate keys, translation keys in both
 directions, `TC.*` helpers called vs defined, duplicate methods, icon/texture and mesh
-existence, a changelog entry for `modversion`, and `TC.VERSION` matching `mod.info`, and a SCREAMING_CASE constant read from a file that
-never declared it (LuaJIT `-bl`, `GGET` -- how 0.10.0 shipped a crashing rail).
+existence, a changelog entry for `modversion`, `TC.VERSION` matching `mod.info`, and a
+SCREAMING_CASE constant read from a file that never declared it -- how 0.10.0 shipped a
+rail that crashed on open.
 `.githooks/pre-commit` runs it (`git config core.hooksPath .githooks`).
 
 A version bump therefore touches three places: `42/mod.info`, `TC.VERSION` in
@@ -46,6 +47,10 @@ A version bump therefore touches three places: `42/mod.info`, `TC.VERSION` in
 
 - PZ runs **Kahlua, a Lua 5.1 VM**. No `goto`, no `//`, no bitwise operators -- a Lua 5.4
   parser accepts all three and the game rejects them at load. Hence LuaJIT in check.sh.
+- **Every window declares its own `PAD`, `ROW_HGT`, `BUTTON_HGT`, `FONT_HGT_*` as file
+  locals.** A shared file naming one gets a nil global instead, and `nil + 10` is a
+  runtime crash that parses clean. Compute it locally, lazily. The `consts` check exists
+  because this shipped once.
 - **Translations are JSON since 42.15**, routed by key prefix: `IGUI_` -> `IG_UI.json`,
   `ContextMenu_` -> `ContextMenu.json`, item names -> `ItemName.json` under the bare
   fullType.
