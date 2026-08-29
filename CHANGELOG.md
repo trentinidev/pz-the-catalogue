@@ -12,6 +12,48 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.11.0-alpha — 2026-08-29
+
+### Fixed
+- **A dirty bandage cost five times a clean one.** $11 against $2, with a sterilised one
+  also $11. Nothing in the generator knows the three are related, so they were priced
+  independently: the clean bandage carried a hand override of `1` from an earlier scale,
+  and its two siblings fell through to the formula at `6`. The whole family is set
+  together now -- $7 dirty, $10 clean, $12 sterilised.
+- The same treatment for the three other families that come in a dirty and a clean form:
+  ripped sheets, denim strips and leather strips, singles and bundles. Dirty was priced
+  identically to clean in all six pairs.
+- **A bundle cost less than one of the things in it.** `RippedSheetsBundle` was $4 and a
+  single `RippedSheets` $5. Bundles now run three to four times the single, per the
+  reference table.
+
+### Changed
+- The sixteen prices above come from the ratios in a 42.20.4 vanilla price study
+  (`PZ_tabela_precos_vanilla_B42.20.4.md`): dirty runs 60-65% of clean, a bundle three to
+  four times a single. They are written as `reference / 1.75` so that `TC.PRICE_SCALE`
+  cancels out and the shown price IS the reference's own figure.
+- One deliberate departure from it: the reference prices a sterilised bandage the same as
+  a clean one. Here it costs more, because it is a clean bandage with disinfectant spent
+  on it.
+
+### Internal
+- `tools/verify_ids.sh` now exists. TC_Overrides.lua has claimed since it was written
+  that "every id here is checked against the game scripts by tools/verify_ids.sh" -- the
+  script did not exist, and the 186 ids had never been checked against anything. A
+  mistyped id is not a runtime error: the lookup misses, the item falls through to the
+  formula, and the hand-set price is silently ignored, which looks exactly like the
+  formula pricing it oddly. All 186 check out. It cannot join tools/check.sh because it
+  needs an installed copy of the game, which the CI runner does not have.
+
+### Known
+- `RippedSheets` and `RippedSheetsDirty` both show **$1**. The reference puts them at
+  $1.25 and $0.75 and `roundPrice` floors at $1, so there is no room between them. The
+  distinction survives on the bundles, which is where it is worth having. A strip of
+  dirty cloth being worth about a dollar is the right answer even when it is not a
+  distinguishable one.
+
+---
+
 ## 0.10.3-alpha — 2026-08-29
 
 ### Changed
