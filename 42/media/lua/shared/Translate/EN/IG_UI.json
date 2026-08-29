@@ -1,6 +1,12 @@
 {
-    "IGUI_TC_BuyTitle": "Shop Catalogue - Buy",
-    "IGUI_TC_SellTitle": "Shop Catalogue - Sell",
+    "IGUI_TC_BuyTitle": "The Catalogue - Buy",
+    "IGUI_TC_SellTitle": "The Catalogue - Sell",
+
+    "IGUI_TC_RailBuy": "Buy",
+    "IGUI_TC_RailSell": "Sell",
+    "IGUI_TC_RailLedger": "Ledger",
+    "IGUI_TC_RailCart": "Cart",
+    "IGUI_TC_RailDelivery": "Delivery",
 
     "IGUI_TC_Buy": "Buy",
     "IGUI_TC_Sell": "Sell",
@@ -17,8 +23,7 @@
     "IGUI_TC_RemoveFromWishlist": "On list",
 
     "IGUI_TC_AddToCart": "Add to cart",
-    "IGUI_TC_OpenCart": "Open cart",
-    "IGUI_TC_CartTitle": "Shop Catalogue - Cart",
+    "IGUI_TC_CartTitle": "The Catalogue - Cart",
     "IGUI_TC_AddedToCart": "Added %1 x %2 to the cart",
     "IGUI_TC_CartEmpty": "The cart is empty",
     "IGUI_TC_CartSummary": "%1 item(s), %2 to carry",
@@ -37,7 +42,7 @@
     "IGUI_TC_Kept": "kept",
     "IGUI_TC_CannotRemoveChild": "Take it out of the bag to keep it",
 
-    "IGUI_TC_LedgerTitle": "Shop Catalogue - Ledger",
+    "IGUI_TC_LedgerTitle": "The Catalogue - Ledger",
     "IGUI_TC_LedgerWhen": "When",
     "IGUI_TC_LedgerKind": "Type",
     "IGUI_TC_LedgerWhat": "What",
@@ -59,7 +64,7 @@
     "IGUI_TC_EtaSoon": "any minute now",
     "IGUI_TC_EtaMinutes": "in about %1 minutes",
     "IGUI_TC_EtaHours": "in about %1 hours",
-    "IGUI_TC_ArrivalTitle": "Shop Catalogue - Delivery",
+    "IGUI_TC_ArrivalTitle": "The Catalogue - Delivery",
     "IGUI_TC_ArrivalHeadline": "Your order has arrived",
     "IGUI_TC_ArrivalSummary": "%1 item(s), %2 to carry",
     "IGUI_TC_Receive": "Receive",

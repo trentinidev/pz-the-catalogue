@@ -5,9 +5,16 @@ What is deliberately not built yet, and why. Everything here was considered and
 parked on purpose -- none of it is rejected. Landed work lives in CHANGELOG.md;
 this file is the other half of that story.
 
-Current version: 0.9.2-alpha. 1.0.0 is reserved for the first build that has been
+Current version: 0.10.0-alpha. 1.0.0 is reserved for the first build that has been
 played end to end. It does NOT promise a dedicated server: server authority is
 deferred past 1.0 rather than half-done before it, and the README says the same.
+
+WHAT MOVES THIS TO BETA. Named by Vitor on 2026-08-29: the alpha ends when the work
+turns to how the thing LOOKS and how far it reaches, rather than what it does. That
+means textured window art in the manner of Knox Chronicles, the hand-made icons and
+models for the catalogue and the parcels (item 9 below), and the first real look at
+multiplayer (item 2). Until those start, new work is still alpha however it is
+numbered.
 
 
 BEFORE 1.0

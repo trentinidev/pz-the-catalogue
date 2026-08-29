@@ -12,6 +12,58 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.10.0-alpha — 2026-08-29
+
+### Changed
+- **The item is called The Catalogue.** It was the Shop Catalogue, which was one word
+  longer than it needed to be and did not match the mod's own name. The display strings
+  changed; the ids did not. `Catalogue.Catalogue`, the `MakeShopCatalogue` recipe and the
+  `ShopCatalogue` icon keep their names on purpose -- renaming the item id would delete
+  every catalogue in every existing save, and renaming the recipe id would make anyone
+  who had learned it forget.
+- **One right-click entry instead of three.** Buy, Sell and Ledger were three entries
+  because that is how the windows are built, not because anyone thinks in threes, and a
+  PZ context menu is regularly twenty entries long before a mod adds to it. There is now
+  a single **Open Catalogue**, which lands on Buy. Collect stays, and stays conditional:
+  it appears only while a delivery is actually waiting.
+- **Buy, Sell and the Ledger are one window with a rail.** A vertical strip of entries
+  down the right edge switches between them. What happens underneath is that the current
+  window closes and the next opens at the same rectangle, so nothing moves, nothing
+  resizes, and it reads as a pane swap -- the alternative, one host window owning three
+  panels, is the same picture for a rewrite of every layout offset in three files, and
+  those offsets have already caused three overflow bugs between them.
+- **The rail carries the numbers.** How many items are in the cart, how many orders are
+  still in flight, and a Delivery entry that is only there when something is at the door.
+  Checking whether anything is coming no longer means opening the ledger to find out.
+- **The window remembers where it was.** Size and position ride on `modData`, so the rail
+  can promise "same frame" across a switch and the catalogue opens where you left it
+  after a reload. Clamped on the way back in, so a frame saved on a wider screen cannot
+  open with its controls off the edge.
+- **The cart opens beside the catalogue, and toggles.** It is the one panel you want
+  visible *while* using another -- a tab would hide the list you are adding from -- so it
+  docks to the right of the frame, or to the left when there is no room, and the rail
+  entry closes it again.
+- **"Open cart" is gone from the detail panel.** The rail carries the cart now, with the
+  count on it; the button beside it was a second door to the same room. Add to cart takes
+  the full width it leaves behind.
+
+### Fixed
+- **`mod.info` no longer promises 90% on sales.** It pays 30, and has since 0.5.0 cut the
+  ratio; the description had been thirteen versions out of date, wrong by a factor of
+  three, and wrong in the direction that made the mod look like an exploit. It now names
+  the default and says the sandbox can change it.
+
+### Internal
+- The cart moved off the buy window instance to a table keyed by player (`TC_Cart.lua`).
+  It had to: a rail click closes the buy window, and a cart owned by that window would
+  have been emptied by the act of glancing at the ledger.
+- `TC.innerW` replaces direct reads of `self.width` in every railed window's layout, so
+  the rail's width comes out of the content once rather than at seventeen call sites.
+- `railW` is set in each constructor rather than in `TC.buildRail`, because
+  `createChildren` asks `listGeometry` for its widths before the rail exists.
+
+---
+
 ## 0.9.2-alpha — 2026-08-28
 
 ### Fixed

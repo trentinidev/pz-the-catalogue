@@ -181,9 +181,11 @@ function TC_SellWindow:new(x, y, w, h, playerNum)
     o.sortKey = "name"                       -- name | mid (condition) | price (value)
     o.sortAsc = true
     o.expanded = {}
+    o.railW = TC.railWidth()   -- before createChildren asks listGeometry, see TC_BuyWindow
     o:setResizable(true)
-    -- Never narrower than the widest button row, so a resize cannot clip a label.
-    o.minimumWidth = math.max(640, PAD * 2 + TC.buttonRowWidth(
+    -- Never narrower than the widest button row plus the rail, so a resize cannot clip
+    -- a label at either end.
+    o.minimumWidth = TC.railWidth() + math.max(640, PAD * 2 + TC.buttonRowWidth(
         { getText("IGUI_TC_RemoveSelected"), getText("IGUI_TC_ClearAll"),
           getText("IGUI_TC_Sell") }, UIFont.Medium))
     o.minimumHeight = 520
@@ -199,7 +201,7 @@ end
 -- See the same block in TC_BuyWindow.lua: this is the whole interface TC_Table needs.
 function TC_SellWindow:tableGeometry()
     local listY = self:listGeometry()
-    return PAD, listY - HEADER_HGT, self.width - PAD * 2
+    return PAD, listY - HEADER_HGT, TC.innerW(self) - PAD * 2
 end
 
 function TC_SellWindow:tableHeaderHeight() return HEADER_HGT end
@@ -217,7 +219,7 @@ TC_SellWindow.tableCols = {
      sell). Kept in one place because it is re-run on every resize, and two copies of a
      layout expression are two chances for them to drift apart. ]]
 function TC_SellWindow:buttonSlots()
-    local avail = self.width - PAD * 2
+    local avail = TC.innerW(self) - PAD * 2
     local top = TC.buttonRow(PAD, avail,
                              { getText("IGUI_TC_StageInventory"),
                                getText("IGUI_TC_StageContainer") }, UIFont.Medium)
@@ -233,7 +235,7 @@ function TC_SellWindow:createChildren()
 
     local listY, listH = self:listGeometry()
 
-    self.list = TC_SellList:new(PAD, listY, self.width - PAD * 2, listH)
+    self.list = TC_SellList:new(PAD, listY, TC.innerW(self) - PAD * 2, listH)
     self.list:initialise()
     self.list:instantiate()
     self.list.itemheight = ROW_HGT
@@ -264,6 +266,8 @@ function TC_SellWindow:createChildren()
     self.removeBtn    = place(bottom[1], by,     TC_SellWindow.onRemoveSelected)
     self.clearBtn     = place(bottom[2], by,     TC_SellWindow.onClearAll)
     self.sellBtn      = place(bottom[3], by,     TC_SellWindow.onSell)
+
+    TC.buildRail(self, "sell")
 end
 
 -- ---------------------------------------------------------------------------
@@ -763,6 +767,8 @@ local REVALIDATE_MS = 1000
 function TC_SellWindow:prerender()
     ISCollapsableWindow.prerender(self)
 
+    TC.refreshRail(self)
+
     local now = getTimestampMs()
     if not self.lastRevalidate or (now - self.lastRevalidate) >= REVALIDATE_MS then
         -- Dropping the catalogue shuts the shop. Checked on the same slow tick as the
@@ -776,7 +782,7 @@ function TC_SellWindow:prerender()
     end
 
     local listY, listH = self:listGeometry()
-    local listW = self.width - PAD * 2
+    local listW = TC.innerW(self) - PAD * 2
     self:drawTableHeader()
 
     if #self.staged == 0 then
@@ -784,12 +790,12 @@ function TC_SellWindow:prerender()
         -- it explains nothing.
         local hint = getText("IGUI_TC_DragHint")
         local hw = getTextManager():MeasureStringX(UIFont.Medium, hint)
-        self:drawText(hint, (self.width - hw) / 2, listY + listH / 2 - FONT_HGT_MEDIUM,
+        self:drawText(hint, (TC.innerW(self) - hw) / 2, listY + listH / 2 - FONT_HGT_MEDIUM,
                       0.6, 0.6, 0.64, 1, UIFont.Medium)
 
         local sub = getText("IGUI_TC_DragHintSub")
         local sw = getTextManager():MeasureStringX(UIFont.Small, sub)
-        self:drawText(sub, (self.width - sw) / 2, listY + listH / 2 + 6,
+        self:drawText(sub, (TC.innerW(self) - sw) / 2, listY + listH / 2 + 6,
                       0.45, 0.45, 0.5, 1, UIFont.Small)
     end
 
@@ -807,8 +813,8 @@ function TC_SellWindow:prerender()
     local tw = getTextManager():MeasureStringX(UIFont.Large, tText)
     local lw = getTextManager():MeasureStringX(UIFont.Small, label)
 
-    self:drawText(tText, self.width - PAD - tw, footY, 0.85, 1, 0.85, 1, UIFont.Large)
-    self:drawText(label, self.width - PAD - tw - lw - PAD, footY + (FONT_HGT_LARGE - FONT_HGT_SMALL) / 2,
+    self:drawText(tText, TC.innerW(self) - PAD - tw, footY, 0.85, 1, 0.85, 1, UIFont.Large)
+    self:drawText(label, TC.innerW(self) - PAD - tw - lw - PAD, footY + (FONT_HGT_LARGE - FONT_HGT_SMALL) / 2,
                   0.68, 0.68, 0.72, 1, UIFont.Small)
 
     -- Spell out the spread rather than leaving the player to work out why the total
@@ -837,8 +843,10 @@ end
 function TC_SellWindow:onResize()
     ISCollapsableWindow.onResize(self)
 
+    TC.layoutRail(self)
+
     local listY, listH = self:listGeometry()
-    self.list:setWidth(self.width - PAD * 2)
+    self.list:setWidth(TC.innerW(self) - PAD * 2)
     self.list:setHeight(listH)
 
     local by     = self.height - BOTTOM_PAD - BUTTON_HGT
@@ -876,10 +884,7 @@ function TC.openSellWindow(playerNum, catalogueItem)
         return existing
     end
 
-    local w = math.min(820, getCore():getScreenWidth()  - 80)
-    local h = math.min(620, getCore():getScreenHeight() - 80)
-    local x = (getCore():getScreenWidth()  - w) / 2
-    local y = (getCore():getScreenHeight() - h) / 2
+    local x, y, w, h = TC.frameRect(playerNum, 820, 620, TC.railWidth() + 640, 520)
 
     local win = TC_SellWindow:new(x, y, w, h, playerNum)
     win:initialise()
