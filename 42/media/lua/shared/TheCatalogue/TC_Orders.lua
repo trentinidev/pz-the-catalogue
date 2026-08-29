@@ -362,6 +362,76 @@ function TC.deliverDueOrders(player)
     return arrived, refunded
 end
 
+--[[ Two ways to get your money back, and they are deliberately not worth the same.
+
+     CANCELLING is free. The order has not been made up yet -- nothing has been picked,
+     packed or driven anywhere -- so calling it off costs the company nothing and costs
+     the player nothing. A hundred per cent back.
+
+     DENYING is not. The goods are at the door; somebody assembled and carried them. Three
+     quarters back, and the quarter is the difference between changing your mind and
+     wasting somebody's afternoon. It is also what stops "order everything, deny what I
+     no longer want" from being a free warehouse.
+
+     Rush needs no special case: a rush purchase never becomes an order at all. It is
+     handed over across the counter, so there is nothing sitting in the list to cancel and
+     nothing to turn away at the door.
+]]
+TC.DENY_REFUND = 0.75
+
+--[[ Call off an order that has not arrived. Full refund. Returns the amount, or nil if
+     the order is already at the door -- which is Deny's job, at Deny's rate. ]]
+function TC.cancelOrder(player, order)
+    if not player or not order or order.arrived then return nil end
+
+    local orders = TC.orders(player)
+    local kept = {}
+    local found = false
+    for _, o in ipairs(orders) do
+        if o == order then found = true else table.insert(kept, o) end
+    end
+    if not found then return nil end
+
+    local refund = math.floor((order.paid or 0) + 0.5)
+    player:getModData()[ORDERS_KEY] = kept
+    TC.giveCash(player, refund)
+    TC.logTransaction(player, "cancel", order.lines or {}, refund)
+    TC.log("cancelled order %s, refunded $%d", tostring(order.id), refund)
+    return refund
+end
+
+--[[ Turn away everything waiting at the door. Refunds TC.DENY_REFUND of what was paid.
+
+     Everything, not one order, because the arrival window shows the whole doorstep merged
+     into one list and answers it with one button. Accepting half a delivery and refusing
+     the other half is a question nobody asked to be given.
+]]
+function TC.denyArrived(player)
+    if not player then return 0, 0 end
+
+    local orders = TC.orders(player)
+    local kept, denied, refund = {}, 0, 0
+
+    for _, o in ipairs(orders) do
+        if not o.arrived then
+            table.insert(kept, o)
+        else
+            local back = math.floor((o.paid or 0) * TC.DENY_REFUND + 0.5)
+            refund = refund + back
+            denied = denied + 1
+            TC.logTransaction(player, "deny", o.lines or {}, back)
+            TC.log("denied order %s, refunded $%d of $%d",
+                   tostring(o.id), back, o.paid or 0)
+        end
+    end
+
+    if denied == 0 then return 0, 0 end
+
+    player:getModData()[ORDERS_KEY] = kept
+    TC.giveCash(player, refund)
+    return denied, refund
+end
+
 --[[ The orders standing at the door, in the order they arrived. ]]
 function TC.arrivedOrders(player)
     local out = {}

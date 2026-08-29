@@ -155,13 +155,29 @@ function TC_ArrivalWindow:layout()
     return L
 end
 
---[[ The button is sized by its own label and centred, not stretched across the window.
-     One choice, sitting on the centre line everything else is balanced about. ]]
-function TC_ArrivalWindow:buttonSlot()
-    local w = math.max(160, getTextManager():MeasureStringX(UIFont.Medium,
-                                getText("IGUI_TC_Receive")) + TC.UI.BTN_PAD * 2)
-    w = math.min(w, self.width - PAD * 2)
-    return math.floor((self.width - w) / 2), math.floor(w)
+--[[ Two buttons, sized by their own labels and centred as a pair.
+
+     Receive and Deny are the same decision answered two ways, so they sit together on the
+     centre line rather than at opposite ends of the window. Deny is the smaller of the
+     two and is not styled to invite a click: taking the delivery is the ordinary answer,
+     turning it away costs a quarter of what you paid. ]]
+function TC_ArrivalWindow:buttonSlots()
+    local tm = getTextManager()
+    local receiveW = math.max(150, tm:MeasureStringX(UIFont.Medium, getText("IGUI_TC_Receive")) + TC.UI.BTN_PAD * 2)
+    local denyW    = math.max(110, tm:MeasureStringX(UIFont.Medium, getText("IGUI_TC_Deny")) + TC.UI.BTN_PAD * 2)
+    local gap = PAD
+    local total = receiveW + gap + denyW
+
+    if total > self.width - PAD * 2 then
+        local scale = (self.width - PAD * 2 - gap) / (receiveW + denyW)
+        receiveW = math.floor(receiveW * scale)
+        denyW    = math.floor(denyW * scale)
+        total    = receiveW + gap + denyW
+    end
+
+    local x = math.floor((self.width - total) / 2)
+    return { x = x, w = math.floor(receiveW) },
+           { x = x + math.floor(receiveW) + gap, w = math.floor(denyW) }
 end
 
 function TC_ArrivalWindow:createChildren()
@@ -179,11 +195,21 @@ function TC_ArrivalWindow:createChildren()
     self.list.target = self
     self:addChild(self.list)
 
-    local bx, bw = self:buttonSlot()
-    self.receiveBtn = ISButton:new(bx, L.buttonY, bw, BUTTON_HGT,
+    local receive, deny = self:buttonSlots()
+
+    self.receiveBtn = ISButton:new(receive.x, L.buttonY, receive.w, BUTTON_HGT,
                                    getText("IGUI_TC_Receive"), self, TC_ArrivalWindow.onReceive)
     self.receiveBtn:initialise(); self.receiveBtn:instantiate()
     self:addChild(self.receiveBtn)
+
+    self.denyBtn = ISButton:new(deny.x, L.buttonY, deny.w, BUTTON_HGT,
+                                getText("IGUI_TC_Deny"), self, TC_ArrivalWindow.onDeny)
+    self.denyBtn:initialise(); self.denyBtn:instantiate()
+    self.denyBtn.backgroundColor = { r = 0.34, g = 0.14, b = 0.14, a = 0.9 }
+    -- The price of refusing, said before the click rather than after it.
+    self.denyBtn:setTooltip(getText("IGUI_TC_DenyTooltip",
+                                    math.floor(TC.DENY_REFUND * 100 + 0.5)))
+    self:addChild(self.denyBtn)
 
     self:refreshList()
 end
@@ -239,6 +265,24 @@ function TC_ArrivalWindow:onReceive()
     self:close()
 end
 
+
+--[[ Turn the delivery away. Three quarters back, and the quarter is the point.
+
+     No confirmation dialog. The refund is stated on the button's own tooltip and in the
+     ledger afterwards, the loss is a quarter rather than everything, and a mod that stops
+     to ask "are you sure" on every irreversible click teaches people to dismiss the
+     question rather than read it.
+]]
+function TC_ArrivalWindow:onDeny()
+    local denied, refund = TC.denyArrived(self.player)
+    if denied == 0 then
+        self:setMessage(getText("IGUI_TC_DenyNothing"), true)
+        return
+    end
+
+    HaloTextHelper.addGoodText(self.player, getText("IGUI_TC_Denied", refund))
+    self:close()
+end
 function TC_ArrivalWindow:prerender()
     ISCollapsableWindow.prerender(self)
 
@@ -303,10 +347,9 @@ function TC_ArrivalWindow:onResize()
     self.list:setWidth(L.listW)
     self.list:setHeight(L.listH)
 
-    local bx, bw = self:buttonSlot()
-    self.receiveBtn:setX(bx)
-    self.receiveBtn:setY(L.buttonY)
-    self.receiveBtn:setWidth(bw)
+    local receive, deny = self:buttonSlots()
+    self.receiveBtn:setX(receive.x); self.receiveBtn:setY(L.buttonY); self.receiveBtn:setWidth(receive.w)
+    self.denyBtn:setX(deny.x);       self.denyBtn:setY(L.buttonY);    self.denyBtn:setWidth(deny.w)
 end
 
 function TC_ArrivalWindow:close()

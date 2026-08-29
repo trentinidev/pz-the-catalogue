@@ -11,6 +11,33 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.9.1-alpha — 2026-08-28
+
+### Added
+- **Cancel a pending order from the ledger.** A small red ✕ on the row of anything still in
+  transit calls it off and refunds **100%**. It is drawn rather than made a real button —
+  the rows of a scrolling list are painted, not built, so a button would have to be
+  created, moved and destroyed as rows scroll — and the hit test shares one rectangle
+  function with the drawing, because a button you can see in one place and click in another
+  is worse than no button.
+- **Deny a delivery at the door.** The arrival window gained a **Deny** beside Receive:
+  the goods vanish and **75%** comes back. The quarter is the difference between calling
+  something off before it was made up and sending back something that was assembled and
+  carried to you, and it is what stops "order everything, refuse what I no longer want"
+  from being a free warehouse. The rate is on the button's tooltip, before the click
+  rather than after it.
+- Once an order has arrived the ledger's ✕ disappears, because turning it away then costs
+  a quarter — offering a free cancel next to a delivery already at the door would be the
+  wrong price for the wrong thing.
+- Both show in the ledger afterwards as **Canceled** and **Refused**, in green with the
+  refund, so a receipt book that only ever showed money leaving now shows it coming back.
+
+Rush needed no special case: a rush purchase never becomes an order, so there is nothing
+sitting in the list to cancel and nothing to turn away at the door.
+
+---
+
+
 ## 0.9.0-alpha — 2026-08-28
 
 ### Removed
