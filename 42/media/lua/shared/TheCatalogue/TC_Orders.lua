@@ -416,7 +416,16 @@ function TC.denyArrived(player)
         if not o.arrived then
             table.insert(kept, o)
         else
-            local back = math.floor((o.paid or 0) * TC.DENY_REFUND + 0.5)
+            --[[ Rounded DOWN, not to the nearest dollar.
+
+                 To the nearest, a $2 order refunds $2 -- 75% of two is one and a half,
+                 which rounds back up to the whole thing, and refusing a cheap delivery
+                 costs nothing at all. Every order under $3 was free to turn away.
+
+                 Down, the quarter is always really taken: $2 gives back $1, $5 gives back
+                 $3. The company keeps the odd cent, which is exactly what a company would
+                 do and exactly what makes the penalty real at every price. ]]
+            local back = math.floor((o.paid or 0) * TC.DENY_REFUND)
             refund = refund + back
             denied = denied + 1
             TC.logTransaction(player, "deny", o.lines or {}, back)

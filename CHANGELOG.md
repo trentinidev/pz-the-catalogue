@@ -11,6 +11,21 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.9.2-alpha — 2026-08-28
+
+### Fixed
+- **Refusing a cheap delivery was free.** The 75% refund rounded to the nearest dollar, and
+  75% of $2 is $1.50, which rounds back up to the whole $2 — every order under $3 could be
+  turned away at no cost. It rounds **down** now: $2 gives back $1, $5 gives back $3, and
+  the quarter is really taken at every price.
+- **The Deny tooltip read "75$s%".** PZ's `getText` turns `%1` into a format placeholder,
+  so the literal `%` written straight after it in the string was swallowed into that
+  placeholder. The sign is part of the argument now rather than of the translated string,
+  which sidesteps the escape entirely.
+
+---
+
+
 ## 0.9.1-alpha — 2026-08-28
 
 ### Added
