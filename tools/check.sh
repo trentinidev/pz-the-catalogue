@@ -146,6 +146,41 @@ else
     bad "TC.VERSION is \"$lua_v\" but mod.info says \"$v\""
 fi
 
+# A CONSTANT read from a file that never declared it.
+#
+# Every window here opens with file locals in SCREAMING_CASE -- PAD, ROW_HGT,
+# BUTTON_HGT, FONT_HGT_SMALL. They are locals, so a second file that names one gets a
+# GLOBAL read instead, which is nil, and nil + 10 kills the window at runtime. That is
+# how 0.10.0 shipped a rail that crashed the moment it was built: TC_UI.lua reached for
+# a FONT_HGT_SMALL that only exists inside each window file.
+#
+# It is Lua that parses perfectly, so the syntax check above cannot see it. LuaJIT can:
+# -bl dumps the bytecode, and every global read appears as a GGET naming the symbol. A
+# global in SCREAMING_CASE is always this mistake -- the engine's own globals are
+# camelCase (getTextManager) or PascalCase (ISButton), never all caps -- so the rule
+# needs no allowlist to maintain.
+if [ -n "${LUA:-}" ] && [ -x "$LUA" ] || command -v "${LUA:-luajit}" >/dev/null 2>&1; then
+    consts=""
+    for f in $(find "$LUA_DIR" -name "*.lua" | sort); do
+        found=$("$LUA" -bl "$f" 2>/dev/null \
+                | grep 'GGET' \
+                | sed -E 's/.*; "([^"]+)".*/\1/' \
+                | grep -E '^[A-Z][A-Z0-9_]*$' \
+                | sort -u)
+        for name in $found; do
+            consts="$consts $(basename "$f"):$name"
+        done
+    done
+
+    if [ -z "$consts" ]; then
+        note "consts    no file reads a CONSTANT another file declared as a local"
+    else
+        for hit in $consts; do
+            bad "undeclared constant read: $hit -- it is a file local somewhere else"
+        done
+    fi
+fi
+
 if [ $fail -eq 0 ]; then
     note ""
     note "all checks passed"

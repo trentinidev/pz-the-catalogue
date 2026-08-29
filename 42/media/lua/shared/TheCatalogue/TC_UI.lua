@@ -349,6 +349,24 @@ end
                  because turning it away is a decision that deserves its own window.
 ]]
 
+--[[ The rail button height, read on FIRST USE rather than at file scope.
+
+     The window files each open with `local FONT_HGT_SMALL = getTextManager():...` and
+     the rail was written as if it could reach one of those. It cannot: they are file
+     locals, and this file is shared and loads before any of them. `nil + 10` is valid
+     Lua and a crash at runtime, which is exactly the class of bug tools/check.sh says
+     it cannot catch.
+
+     Computed lazily and cached, so nothing here depends on the text manager being
+     ready at the moment this file is read. ]]
+local railBtnH
+local function railButtonHeight()
+    if not railBtnH then
+        railBtnH = getTextManager():getFontHeight(UIFont.Small) + 10
+    end
+    return railBtnH
+end
+
 TC.UI.RAIL_PAD = 8      -- inset between the rail and the window edge
 TC.UI.RAIL_GAP = 5      -- between one rail button and the next
 
@@ -439,7 +457,7 @@ function TC.buildRail(win, activeId)
     win.railW    = TC.railWidth()
     win.railBtns = {}
 
-    local hgt = FONT_HGT_SMALL + 10
+    local hgt = railButtonHeight()
 
     for _, entry in ipairs(railEntries()) do
         local b = ISButton:new(0, 0, 10, hgt, entry.text, win, TC.onRailClick)
@@ -467,7 +485,7 @@ function TC.layoutRail(win)
 
     local x   = win.width - win.railW + TC.UI.RAIL_PAD
     local w   = win.railW - TC.UI.RAIL_PAD * 2
-    local hgt = FONT_HGT_SMALL + 10
+    local hgt = railButtonHeight()
     local y   = win:titleBarHeight() + TC.UI.PAD
 
     for _, p in ipairs(TC.RAIL_PANES) do

@@ -48,12 +48,22 @@ Dates are the day the work was done, not a release date — nothing here has shi
   the full width it leaves behind.
 
 ### Fixed
+- **The rail crashed the buy window the moment it opened.** `TC_UI.lua` reached for
+  `FONT_HGT_SMALL`, which every window file declares as its own file LOCAL -- so from
+  the shared file it was a global read, nil, and `nil + 10` took the window down with
+  `__add not defined for operands`. Read from the text manager on first use and cached
+  instead.
 - **`mod.info` no longer promises 90% on sales.** It pays 30, and has since 0.5.0 cut the
   ratio; the description had been thirteen versions out of date, wrong by a factor of
   three, and wrong in the direction that made the mod look like an exploit. It now names
   the default and says the sandbox can change it.
 
 ### Internal
+- A tenth check: a CONSTANT read from a file that never declared it. LuaJIT `-bl` dumps
+  the bytecode, every global read shows up as a `GGET` naming the symbol, and a global
+  in SCREAMING_CASE is always this mistake -- the engine names are camelCase or
+  PascalCase, never all caps, so the rule needs no allowlist. It catches the crash
+  above, which parsed perfectly and shipped.
 - The cart moved off the buy window instance to a table keyed by player (`TC_Cart.lua`).
   It had to: a rail click closes the buy window, and a cart owned by that window would
   have been emptied by the act of glancing at the ledger.
