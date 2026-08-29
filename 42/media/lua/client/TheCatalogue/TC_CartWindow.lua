@@ -20,7 +20,10 @@ local FONT_HGT_LARGE  = getTextManager():getFontHeight(UIFont.Large)
 
 local PAD        = 14
 local BOTTOM_PAD = PAD * 2
-local ROW_HGT    = 30
+-- 34, not 30, so a 26px inventory icon has the same breathing room it gets in the buy
+-- list. The icon size is the fixed thing here; the row follows it.
+local ROW_HGT    = 34
+local ICON       = TC.UI.ICON
 local BUTTON_HGT = FONT_HGT_MEDIUM + 12
 local HEADER_HGT = FONT_HGT_SMALL + 12
 
@@ -81,8 +84,19 @@ function TC_CartList:doDrawItem(y, item, alt)
     local unit = TC.getBuyPrice(line.fullType) or 0
     local c = columnStops()
 
-    self:drawText(TC.truncate(UIFont.Small, line.name, w - c.name - 12),
-                  12, ty, 1, 1, 1, 1, UIFont.Small)
+    -- The same icon the buy list shows, at the same size, so a line here is recognisable
+    -- as the row it was added from rather than as a name that has to be read.
+    local icon = TC.iconFor(line.fullType)
+    if icon then
+        self:drawTextureScaledAspect(icon, TC.UI.CELL_PAD, y + (ROW_HGT - ICON) / 2,
+                                     ICON, ICON, 1, 1, 1, 1)
+    end
+
+    -- Indented past the icon whether or not one was found, so a modded item with no
+    -- texture does not shunt its own name left out of the column.
+    local nameX = TC.UI.CELL_PAD + ICON + TC.UI.CELL_PAD
+    self:drawText(TC.truncate(UIFont.Small, line.name, w - c.name - nameX),
+                  nameX, ty, 1, 1, 1, 1, UIFont.Small)
     TC.drawRight(self, tostring(line.qty),       w - c.qty,   ty, UIFont.Small, 0.72, 0.72, 0.76)
     TC.drawRight(self, "$" .. unit,              w - c.unit,  ty, UIFont.Small, 0.62, 0.62, 0.66)
     TC.drawRight(self, "$" .. (unit * line.qty), w - c.total, ty, UIFont.Small, 0.78, 0.96, 0.78)
@@ -338,7 +352,9 @@ function TC_CartWindow:prerender()
 
     local hy = headerY + (HEADER_HGT - FONT_HGT_SMALL) / 2
     local F = UIFont.Small
-    self:drawText(getText("IGUI_TC_ColItem"), PAD + 12, hy, 0.72, 0.72, 0.76, 1, F)
+    -- Over the name, past the icon column, matching the rows below it.
+    self:drawText(getText("IGUI_TC_ColItem"), PAD + TC.UI.CELL_PAD * 2 + ICON,
+                  hy, 0.72, 0.72, 0.76, 1, F)
 
     -- Drawn through the same right-aligning helper the rows use, so a heading sits
     -- exactly over its own numbers instead of twelve pixels to the side of them.

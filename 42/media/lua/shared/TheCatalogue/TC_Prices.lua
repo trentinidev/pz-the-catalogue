@@ -250,6 +250,34 @@ function TC.entryIcon(e)
     return e.icon
 end
 
+--[[ The inventory icon for a fullType, for the lists that hold a fullType rather than a
+     catalogue entry -- the cart and the ledger.
+
+     entryIcon above caches on the entry it is given, which works because the buy list
+     hands back the same entry table every frame. The cart and the ledger have no such
+     table to hang it on: a ledger row is rebuilt from modData, and a cart line is a
+     plain record. So the cache lives here, keyed by fullType.
+
+     `false` rather than nil for a miss, so a fullType the script manager does not know
+     -- an item from a mod that has since been removed, which the ledger is full of once
+     a save is old enough -- is looked up once and not once per frame after that. ]]
+local iconCache = {}
+
+function TC.iconFor(fullType)
+    if not fullType then return nil end
+
+    if iconCache[fullType] == nil then
+        local ok, tex = pcall(function()
+            local script = getScriptManager():FindItem(fullType)
+            return script and script:getNormalTexture() or false
+        end)
+        iconCache[fullType] = (ok and tex) or false
+    end
+
+    if iconCache[fullType] == false then return nil end
+    return iconCache[fullType]
+end
+
 --[[ Display price for an entry, straight off the stored base. Saves the fullType table
      lookup that getBuyPrice does, which matters when this is called per row per frame. ]]
 function TC.entryPrice(e)

@@ -646,7 +646,8 @@ function TC_BuyWindow:onOrderComplete(payload)
         qty = delivered
     end
 
-    TC.logTransaction(player, "buy", { { name = entry.name, qty = qty } }, total)
+    TC.logTransaction(player, "buy",
+                      { { name = entry.name, qty = qty, fullType = entry.fullType } }, total)
 
     -- Deliver regardless of capacity, then say so. Being overloaded is a vanilla-legal
     -- state -- looting a hardware store does it too -- and silently refusing a purchase

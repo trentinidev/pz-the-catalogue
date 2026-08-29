@@ -382,13 +382,35 @@ TC.RAIL_PANES = {
     { id = "ledger", label = "IGUI_TC_RailLedger", open = "openHistoryWindow" },
 }
 
+local RAIL_LABELS = {
+    buy      = "IGUI_TC_RailBuy",
+    sell     = "IGUI_TC_RailSell",
+    ledger   = "IGUI_TC_RailLedger",
+    cart     = "IGUI_TC_RailCart",
+    delivery = "IGUI_TC_RailDelivery",
+}
+
+--[[ WHERE each entry sits, which is not the same question as what it does.
+
+     The top group is the three things you go to the catalogue to DO: browse, sell, and
+     look at what you have staged to buy. The bottom group is the two that report on
+     what has already happened -- what is on order, and what has turned up.
+
+     The bottom group is laid out from the BOTTOM UP, so `ledger` being last in this
+     list is what puts it at the very bottom of the window, level with the cart's own
+     bottom row of buttons. Delivery sits directly above it and appears only when
+     something is waiting; anchoring both to the bottom edge is what stops the ledger
+     hopping half a button up the rail every time a van arrives. ]]
+local RAIL_TOP    = { "buy", "sell", "cart" }
+local RAIL_BOTTOM = { "delivery", "ledger" }
+
 local function railEntries()
     local out = {}
-    for _, p in ipairs(TC.RAIL_PANES) do
-        table.insert(out, { id = p.id, text = getText(p.label) })
+    for _, group in ipairs({ RAIL_TOP, RAIL_BOTTOM }) do
+        for _, id in ipairs(group) do
+            table.insert(out, { id = id, text = getText(RAIL_LABELS[id]) })
+        end
     end
-    table.insert(out, { id = "cart",     text = getText("IGUI_TC_RailCart")     })
-    table.insert(out, { id = "delivery", text = getText("IGUI_TC_RailDelivery") })
     return out
 end
 
@@ -486,23 +508,24 @@ function TC.layoutRail(win)
     local x   = win.width - win.railW + TC.UI.RAIL_PAD
     local w   = win.railW - TC.UI.RAIL_PAD * 2
     local hgt = railButtonHeight()
-    local y   = win:titleBarHeight() + TC.UI.PAD
 
-    for _, p in ipairs(TC.RAIL_PANES) do
-        local b = win.railBtns[p.id]
+    -- The doing group, down from under the title bar.
+    local y = win:titleBarHeight() + TC.UI.PAD
+    for _, id in ipairs(RAIL_TOP) do
+        local b = win.railBtns[id]
         b:setX(x); b:setY(y); b:setWidth(w); b:setHeight(hgt)
         y = y + hgt + TC.UI.RAIL_GAP
     end
 
-    -- A gap above the cart: it is the one entry here that opens something beside the
-    -- window rather than inside it, and the space says so without a label.
-    local cart = win.railBtns.cart
-    cart:setX(x); cart:setY(y + TC.UI.RAIL_GAP)
-    cart:setWidth(w); cart:setHeight(hgt)
-
-    local del = win.railBtns.delivery
-    del:setX(x); del:setY(win.height - TC.UI.PAD - hgt)
-    del:setWidth(w); del:setHeight(hgt)
+    -- The reporting group, up from the bottom edge, so the LAST name in RAIL_BOTTOM
+    -- ends up lowest. Both are anchored down here rather than flowing from the top,
+    -- which is what lets Delivery come and go without moving anything else.
+    local by = win.height - TC.UI.PAD - hgt
+    for i = #RAIL_BOTTOM, 1, -1 do
+        local b = win.railBtns[RAIL_BOTTOM[i]]
+        b:setX(x); b:setY(by); b:setWidth(w); b:setHeight(hgt)
+        by = by - hgt - TC.UI.RAIL_GAP
+    end
 end
 
 --[[ Put the live numbers on the rail: what is in the cart, what is still on order, and
