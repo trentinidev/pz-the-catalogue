@@ -68,28 +68,41 @@ end
 
 --[[ Categories the catalogue refuses to trade at all.
 
-     These are not "worthless" items, they are items that should never appear in a
-     shop list: corpses and severed body parts, the wound-modelling items the health
-     system spawns, the invisible Hidden bucket, and the live-animal categories that
-     exist to carry an animal's data rather than to be an object you own.
+     Five, and deliberately only five: states the engine paints on a body or hides from
+     the player. Everything else is decided per id by the study, through
+     TC_ExcludedItems.lua.
 
-     Priced items you merely think are junk still belong in the catalogue -- that is
-     what a low price is for. Only add here what would be absurd or exploitable to list.
+     THIS LIST USED TO BE FOUR TIMES LONGER, and it was wrong. It also held Ears, Eye,
+     Tail and thirteen animal names -- Bear, Beaver, Dog, Duck, Fox, Squirrel and the
+     rest -- on the reading that those were "live-animal categories that exist to carry
+     an animal's data rather than to be an object you own". They are not. They are the
+     categories vanilla files its PLUSH TOYS and costume pieces under. Twenty-seven real,
+     physical, sellable objects were being withheld from the catalogue on the strength of
+     a category name: Spiffo and Spiffo Big, Freddy Fox, Pancho Dog, Moley Mole, Jacques
+     Beaver, a rubber duck, a rubber spider, bunny-ear hats, a rabbit's-foot keyring, a
+     dog leash and a pet water dish.
+
+     The lesson is the general one: a category name is a guess about what is inside it.
+     Per-id status is not. Add to this list only for a category whose members are engine
+     internals to a one, and check the members before believing the name.
 ]]
 TC.EXCLUDED_CATEGORIES = {
-    Hidden = true, Corpse = true, MaleBody = true, Ears = true, Eye = true,
-    Tail = true, Wound = true, ZedDmg = true,
-    Animal = true, Bear = true, Beaver = true, Badger = true, Bunny = true,
-    Dog = true, Duck = true, Fox = true, Frog = true, Goblin = true,
-    Hedgehog = true, Mole = true, Raccoon = true, Spider = true, Squirrel = true,
+    Hidden = true, Corpse = true, MaleBody = true, Wound = true, ZedDmg = true,
 }
 
 --[[ Individual items kept out of the catalogue.
 
-     Money and MoneyBundle are the important ones: a currency that can be bought and
-     sold at any spread other than exactly 1.0 is an arbitrage loop, and at exactly
-     1.0 it is a pointless entry. BareHands is not an object at all -- it is the
-     weapon the game equips when you are holding nothing.
+     This is the HAND-WRITTEN half. The other 194 -- vanilla's debug fixtures, corpses,
+     wound and bandage overlays, hair stubble -- are generated into TC_ExcludedItems.lua
+     from the study and merged into this same table at load. That file loads after this
+     one (shared lua loads alphabetically, and Config sorts before ExcludedItems), which
+     matters because this line ASSIGNS the table rather than adding to it.
+
+     Money and MoneyBundle are the important ones here and are in the study's list too;
+     kept written out because the reason is ours: a currency that can be bought and sold
+     at any spread other than exactly 1.0 is an arbitrage loop, and at exactly 1.0 it is
+     a pointless entry. BareHands is not an object at all -- it is the weapon the game
+     equips when you are holding nothing.
 ]]
 TC.EXCLUDED_ITEMS = {
     ["Base.Money"]       = true,
@@ -152,7 +165,7 @@ end
      A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
      sandbox option and this line has to be there whether or not anyone turned it on.
      tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
-TC.VERSION = "0.11.1-alpha"
+TC.VERSION = "0.11.2-alpha"
 print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging
