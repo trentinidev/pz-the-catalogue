@@ -5,7 +5,8 @@ All notable changes to The Catalogue.
 The mod has never been released, so the version numbers below are **pre-1.0 by
 design**. Everything to date is development toward a first public build: the numbering
 was reset from an over-optimistic 1.x to reflect that. 1.0.0 is reserved for the first
-version that has been played end to end and is safe on a dedicated server.
+version that has been played end to end. It does not promise a dedicated server —
+server authority is deferred past 1.0, as the 0.7.4-alpha entry below records.
 
 Dates are the day the work was done, not a release date — nothing here has shipped.
 
