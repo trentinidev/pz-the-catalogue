@@ -133,6 +133,106 @@ function TC_ReadNoteAction:new(character, item)
 end
 
 -- ---------------------------------------------------------------------------
+-- The card reader
+-- ---------------------------------------------------------------------------
+
+--[[ Running a card through a home-made strip reader.
+
+     THE ONLY ROUTE THAT DOES NOT DEPEND ON THE CARD. Examining tells you what that
+     particular card happens to carry -- the number on the back if you are lucky, four
+     unordered digits if you are not -- and a note is there or it is not. This works the
+     same on every card in the county, which is what the skill and the materials are
+     buying.
+
+     It costs a point of condition per read, ten reads to a reader. That ceiling is why
+     this is not simply better than everything else: one craft cannot answer every card
+     you will ever find, and the reader coming apart in your hands is the feature working
+     rather than a fault.
+
+     Electricity decides the time and nothing else. A chance to fail would be re-rollable
+     by clicking again, which teaches clicking again; and having built the thing, being
+     told "it did not work, try once more" is a worse experience than waiting longer. ]]
+local SKIM_SECONDS     = 40
+local SKIM_ELEC_MIN    = 3
+
+TC_SkimCardAction = ISBaseTimedAction:derive("TC_SkimCardAction")
+
+function TC_SkimCardAction:isValid()
+    return self.item ~= nil
+       and self.item:getContainer() ~= nil
+       and self.reader ~= nil
+       and self.reader:getContainer() ~= nil
+       and TC.account(self.character, self.number) ~= nil
+end
+
+function TC_SkimCardAction:start()
+    self:setActionAnim(CharacterActionAnims.Craft)
+end
+
+function TC_SkimCardAction:update()
+    self.character:setMetabolicTarget(Metabolics.LightDomestic)
+end
+
+function TC_SkimCardAction:perform()
+    local acct = TC.account(self.character, self.number)
+
+    if acct then
+        TC.revealPin(acct)
+        HaloTextHelper.addGoodText(self.character, getText("IGUI_TC_Skimmed", acct.pin))
+        self.character:getXp():AddXP(Perks.Electricity, 5)
+    end
+
+    --[[ A point of condition, and the reader is gone at zero.
+
+         Removed rather than left at condition 0, because an item the game still shows in
+         the bag but that this file will not use again is a puzzle for the player. It goes,
+         and the halo says why. ]]
+    local left = self.reader:getCondition() - 1
+    if left <= 0 then
+        TC.removeItem(self.reader)
+        HaloTextHelper.addBadText(self.character, getText("IGUI_TC_SkimmerDead"))
+    else
+        self.reader:setCondition(left)
+    end
+
+    ISBaseTimedAction.perform(self)
+end
+
+function TC_SkimCardAction:new(character, item, number, reader)
+    local o = ISBaseTimedAction.new(self, character)
+    o.item   = item
+    o.number = number
+    o.reader = reader
+    o.stopOnWalk = true
+    o.stopOnRun  = true
+
+    -- Level 3 is the floor and takes the full time; level 10 does it in about half.
+    local level = character:getPerkLevel(Perks.Electricity)
+    local scale = 1 - math.min(0.5, (level - SKIM_ELEC_MIN) * 0.07)
+    o.maxTime = math.floor(SKIM_SECONDS * 60 * scale)
+    return o
+end
+
+--[[ A working reader in the player's bag, or nil.
+
+     Condition is checked here rather than only at use, so a reader on its last legs still
+     offers the option and a dead one does not appear at all. ]]
+function TC.findSkimmer(player)
+    if not player then return nil end
+    local inv = player:getInventory()
+    if not inv then return nil end
+
+    local list = inv:getAllTypeRecurse("Catalogue.CardSkimmer")
+    if not list then return nil end
+
+    for i = 0, list:size() - 1 do
+        local item = list:get(i)
+        if item:getCondition() > 0 then return item end
+    end
+    return nil
+end
+
+-- ---------------------------------------------------------------------------
 -- The menu
 -- ---------------------------------------------------------------------------
 
@@ -155,6 +255,12 @@ local function onExamine(playerNum, item, number)
     local player = getSpecificPlayer(playerNum)
     if not player then return end
     ISTimedActionQueue.add(TC_ExamineCardAction:new(player, item, number))
+end
+
+local function onSkim(playerNum, item, number, reader)
+    local player = getSpecificPlayer(playerNum)
+    if not player then return end
+    ISTimedActionQueue.add(TC_SkimCardAction:new(player, item, number, reader))
 end
 
 local function onReadNote(playerNum, item)
@@ -207,6 +313,23 @@ local function addOptions(playerNum, context, items)
                         tip.description = why
                         option.toolTip = tip
                     end
+                end
+
+                --[[ And the reader, offered only when one is actually in the bag.
+
+                     Unlike examining, this is worth doing on a card that has ALREADY been
+                     examined -- knowing the four digits is not knowing the number, and the
+                     reader is what turns twenty-four arrangements into one. So it is
+                     outside the `done` check above and inside the same "PIN still
+                     unknown" one. ]]
+                local reader = TC.findSkimmer(player)
+                if reader then
+                    local skim = context:addOption(getText("ContextMenu_TC_SkimCard"),
+                                                   playerNum, onSkim, item, acct.number, reader)
+                    local tip = ISToolTip:new()
+                    tip:setName(getText("ContextMenu_TC_SkimCard"))
+                    tip.description = getText("IGUI_TC_SkimmerUses", reader:getCondition())
+                    skim.toolTip = tip
                 end
             end
 
