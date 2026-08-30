@@ -14,8 +14,9 @@ that line first. It has already caught one round of feedback given on a stale bu
 
     42/mod.info                      version, versionMin
     42/media/scripts/thecatalogue.txt   item + model definitions
-    42/media/lua/shared/TheCatalogue/   pricing, orders, bank, config, UI helpers
-    42/media/lua/client/TheCatalogue/   the five windows, money, two context menus
+    42/media/lua/shared/TheCatalogue/   pricing, orders, bank, cards, purse, config, UI
+    42/media/lua/client/TheCatalogue/   seven windows, money, three context menus, actions
+    42/media/models_X/                  our own FBX meshes
     42/media/lua/shared/Translate/EN/   JSON, not the old .txt
     tools/                           generators + check.sh
     art/                             icon sources, so renders are reproducible

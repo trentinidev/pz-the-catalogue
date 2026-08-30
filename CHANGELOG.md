@@ -12,6 +12,35 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.10.4-beta — 2026-08-30
+
+### Fixed
+- **A cash machine could open in internet-banking mode.** Reusing an already-open window
+  carried the new object across and left `remote` and the account set to whatever the last
+  session decided.
+
+  Reachable and not rare: a bank branch has an ATM and a desktop within a couple of tiles
+  of each other, which is inside the range at which the window stays open. Bank on the
+  computer, click the machine beside it, and the ATM came up with **no Deposit and no
+  Withdraw** because it still believed it was a desk.
+
+  A window of a different kind is now closed and rebuilt rather than patched. Everything
+  derived from those two facts — the title, the opening screen, the button row — is decided
+  in the constructor, so resetting six fields and hoping the list is complete is the more
+  fragile of the two options.
+
+### Removed
+- **`TC.purseWeight`**, which was written and never called. Withdrawals only exist at a
+  physical machine, where the weight warning already goes through `TC.cashWeight` directly,
+  so there was never a caller. Dead code that promises a behaviour nothing performs is
+  worse than no code.
+
+### Internal
+- `CLAUDE.md`'s layout map said "five windows, two context menus". It is seven windows,
+  three context menus, and there is a `models_X` folder now.
+
+---
+
 ## 0.10.3-beta — 2026-08-30
 
 ### Fixed
