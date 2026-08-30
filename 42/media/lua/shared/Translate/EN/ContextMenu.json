@@ -9,6 +9,7 @@
     "ContextMenu_TC_ReadNote": "Read the note",
     "ContextMenu_TC_SkimCard": "Run it through the reader",
     "ContextMenu_TC_OnlineCatalogue": "Online Catalogue",
+    "ContextMenu_TC_InstallCatalogue": "Install the Online Catalogue",
     "ContextMenu_TC_ATMTamper": "The machine itself",
     "ContextMenu_TC_WireATM": "Wire the card reader",
     "ContextMenu_TC_ForceATM": "Force the cashbox"

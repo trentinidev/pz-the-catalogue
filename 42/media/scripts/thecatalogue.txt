@@ -191,18 +191,18 @@ module Catalogue
 
     /* Burning the disc.
 
-       THE CARD IS mode:keep AND SO IS THE CATALOGUE. Neither is consumed: you are copying
-       a book onto a disc and writing your account number on it, not feeding either into a
-       machine. The disc is the only thing spent, which is also the only thing that is
-       scarce.
+       NO CARD IN THE RECIPE ANY MORE. It used to want one, because the disc used to be
+       stamped with the account of whoever burned it. It is not: the disc is SOFTWARE, it
+       names nobody, and it is installed into a computer rather than carried. Asking for a
+       card to make a copy of a catalogue would be asking for something the result has no
+       trace of.
 
-       No skill requirement. The gate here is the disc and the account -- having got both,
-       a survivor who can work a photocopier can work this, and stacking Electricity on top
-       would only mean the reader and the catalogue want the same character.
+       The catalogue is mode:keep -- you are copying a book onto a disc, not feeding it
+       into a drive. The disc is the only thing spent, and it is also the only thing that
+       is scarce.
 
-       The card is asked for by id because vanilla owns the item, but what matters is that
-       it is YOURS, which a recipe cannot check. TC_Online does that when the disc is used
-       and refuses one burned against an account you no longer hold a card for. */
+       No skill requirement. The gate is finding a blank disc, and stacking Electricity on
+       top would only mean the card reader and the catalogue want the same character. */
     craftRecipe MakeOnlineCatalogue
     {
         timedAction = MakingElectrical,
@@ -213,7 +213,6 @@ module Catalogue
         {
             item 1 [Catalogue.BlankCD],
             item 1 [Catalogue.Catalogue] mode:keep,
-            item 1 [Base.CreditCard] mode:keep,
         }
         outputs
         {

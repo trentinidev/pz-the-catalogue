@@ -12,6 +12,44 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.8.0-beta — 2026-08-29
+
+**The disc is software, not a credit card.** 0.7.0-beta stamped each burned disc with the
+account of whoever made it and required that person to be carrying it. That made the disc a
+second credit card: a personal token, tied to one balance, useless to anybody else — and it
+is the one version of this feature that means nothing with more than one player.
+
+### Changed
+- **The disc is INSTALLED into a computer and consumed.** *Install the Online Catalogue* on
+  any desktop, and from then on **that machine runs it for anybody who sits at it**, billed
+  to whatever card *they* are carrying. The disc knows nothing about any account and never
+  did need to.
+
+  Both halves of that are the point. Spending the disc is what keeps finding a blank one
+  worth something and stops one disc lighting up every computer in the county; the install
+  being permanent is what turns a machine into a **place** — somewhere you set up once,
+  come back to, and can tell somebody else about. The same shape a wired ATM has.
+
+- **The card is chosen at the menu.** One card is not a question, so it stays a plain
+  entry; carrying two or more opens a submenu — *Bill account 8471* — because the menu is
+  already listing them and a submenu says it in one click less than the cash machine's
+  whole chooser screen. No card at all greys the entry out and says why: the online
+  catalogue bills an account and never touches cash.
+
+- **The recipe no longer wants a credit card.** It wanted one because the disc used to be
+  stamped with an account. Asking for a card to make a copy of a catalogue would now be
+  asking for something the result carries no trace of. A blank disc and the catalogue,
+  which stays.
+
+- **`TC.stampDisc` is gone**, along with the lazy stamping pass that repaired discs. There
+  is nothing on a disc to repair.
+
+### Note
+A disc burned by 0.7.0-beta works exactly as a new one does — its leftover account stamp is
+never read. **Discs already in a save are not lost.**
+
+---
+
 ## 0.7.1-beta — 2026-08-29
 
 ### Fixed

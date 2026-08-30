@@ -1,23 +1,26 @@
---[[ The Catalogue -- the right-click entry on a desktop computer.
+--[[ The Catalogue -- the right-click entries on a desktop computer.
 
      The third menu hook, and the third kind of thing this mod attaches to: an item, a cash
      machine, and now a computer.
 
-     A DESKTOP IS IDENTIFIED BY ITS PROPERTIES, NOT BY A LIST OF SPRITE NAMES. This is the
-     opposite of TC.isATMSprite, and the difference is not inconsistency -- it is that the
-     tiles differ. The four vanilla ATMs carry no CustomName and no GroupName, so a literal
-     list of sprite names was the only handle there was. The desktops carry both:
-     `CustomName = Computer` and `GroupName = Desktop` on appliances_com_01_72 through _75.
+     THE DISC IS INSTALLED INTO THE MACHINE, NOT CARRIED. It goes in once, it is consumed,
+     and from then on that computer runs the catalogue for ANYBODY who sits at it -- billed
+     to whatever card THEY are carrying. The disc knows nothing about any account.
 
-     Matching on the properties is better wherever the properties exist. It survives the
-     tileset being renumbered, and it picks up _76 and _77 -- which are desktops whose
-     CustomName is the literal string "CustomName", a typo in vanilla's own tile data that
-     a hand-written list of the four documented sprites would have missed.
+     This replaced the opposite arrangement, where the disc was stamped with the account of
+     the person who burned it and had to be in their bag to work. That made the disc a
+     second credit card: a personal token, tied to one balance, useless to anybody else.
+     Software is not a credit card. Installing it makes the computer the thing that matters
+     -- a place in the world you set up once and come back to, the same shape a wired ATM
+     has -- and it is the only version of this that means anything with more than one
+     player.
 
-     WHAT THE OPTION NEEDS. The disc, and an account it can still reach. The catalogue
-     itself is NOT wanted here: the whole point of burning a disc was to stop carrying the
-     book. Being at the computer is what replaces it, and TC.catalogueStillOpen enforces
-     that for as long as the window is open.
+     A DESKTOP IS IDENTIFIED BY ITS TILE PROPERTIES, which is the opposite of the ATMs and
+     is not an inconsistency: the four vanilla ATMs carry no CustomName and no GroupName, so
+     a literal list of sprite names was the only handle there was. Desktops carry both.
+     Matching properties survives a renumbered tileset and picks up appliances_com_01_76 and
+     _77, whose CustomName is the literal string "CustomName" -- a typo in vanilla's own
+     tile data that a list of the four documented sprites would have missed.
 ]]
 
 TheCatalogue = TheCatalogue or {}
@@ -45,8 +48,6 @@ local function isComputer(obj)
         return true
     end
 
-    -- appliances_com_01_76 and _77 are desktops whose CustomName is the literal string
-    -- "CustomName" -- a typo in vanilla's own tile data. GroupName is what catches them.
     return props:has("GroupName") and props:get("GroupName") == "Desktop"
 end
 
@@ -57,131 +58,51 @@ local function findComputer(worldobjects)
     return nil
 end
 
---[[ The disc on the player, and the account it was burned against.
+-- ---------------------------------------------------------------------------
+-- What is installed on which machine
+-- ---------------------------------------------------------------------------
 
-     Returns the item and the account, or nil and a reason. The account is looked up
-     through TC.account rather than trusted off the disc, because a disc is a piece of
-     plastic with a number written on it and the account it names may since have gone --
-     another character's save, or a card lost with the balance behind it. ]]
-local function findDisc(player)
-    local discs = TC.discItemsOn(player)
-    if #discs == 0 then return nil end
+--[[ Keyed by square, and stored in the world register beside the stranger's accounts and
+     the wired ATMs.
 
-    for _, disc in ipairs(discs) do
-        -- Stamps a blank one on the way past, which is what makes a disc burned before
-        -- this version -- or burned while carrying no card -- start working.
-        TC.stampDisc(player, disc)
-
-        local md   = disc:getModData()
-        local acct = md and md.TC_account and TC.account(player, md.TC_account)
-        if acct then return disc, acct end
-    end
-
-    -- A disc exists but names nothing this character can reach: no card on them to stamp
-    -- it with, or the account behind it has gone out of reach.
-    return discs[1], nil
+     A tile IS its coordinates; an IsoObject reference does not survive the chunk being
+     unloaded and streamed back in, which for a computer in a house the player has left is
+     the normal case rather than the exception. ]]
+local function computerKey(pc)
+    local square = pc and pc:getSquare()
+    if not square then return nil end
+    return string.format("%d,%d,%d", square:getX(), square:getY(), square:getZ())
 end
 
---[[ The account a usable disc on this player names, or nil.
-
-     Public because the timed action re-asks it a second and a half after the menu did --
-     see TC_ComputerAction. One function, two callers, no chance of the menu and the action
-     disagreeing about whether a session may start. ]]
-function TC.discAccount(player)
-    if not player then return nil end
-    local _, acct = findDisc(player)
-    return acct and acct.number or nil
+local function installs()
+    local world = TC.worldBank()
+    if type(world.pcs) ~= "table" then world.pcs = {} end
+    return world.pcs
 end
 
-local function onOpen(worldobjects, playerNum, computer)
-    local player = getSpecificPlayer(playerNum)
-    if not player or not computer then return end
-
-    local square = computer:getSquare()
-    if square and luautils.walkAdj(player, square, true) then
-        ISTimedActionQueue.add(TC_UseComputerAction:new(player, computer))
-    end
+function TC.catalogueInstalled(pc)
+    local key = computerKey(pc)
+    if not key then return false end
+    return installs()[key] == true
 end
 
-local function addOptions(playerNum, context, worldobjects, test)
-    if test and ISWorldObjectContextMenu.Test then return true end
+function TC.installCatalogue(pc)
+    local key = computerKey(pc)
+    if not key then return false end
 
-    local player = getSpecificPlayer(playerNum)
-    if not player then return false end
-    if player:getVehicle() then return false end
-
-    local computer = findComputer(worldobjects)
-    if not computer then return false end
-
-    -- No disc, no entry. Every computer in Knox County would otherwise carry a line about
-    -- a mod the player has no way to use yet, on a menu that is already long.
-    local disc, acct = findDisc(player)
-    if not disc then return false end
-
-    if test then return ISWorldObjectContextMenu.setTest() end
-
-    local option = TC.addOption(context, getText("ContextMenu_TC_OnlineCatalogue"),
-                                worldobjects, onOpen, playerNum, computer)
-
-    if not acct then
-        option.notAvailable = true
-        local tip = ISToolTip:new()
-        tip:setName(getText("ContextMenu_TC_OnlineCatalogue"))
-        tip.description = getText("IGUI_TC_OnlineNoAccount")
-        option.toolTip = tip
-    end
-end
-
-Events.OnFillWorldObjectContextMenu.Add(addOptions)
-
---[[ Stamp a burned disc with the account it bills, and put that on its name.
-
-     LAZILY, THE WAY EVERY OTHER ITEM IN THIS MOD IS STAMPED. The first version hung this
-     off `OnCreate` on the craftRecipe, which is how vanilla does it -- and vanilla's
-     handlers are reached through `luaCallOnCreate`, whose Lua-side argument list is not
-     something this mod can confirm without shipping a build to find out. The disc came out
-     of the recipe named "Online Catalogue" with no account on it and no error to say why.
-
-     Naming on first sight has no such problem. It is the same shape as TC.blessCard and
-     TC.nameCard: the mod stamps what it finds, once, and the string compare in front of
-     the rename means seeing it again costs nothing. It also fixes discs already burned by
-     0.7.0-beta, which an OnCreate hook could never have reached.
-
-     THE ACCOUNT IS THE OLDEST CARD ON THE PLAYER. A disc names one account for good, which
-     is what makes burning a second one a real decision -- and TC.cardsOnPlayer already
-     sorts oldest first, so "the account you have had longest" falls out without a screen
-     asking. A disc burned with no card on the player stays blank and is stamped the next
-     time the player is carrying one. ]]
-function TC.stampDisc(player, disc)
-    if not player or not disc then return false end
-
-    local md = disc:getModData()
-    if not md then return false end
-
-    -- Already stamped with an account that still exists: leave the number alone and only
-    -- make sure the name matches it.
-    local acct = md.TC_account and TC.account(player, md.TC_account)
-
-    if not acct then
-        local cards = TC.cardsOnPlayer(player)
-        if #cards == 0 then return false end
-
-        acct = cards[1].account
-        md.TC_account = acct.number
-    end
-
-    local want = getText("IGUI_TC_OnlineDiscName", TC.cardTail(acct.number))
-    if disc:getName() == want then return false end
-
-    disc:setName(want)
-    disc:setCustomName(true)
-    disc:syncItemFields()
+    installs()[key] = true
     return true
 end
 
---[[ Every burned disc on the player, of either spelling. The same reason TC.cardItemsOn
-     exists: getAllTypeRecurse answers on the short name in some builds and the prefixed
-     one in others, and this mod has guessed wrong about that twice now. ]]
+-- ---------------------------------------------------------------------------
+-- The disc, as an item and nothing more
+-- ---------------------------------------------------------------------------
+
+--[[ Every burned disc on the player, of either spelling.
+
+     The same reason TC.cardItemsOn exists: getAllTypeRecurse answers on the short name in
+     some builds and the module-prefixed one in others, and this mod has guessed wrong
+     about that twice. Asking for both is the end of it. ]]
 function TC.discItemsOn(player)
     local out = {}
     if not player then return out end
@@ -205,3 +126,107 @@ function TC.discItemsOn(player)
 
     return out
 end
+
+-- ---------------------------------------------------------------------------
+-- The menu
+-- ---------------------------------------------------------------------------
+
+local function tooltip(title, description)
+    local tip = ISToolTip:new()
+    tip:setName(title)
+    tip.description = description
+    return tip
+end
+
+local function onInstall(worldobjects, playerNum, pc)
+    local player = getSpecificPlayer(playerNum)
+    if not player or not pc then return end
+
+    local square = pc:getSquare()
+    if square and luautils.walkAdj(player, square, true) then
+        ISTimedActionQueue.add(TC_InstallCatalogueAction:new(player, pc))
+    end
+end
+
+--[[ `account` is chosen in the MENU rather than by the window, because the choice is
+     between cards the player is carrying and the menu is already listing them. The ATM
+     needs a whole screen for this; here a submenu says the same thing in one click less. ]]
+local function onOpen(worldobjects, playerNum, pc, account)
+    local player = getSpecificPlayer(playerNum)
+    if not player or not pc then return end
+
+    local square = pc:getSquare()
+    if square and luautils.walkAdj(player, square, true) then
+        ISTimedActionQueue.add(TC_UseComputerAction:new(player, pc, account))
+    end
+end
+
+--[[ How the player will pay, offered as one entry or as a list of them.
+
+     ONE CARD IS NOT A QUESTION. Asking "which card?" of somebody holding one is a question
+     with one answer and a click to give it, so the single case is a plain entry and the
+     submenu only appears when there is a real choice -- the same rule the cash machine's
+     chooser follows.
+
+     NO CARD MEANS NO ENTRY THAT WORKS. The catalogue on a screen bills an account, and a
+     player with no card on them has no account within reach. Greyed out and told why beats
+     opening a catalogue that cannot buy anything. ]]
+local function addPaymentEntries(context, playerNum, player, pc)
+    local cards = TC.cardsOnPlayer(player)
+
+    if #cards == 0 then
+        local option = TC.addOption(context, getText("ContextMenu_TC_OnlineCatalogue"),
+                                    nil, nil)
+        option.notAvailable = true
+        option.toolTip = tooltip(getText("ContextMenu_TC_OnlineCatalogue"),
+                                 getText("IGUI_TC_OnlineNeedsCard"))
+        return
+    end
+
+    if #cards == 1 then
+        TC.addOption(context, getText("ContextMenu_TC_OnlineCatalogue"),
+                     nil, onOpen, playerNum, pc, cards[1].account.number)
+        return
+    end
+
+    local parent = TC.addOption(context, getText("ContextMenu_TC_OnlineCatalogue"), nil, nil)
+    local sub = ISContextMenu:getNew(context)
+    context:addSubMenu(parent, sub)
+
+    for _, card in ipairs(cards) do
+        local acct = card.account
+        TC.addOption(sub, getText("IGUI_TC_OnlineBillTo", TC.cardTail(acct.number)),
+                     nil, onOpen, playerNum, pc, acct.number)
+    end
+end
+
+local function addOptions(playerNum, context, worldobjects, test)
+    if test and ISWorldObjectContextMenu.Test then return true end
+
+    local player = getSpecificPlayer(playerNum)
+    if not player then return false end
+    if player:getVehicle() then return false end
+
+    local pc = findComputer(worldobjects)
+    if not pc then return false end
+
+    local installed = TC.catalogueInstalled(pc)
+    local discs     = TC.discItemsOn(player)
+
+    --[[ Nothing to say about a computer with no catalogue on it and no disc in the
+         player's bag. Every desktop in Knox County would otherwise carry a line about a
+         feature the player cannot use yet, on a menu that is already twenty entries long. ]]
+    if not installed and #discs == 0 then return false end
+
+    if test then return ISWorldObjectContextMenu.setTest() end
+
+    if not installed then
+        TC.addOption(context, getText("ContextMenu_TC_InstallCatalogue"),
+                     worldobjects, onInstall, playerNum, pc)
+        return
+    end
+
+    addPaymentEntries(context, playerNum, player, pc)
+end
+
+Events.OnFillWorldObjectContextMenu.Add(addOptions)
