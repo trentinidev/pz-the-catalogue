@@ -12,6 +12,38 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.11.1-beta — 2026-08-30
+
+Two crashes from the first run beside other mods. Both of them ours, and both the same
+mistake: trusting a B41 signature that B42 changed underneath.
+
+### Fixed
+- **Selling anything drainable threw.** `conditionRatio` asked a petrol can, a bleach
+  bottle or a glue tube for `getUsedDelta()`. B42 removed that getter from
+  `DrainableComboItem` — it kept `setUsedDelta`, and it kept `getUsedDelta` on `Clothing`,
+  which is why the name still looks alive in vanilla's own Lua. The reading half is now
+  `getCurrentUsesFloat()`: 1.0 for a full can, 0.0 for an empty one.
+
+  `getUseDelta()` also survives and is **not** the same thing — it is how much a single
+  use consumes. Reaching for the nearest-looking name would have priced a bottle by its
+  sip size, and nobody would ever have seen an error.
+
+  Calling a method that does not exist is a hard Kahlua error rather than a nil result, so
+  this was not a mispriced item. It was every attempt to stage a drainable for sale.
+
+- **Eight errors on one chunk load, out of loot generation.** B42.20 fires
+  `OnFillContainer` from more than one place, and when the roll produces a **bag** it
+  passes the distribution *definition* — a bare struct of items, junk and rolls — where an
+  `ItemContainer` belongs. Vanilla trips over the same thing: `LootLog.lua` calls
+  `getParent()` on it, and only survives because it is cheat-gated.
+
+  The handler now checks `instanceof(container, "ItemContainer")` and leaves. Nothing is
+  lost by that: the ordinary container path still hands over a real container, a bag is
+  reached anyway through the container it lands in, and the inventory sweep sits behind
+  both.
+
+---
+
 ## 0.11.0-beta — 2026-08-30
 
 An audit pass before compatibility testing. Nothing here changes how a working setup
