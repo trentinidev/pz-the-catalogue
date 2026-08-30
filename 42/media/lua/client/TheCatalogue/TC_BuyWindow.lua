@@ -786,7 +786,7 @@ function TC_BuyWindow:prerender()
         -- and stating it up front is fairer than letting the player discover the
         -- spread only after they have committed.
         line(getText("IGUI_TC_SellsBackFor"),
-             "$" .. math.floor(unit * TC.opt("SellRatio") + 0.5),
+             "$" .. TC.sellBackPrice(unit),
              UIFont.Small, 0.62, 0.62, 0.66)
 
         -- Counted recursively so a box of nails in a backpack still counts as owned.
