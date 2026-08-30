@@ -12,6 +12,36 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.10.1-beta — 2026-08-30
+
+### Changed
+- **New catalogue icon**, drawn by Vitor: the blue-spined book with the printed cover.
+
+  It changes **twelve places at once** and only one file had to move. The item in the
+  inventory reads it directly, and every context-menu entry this mod adds — *Open
+  Catalogue*, *Collect delivery*, the three sell entries, *Use ATM*, the machine submenu
+  and its two entries, *Examine the card*, *Read the note*, *Run it through the reader*,
+  *Online Catalogue*, *Internet Banking* and the three installs — goes through
+  `TC.catalogueIcon`, which reads the texture off the item script. One PNG, eleven menus.
+
+  Swapped at the **source**, in `art/catalogue_icon.png`, and rebuilt with
+  `tools/gen_art.ps1` rather than by dropping a 32×32 into `media/textures`. The script
+  trims the transparent margin, squares the result so the book is not stretched by the
+  icon slot, and steps 1254 → 256 → 96 → 32 rather than reducing in one jump — a 39×
+  bicubic reduction throws away most of the detail it should be averaging.
+
+### Note
+**The book on the ground still wears the old cover.** The world texture is built from a
+different source — `art/catalogue_faces.png`, a flat sheet of panels, because it re-skins
+vanilla's `WorldItems/Catalogue` mesh and its layout is fixed by that mesh's UVs. The new
+render is the book in perspective, which is right for an icon and cannot be unwrapped back
+into flat panels. The two covers are close in style rather than identical; send a new faces
+sheet and `gen_art.ps1` rebuilds that half too.
+
+`42/icon.png` is untouched — that is the mod's banner logo, not the item.
+
+---
+
 ## 0.10.0-beta — 2026-08-29
 
 ### Added
