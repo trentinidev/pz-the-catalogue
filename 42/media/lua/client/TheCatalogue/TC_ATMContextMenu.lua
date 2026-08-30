@@ -18,24 +18,6 @@
 TheCatalogue = TheCatalogue or {}
 local TC = TheCatalogue
 
---[[ The catalogue's own inventory icon, resolved once and remembered.
-
-     Taken off the item SCRIPT rather than off an item instance, because there is no item
-     here -- this menu is filled over a tile, and the player need not be carrying anything
-     at all. getNormalTexture is what the arrival window uses for the same reason.
-
-     A failed lookup is stored as FALSE rather than left nil, so it is asked once instead
-     of once per right-click for the rest of the session. Same trick as TC.entryIcon. ]]
-local icon
-local function catalogueIcon()
-    if icon == nil then
-        local script = getScriptManager():FindItem(TC.ITEM_FULL)
-        icon = (script and script:getNormalTexture()) or false
-    end
-    if icon == false then return nil end
-    return icon
-end
-
 --[[ The first cash machine among the objects on a clicked square.
 
      Sprite name is the only handle there is -- see TC.ATM_SPRITES in TC_Config.lua for
@@ -129,11 +111,8 @@ local function addOptions(playerNum, context, worldobjects, test)
     -- ISContextMenu draws option.iconTexture to the left of the label. The catalogue's
     -- own icon, the same one the inventory menu puts on Open Catalogue, so the two
     -- entries this mod adds anywhere in the game are recognisably the same mod's.
-    local option = context:addOption(getText("ContextMenu_TC_UseATM"),
-                                     worldobjects, onUse, playerNum, atm)
-
-    local tex = catalogueIcon()
-    if option and tex then option.iconTexture = tex end
+    local option = TC.addOption(context, getText("ContextMenu_TC_UseATM"),
+                                worldobjects, onUse, playerNum, atm)
 
     --[[ A machine somebody has already forced open is a wrecked cabinet. It takes no
          cards and there is nothing left in it, so the only honest thing the menu can do is
@@ -150,11 +129,11 @@ local function addOptions(playerNum, context, worldobjects, test)
          touches it -- putting three top-level entries on every cash machine in the county
          would be the mod shouting. ]]
     local sub = ISContextMenu:getNew(context)
-    context:addSubMenu(context:addOption(getText("ContextMenu_TC_ATMTamper"),
-                                         worldobjects, nil), sub)
+    context:addSubMenu(TC.addOption(context, getText("ContextMenu_TC_ATMTamper"),
+                                    worldobjects, nil), sub)
 
-    local wire = sub:addOption(getText("ContextMenu_TC_WireATM"),
-                               worldobjects, onWire, playerNum, atm)
+    local wire = TC.addOption(sub, getText("ContextMenu_TC_WireATM"),
+                              worldobjects, onWire, playerNum, atm)
 
     local level  = player:getPerkLevel(Perks.Electricity)
     local driver = TC.findScrewdriver(player)
@@ -169,8 +148,8 @@ local function addOptions(playerNum, context, worldobjects, test)
                                getText("IGUI_TC_ATMWireNeeds", TC.ATM_ELEC_MIN))
     end
 
-    local force = sub:addOption(getText("ContextMenu_TC_ForceATM"),
-                                worldobjects, onForce, playerNum, atm)
+    local force = TC.addOption(sub, getText("ContextMenu_TC_ForceATM"),
+                               worldobjects, onForce, playerNum, atm)
 
     if not TC.findPryBar(player) then
         force.notAvailable = true

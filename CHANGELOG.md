@@ -12,6 +12,79 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.7.0-beta — 2026-08-29
+
+### Added
+- **The catalogue's icon is on every entry this mod adds to a context menu.** Two of the
+  eleven carried it and nine did not, which is worse than none of them carrying it — it
+  read as two unrelated features. A right-click menu in this game is twenty entries long
+  before a mod touches it, and the picture beside a line is the only way a player with
+  three mods installed can tell which line came from which.
+
+  `TC.addOption` is one call instead of "addOption, then remember the icon", because
+  remembering it is exactly what did not happen nine times. The icon comes off the item
+  *script* rather than an item instance, since most of these menus are filled when the
+  player is holding no catalogue at all.
+
+- **The Online Catalogue.** Find a **Blank CD** — office desks, electronics shops, school
+  desks — and burn it with the catalogue in hand and your own credit card: 120 seconds, no
+  skill. The disc is stamped with the account and named *Online Catalogue (account 8471)*.
+
+  Right-click a **desktop computer** while carrying it and the catalogue opens on the
+  screen. Same buy, sell, cart and ledger, retitled *Online Catalogue*, **spending the bank
+  balance and never touching a note.** The figure in the corner reads *Account balance*
+  instead of *Your cash*.
+
+- **`TC_Purse` — one interface, two kinds of money.** Every window that called
+  `TC.getBalance` and `TC.takeCash` directly now goes through `purseBalance`/`purseTake`/
+  `purseGive`, and **an account number is the whole interface**: nil means cash, which is
+  the same shape the rest of the bank already uses and is why the paper catalogue needed no
+  changes beyond threading an argument through.
+
+  Not an object with methods, because the things that need it are a timed action, a
+  delivery that lands an hour later, and a refund for an order the player has forgotten
+  about. A number survives being written to modData; a table with functions in it does not.
+
+- **Orders remember what paid for them.** A refund days later — cancelled, refused at the
+  door, undeliverable — goes back where the money came from. `denyArrived` refunds **inside
+  its loop**, per order, because it turns away everything at the door at once and those
+  orders need not have been paid the same way: one bought at a kitchen table, the next at a
+  computer. A single payment of the total has only one place to send it.
+
+### Details that took the most thought
+- **A desktop is matched on tile PROPERTIES, not a list of sprite names** — the opposite of
+  the ATMs, and not an inconsistency: the ATMs carry no `CustomName` and no `GroupName`, so
+  a literal list was the only handle. Desktops carry both. Matching properties survives a
+  renumbered tileset *and* picks up `appliances_com_01_76` and `_77`, whose `CustomName` is
+  the literal string `"CustomName"` — a typo in vanilla's own tile data that a hand-written
+  list of the four documented sprites would have missed.
+
+- **The session ends when the last catalogue window closes, not the first.** Clicking Sell
+  on the rail closes the buy window and opens the sell window at the same rectangle — a
+  pane swap that happens to be a close. Ending there would drop the player onto their
+  pocket money mid-trip. Getting it wrong the other way is worse: a session outliving its
+  windows would leave the next *paper* catalogue quietly spending a bank balance.
+
+- **Neither disc is sold by the catalogue**, alongside the card reader. A blank disc is the
+  one scarce thing between a player and this feature, and a shop that sells discs is that
+  scarcity deleted. Ordering an online catalogue *from* the catalogue is a snake eating
+  itself.
+
+- **Blank discs are not scaled by `CatalogueLootMultiplier`.** That option exists so a
+  player can turn off finding catalogues and be left with crafting one; the disc has no
+  crafting route, so the same switch would silently remove the whole feature.
+
+- **Every translation key is written out in full.** The first draft built the online titles
+  by gluing a prefix to a suffix, which `check.sh` cannot see through — and that check is
+  the only automatic guard this mod has over its text. It then caught the half-key inside
+  the comment explaining the decision.
+
+### Note
+The disc icon is a **placeholder** — a plain generated disc — until Vitor's sprite arrives.
+`Item_BlankCD.png` and `Item_OnlineCatalogue.png` are the two files to replace.
+
+---
+
 ## 0.6.2-beta — 2026-08-29
 
 ### Fixed

@@ -50,11 +50,6 @@ function TC_ExamineCardAction:update()
     self.character:setMetabolicTarget(Metabolics.LightDomestic)
 end
 
---[[ What was learned, said once and in the halo text rather than in a window.
-
-     A window would be a whole UI for one sentence, and this is a sentence: the number, or
-     the four digits it is made of. It also goes into the account, which is what the
-     machine reads later -- the halo is the telling, the account is the remembering. ]]
 --[[ What twelve seconds with a card in your hands actually gets you.
 
      THE `else` USED TO REVEAL THE DIGITS, and that was the bug the player saw as "every
@@ -332,8 +327,8 @@ local function addOptions(playerNum, context, items)
                 local done  = known and known.examined
 
                 if not done then
-                    local option = context:addOption(getText("ContextMenu_TC_ExamineCard"),
-                                                     playerNum, onExamine, item, acct.number)
+                    local option = TC.addOption(context, getText("ContextMenu_TC_ExamineCard"),
+                                                playerNum, onExamine, item, acct.number)
                     if not ok then
                         option.notAvailable = true
                         local tip = ISToolTip:new()
@@ -352,8 +347,8 @@ local function addOptions(playerNum, context, items)
                      unknown" one. ]]
                 local reader = TC.findSkimmer(player)
                 if reader then
-                    local skim = context:addOption(getText("ContextMenu_TC_SkimCard"),
-                                                   playerNum, onSkim, item, acct.number, reader)
+                    local skim = TC.addOption(context, getText("ContextMenu_TC_SkimCard"),
+                                              playerNum, onSkim, item, acct.number, reader)
                     local tip = ISToolTip:new()
                     tip:setName(getText("ContextMenu_TC_SkimCard"))
                     tip.description = getText("IGUI_TC_SkimmerUses", reader:getCondition())
@@ -362,8 +357,8 @@ local function addOptions(playerNum, context, items)
             end
 
         elseif TC.noteAccount(player, item) then
-            local option = context:addOption(getText("ContextMenu_TC_ReadNote"),
-                                             playerNum, onReadNote, item)
+            local option = TC.addOption(context, getText("ContextMenu_TC_ReadNote"),
+                                        playerNum, onReadNote, item)
             if not ok then
                 option.notAvailable = true
                 local tip = ISToolTip:new()

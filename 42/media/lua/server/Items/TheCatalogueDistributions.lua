@@ -83,3 +83,55 @@ if multiplier > 0 then
 else
     log("catalogue loot spawning disabled by sandbox option")
 end
+
+--[[ Blank discs.
+
+     A separate pass with a separate list, because a blank CD is not the same KIND of
+     object as a mail-order catalogue and does not belong in the same places. It is office
+     stock: it turns up where a 1993 workplace kept its supplies, and in the desks and
+     shelves of people who owned a computer. Not in post offices, not in living-room
+     magazine racks.
+
+     It is NOT scaled by CatalogueLootMultiplier. That option exists so a player can turn
+     off finding catalogues and be left with crafting one, and the disc has no crafting
+     route -- gating it behind the same switch would mean turning off catalogue loot also
+     silently removed the online catalogue from the save. Two different decisions.
+
+     Weights are a touch higher than the catalogue's. The disc is a consumable and the
+     recipe eats one per copy, so a player who wants a second online catalogue has to find
+     a second disc; making them as rare as the catalogue itself would put the feature out
+     of reach rather than behind a search.
+]]
+local BLANK_CD = "Catalogue.BlankCD"
+
+local CD_PLACES = {
+    { "OfficeDeskDrawers",     1.2 },
+    { "OfficeDesk",            1.0 },
+    { "ElectronicStoreMisc",   1.5 },
+    { "ElectronicStoreOther",  1.2 },
+    { "ShelfGeneric",          0.5 },
+    { "LivingRoomShelf",       0.4 },
+    { "BedroomDresser",        0.3 },
+    { "StoreShelfElectronics", 1.0 },
+    { "ClassroomDesk",         0.6 },
+    { "LibraryCounter",        0.5 },
+}
+
+do
+    local added, missing = 0, 0
+
+    for _, place in ipairs(CD_PLACES) do
+        local name, weight = place[1], place[2]
+        local list = ProceduralDistributions.list[name]
+
+        if list and list.items then
+            table.insert(list.items, BLANK_CD)
+            table.insert(list.items, weight)
+            added = added + 1
+        else
+            missing = missing + 1
+        end
+    end
+
+    log("blank discs added to %d loot containers (%d unknown)", added, missing)
+end

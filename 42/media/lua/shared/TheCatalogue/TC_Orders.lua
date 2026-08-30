@@ -173,7 +173,12 @@ end
 --[[ Record a paid order. The money has already left the player by the time this is
      called -- an order in the list is a debt the catalogue owes, never a pending
      charge, so a save mid-flight can never lose track of who is owed what. ]]
-function TC.placeOrder(player, lines, paid)
+--[[ `account` is the bank account the order was PAID FROM, or nil when it was paid in
+     notes. It rides on the order because a refund can happen days later -- cancelled,
+     refused at the door, or undeliverable -- and by then the session that placed it is
+     long gone. Money goes back where it came from, which is the only rule a player would
+     accept without being told it. ]]
+function TC.placeOrder(player, lines, paid, account)
     local orders = TC.orders(player)
     local now = worldHours()
 
@@ -181,6 +186,7 @@ function TC.placeOrder(player, lines, paid)
         id      = string.format("%d-%d", math.floor(now), #orders + 1),
         lines   = lines,
         paid    = paid,
+        account = account,
         placed  = now,
         due     = now + TC.orderEta(lines),
     }
@@ -348,7 +354,7 @@ function TC.deliverDueOrders(player)
                 table.insert(kept, order)
                 TC.log("order %s arrived, awaiting collection", tostring(order.id))
             else
-                TC.giveCash(player, order.paid or 0)
+                TC.purseGive(player, order.account, order.paid or 0)
                 TC.warn("order %s could not be delivered, refunded $%d",
                         tostring(order.id), order.paid or 0)
                 refunded = refunded + 1
@@ -394,7 +400,7 @@ function TC.cancelOrder(player, order)
 
     local refund = math.floor((order.paid or 0) + 0.5)
     player:getModData()[ORDERS_KEY] = kept
-    TC.giveCash(player, refund)
+    TC.purseGive(player, order.account, refund)
     TC.logTransaction(player, "cancel", order.lines or {}, refund)
     TC.log("cancelled order %s, refunded $%d", tostring(order.id), refund)
     return refund
@@ -428,6 +434,19 @@ function TC.denyArrived(player)
             local back = math.floor((o.paid or 0) * TC.DENY_REFUND)
             refund = refund + back
             denied = denied + 1
+
+            --[[ REFUNDED PER ORDER, INSIDE THE LOOP, and it has to be.
+
+                 This turns away everything at the door at once, and those orders need not
+                 have been paid for the same way -- one bought at a kitchen table out of a
+                 pocket, the next bought at a computer out of an account. A single payment
+                 of the total at the end has only one account to send it to, and would put
+                 the cash order's money in the bank or the bank order's money on the floor.
+
+                 Each order carries the account it was paid from precisely so that its own
+                 refund can find its way home. ]]
+            TC.purseGive(player, o.account, back)
+
             TC.logTransaction(player, "deny", o.lines or {}, back)
             TC.log("denied order %s, refunded $%d of $%d",
                    tostring(o.id), back, o.paid or 0)
@@ -437,7 +456,6 @@ function TC.denyArrived(player)
     if denied == 0 then return 0, 0 end
 
     player:getModData()[ORDERS_KEY] = kept
-    TC.giveCash(player, refund)
     return denied, refund
 end
 

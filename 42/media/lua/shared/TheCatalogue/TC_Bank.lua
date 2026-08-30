@@ -194,7 +194,14 @@ end
      TC.gameStamp is the ledger's world clock, over in TC_History.lua, because the ledger
      needed it first. Shared Lua loads alphabetically so that file is read AFTER this one,
      which does not matter: nothing here runs until a player is standing at a machine. ]]
-local function push(acct, kind, amount, balance, other)
+--[[ Public, because the online catalogue writes to a statement too.
+
+     A purchase made on a screen is a movement on the account exactly as a withdrawal is,
+     and a statement that showed the withdrawals and quietly omitted the spending would be
+     a statement that does not add up. TC_Purse calls this; everything in this file goes
+     through the `push` alias below, which is shorter and older. ]]
+function TC.pushEntry(acct, kind, amount, balance, other)
+    if not acct then return end
     if type(acct.entries) ~= "table" then acct.entries = {} end
 
     table.insert(acct.entries, 1, {
@@ -210,6 +217,12 @@ local function push(acct, kind, amount, balance, other)
     while #acct.entries > MAX_ENTRIES do
         table.remove(acct.entries)
     end
+end
+
+-- The short name this file has always used. One line rather than renaming forty call
+-- sites, and it keeps the public name descriptive for readers coming from TC_Purse.
+local function push(acct, kind, amount, balance, other)
+    TC.pushEntry(acct, kind, amount, balance, other)
 end
 
 --[[ Open a NEW account and print its card. Always new, never the one already there.

@@ -180,6 +180,12 @@ local KINDS = {
          of a statement wants to know. ]]
     sent     = { key = "IGUI_TC_BankKindSent",     sign = "-", r = 0.96, g = 0.66, b = 0.62, other = true },
     received = { key = "IGUI_TC_BankKindReceived", sign = "+", r = 0.66, g = 0.94, b = 0.66, other = true },
+
+    -- The online catalogue. A purchase made on a screen is a movement on the account
+    -- exactly as a withdrawal is, and a statement that showed the withdrawals and quietly
+    -- omitted the spending would be a statement that does not add up.
+    spent    = { key = "IGUI_TC_BankKindSpent",    sign = "-", r = 0.96, g = 0.66, b = 0.62 },
+    refund   = { key = "IGUI_TC_BankKindRefund",   sign = "+", r = 0.66, g = 0.94, b = 0.66 },
 }
 
 TC_StatementList = ISScrollingListBox:derive("TC_StatementList")

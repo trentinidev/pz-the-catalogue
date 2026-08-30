@@ -257,7 +257,7 @@ function TC_CartWindow:startCheckout(rush)
 
     local due = select(1, self:totals())
     if rush then due = due + TC.rushSurcharge(due) end
-    if TC.getBalance(self.player) < due then
+    if TC.purseBalance(self.player, TC.onlineAccount(self.playerNum)) < due then
         self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
         return
     end
@@ -287,11 +287,11 @@ function TC_CartWindow:onOrderComplete(payload)
     local total = select(1, self:totals())
     if rush then total = total + TC.rushSurcharge(total) end
 
-    if TC.getBalance(self.player) < total then
+    if TC.purseBalance(self.player, TC.onlineAccount(self.playerNum)) < total then
         self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
         return
     end
-    if not TC.takeCash(self.player, total) then
+    if not TC.purseTake(self.player, TC.onlineAccount(self.playerNum), total) then
         self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
         return
     end
@@ -307,7 +307,7 @@ function TC_CartWindow:onOrderComplete(payload)
             count = count + line.qty
         end
 
-        local order = TC.placeOrder(self.player, lines, total)
+        local order = TC.placeOrder(self.player, lines, total, TC.onlineAccount(self.playerNum))
         self:onClear()
         self:setMessage(getText("IGUI_TC_CartOrdered", count,
                                 TC.etaPhrase(TC.hoursLeft(order))), false)
@@ -328,7 +328,7 @@ function TC_CartWindow:onOrderComplete(payload)
     end
 
     if owed > 0 then
-        TC.giveCash(self.player, owed)
+        TC.purseGive(self.player, TC.onlineAccount(self.playerNum), owed)
         TC.warn("cart short by $%d, refunded", owed)
     end
 
@@ -467,7 +467,7 @@ function TC.openCartWindow(playerNum)
     local x, y = dockPosition(w, h)
     local win = TC_CartWindow:new(x, y, w, h, playerNum)
     win:initialise(); win:instantiate()
-    win:setTitle(getText("IGUI_TC_CartTitle"))
+    win:setTitle(TC.windowTitle(playerNum, "cart"))
     win:addToUIManager()
     TC_CartWindow.instances[playerNum] = win
     return win

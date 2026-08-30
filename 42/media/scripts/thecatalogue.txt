@@ -158,6 +158,70 @@ module Catalogue
         }
     }
 
+    /* A blank disc, and the catalogue burned onto one.
+
+       THE ORDERING PROBLEM THIS SOLVES. The paper catalogue is a thing you carry and read
+       anywhere; it is paid for out of your pockets because that is what a pocket is for.
+       An account is money kept somewhere you are not, and until now the only thing you
+       could do with it was take it out again. The online catalogue is what makes an
+       account worth having: it spends the balance directly, and it never touches a note.
+
+       So it costs more than paper to get to. A blank disc has to be found -- they are
+       office stock, not something a survivor makes -- and burning it needs the catalogue
+       to copy, a card to bill, and the account already open.
+
+       Both items share an icon on purpose: it is the same disc, before and after. */
+    item BlankCD
+    {
+        DisplayCategory = Electronics,
+        ItemType = base:normal,
+        Weight = 0.1,
+        Icon = BlankCD,
+        Tags = base:electronic,
+    }
+
+    item OnlineCatalogue
+    {
+        DisplayCategory = Electronics,
+        ItemType = base:normal,
+        Weight = 0.1,
+        Icon = OnlineCatalogue,
+        Tags = base:electronic,
+    }
+
+    /* Burning the disc.
+
+       THE CARD IS mode:keep AND SO IS THE CATALOGUE. Neither is consumed: you are copying
+       a book onto a disc and writing your account number on it, not feeding either into a
+       machine. The disc is the only thing spent, which is also the only thing that is
+       scarce.
+
+       No skill requirement. The gate here is the disc and the account -- having got both,
+       a survivor who can work a photocopier can work this, and stacking Electricity on top
+       would only mean the reader and the catalogue want the same character.
+
+       The card is asked for by id because vanilla owns the item, but what matters is that
+       it is YOURS, which a recipe cannot check. TC_Online does that when the disc is used
+       and refuses one burned against an account you no longer hold a card for. */
+    craftRecipe MakeOnlineCatalogue
+    {
+        timedAction = MakingElectrical,
+        time = 120,
+        OnCreate = TheCatalogue.stampDisc,
+        Tags = InHandCraft;Electrical,
+        category = Electrical,
+        inputs
+        {
+            item 1 [Catalogue.BlankCD],
+            item 1 [Catalogue.Catalogue] mode:keep,
+            item 1 [Base.CreditCard] mode:keep,
+        }
+        outputs
+        {
+            item 1 Catalogue.OnlineCatalogue,
+        }
+    }
+
     /* Bundle loose notes. The exact mirror of vanilla's UnbundleMoney -- same time,
        same tags, same category, same 1:100 rate -- so the two read as one pair of
        recipes rather than as a mod bolted onto a vanilla one.

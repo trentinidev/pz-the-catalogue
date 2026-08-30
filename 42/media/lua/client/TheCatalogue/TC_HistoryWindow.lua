@@ -404,6 +404,7 @@ function TC_HistoryWindow:onResize()
 end
 
 function TC_HistoryWindow:close()
+    TC.endOnlineIfLast(self.playerNum, self)
     TC.saveFrame(self)
     ISCollapsableWindow.close(self)
     self:removeFromUIManager()
@@ -425,7 +426,7 @@ function TC.openHistoryWindow(playerNum)
     local x, y, w, h = TC.frameRect(playerNum, 760, 480, TC.railWidth() + 620, 380)
     local win = TC_HistoryWindow:new(x, y, w, h, playerNum)
     win:initialise(); win:instantiate()
-    win:setTitle(getText("IGUI_TC_LedgerTitle"))
+    win:setTitle(TC.windowTitle(playerNum, "ledger"))
     win:addToUIManager()
     TC_HistoryWindow.instances[playerNum] = win
     return win
