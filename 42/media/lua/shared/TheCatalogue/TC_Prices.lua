@@ -88,6 +88,12 @@ local function weightFactor(w)
     return 0.55 + 0.45 * (w ^ 0.85)
 end
 
+--[[ The least the catalogue will pay for something it agrees to buy.
+
+     The buy side has always floored at a dollar (roundPrice, just below). This is the
+     same floor facing the other way, so the two sides of the counter round the same. ]]
+local MIN_SELL = 1
+
 local function roundPrice(p)
     if p < 1 then return 1 end
     return math.floor(p + 0.5)
@@ -663,6 +669,36 @@ local function rawValue(item, visited)
         if minCond > 0 and ratio < minCond then return nil, "condition" end
 
         value = unit * ratio
+
+        --[[ Nothing the catalogue agrees to buy is bought for nothing.
+
+             Every buy price is already floored at a dollar by roundPrice, so at the
+             default 30% spread EVERY dollar item sold for thirty cents and displayed as
+             $0 -- the player handed over a real thing and was paid nothing for it. Which
+             reads as the item being refused, except it was not refused: it was taken.
+
+             The floor is written in RAW dollars, MIN_SELL divided by the spread, rather
+             than clamped at the end. That is not a flourish; it is the only spot where
+             the clamp does not break something else:
+
+               - The spread is still applied exactly once, to the finished total. Clamping
+                 after the multiply would mean clamping the total, so a bag of forty junk
+                 items would floor at one dollar between them.
+               - A container is worth what its contents are worth loose. Each item inside
+                 gets its own floor here, so forty items in a bag pay the same forty
+                 dollars they pay one at a time. Anything else teaches the player to empty
+                 every bag by hand before selling.
+
+             Packaging is untouched by design -- it never reaches this branch -- so an
+             empty parcel is still worth zero and a full one is still worth its contents.
+
+             A sandbox SellRatio of zero means "selling pays nothing", which is a real
+             answer and not a bug to be floored away; it also cannot be divided by. ]]
+        local spread = TC.opt("SellRatio")
+        if spread > 0 then
+            local floorRaw = MIN_SELL / spread
+            if value < floorRaw then value = floorRaw end
+        end
     end
 
     -- Contents, when the sandbox allows it. A rifle case full of rifles is worth
@@ -705,6 +741,21 @@ end
 function TC.getSellPriceRounded(item)
     local v, reason = TC.getSellValue(item)
     if not v then return nil, reason end
+    return math.max(0, math.floor(v + 0.5))
+end
+
+--[[ What a clean one of these fetches back, quoted from a catalogue price alone.
+
+     The buy window states the spread before the player commits, and it used to work the
+     arithmetic out itself. That was fine until the sell side gained a floor: a dollar
+     item was advertised at "sells back for $0" and then actually paid a dollar. A quote
+     the shop does not honour is worse than no quote, so both sides read this. ]]
+function TC.sellBackPrice(unit)
+    if type(unit) ~= "number" then return 0 end
+
+    local v = unit * TC.opt("SellRatio")
+    -- Zero here means the sandbox turned selling off, not a rounding accident.
+    if v > 0 and v < MIN_SELL then v = MIN_SELL end
     return math.max(0, math.floor(v + 0.5))
 end
 

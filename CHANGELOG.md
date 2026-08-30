@@ -12,6 +12,37 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.11.2-beta — 2026-08-30
+
+### Changed
+- **A dollar is the least the catalogue will pay for anything it accepts.** Every buy
+  price is already floored at a dollar, so at the default 30% spread every dollar item
+  sold for thirty cents and displayed as **$0** — the player handed over a real thing and
+  was paid nothing for it. That reads as a refusal, except it was not a refusal: the item
+  was taken.
+
+  The floor is applied to each item's raw value as `MIN_SELL / spread`, not clamped onto
+  the finished total, which is what keeps two existing promises intact:
+
+  - The spread is still applied **exactly once**, to the total. Clamping afterwards would
+    clamp the *total*, so forty junk items in a bag would share one dollar between them.
+  - A container is still worth what its contents are worth loose. Forty items in a bag pay
+    the same forty dollars they pay one at a time — otherwise the game teaches you to
+    empty every bag by hand before walking to the counter.
+
+  **The delivery parcels are untouched.** They are worth nothing on purpose and never
+  reach the priced branch, so an empty one is still $0 and a full one is still worth its
+  contents. A sandbox `SellRatio` of 0 is also left alone: that means "selling pays
+  nothing", which is an answer rather than a rounding accident.
+
+- **The buy window's sell-back quote now comes from the same place the payout does.** It
+  worked the arithmetic out on its own, which was harmless until the floor existed and
+  then advertised "sells back for $0" on an item that would actually pay a dollar. Both
+  sides read `TC.sellBackPrice` now. A quote the shop does not honour is worse than no
+  quote at all.
+
+---
+
 ## 0.11.1-beta — 2026-08-30
 
 Two crashes from the first run beside other mods. Both of them ours, and both the same
