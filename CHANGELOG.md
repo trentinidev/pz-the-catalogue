@@ -12,6 +12,59 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.3.0-beta — 2026-08-29
+
+### Added
+- **Send money from one account to another, addressed by four digits.** A **Transfer**
+  button on the account screen opens a window beside the machine: the account you are
+  sending from and its balance, a field for the destination's last four, the same quick
+  amounts the deposit screen offers, and Send.
+
+  **A window and not a sixth screen**, and that is the cart's argument rather than the
+  machine's. Deposit and Withdraw replace the account screen for a moment and hand it
+  straight back; a transfer is read *against* the balance it is coming out of while the
+  figure is typed, so a screen that covered the account would hide the number the decision
+  is being made against. It docks beside the machine and the button toggles it — once it
+  is sitting there, the button that opened it is the obvious way to get the space back.
+
+  **Four digits is the whole address** because sixteen typed into a field is an errand, and
+  the tail is what is printed on the card and shown on every screen.
+
+- **The machine says what it understood before you press Send.** A mistyped tail is a real
+  transfer to the wrong place, so the field reports the account it resolves to, or that no
+  account ends in those digits, or that it is the one you are sending from. Send is
+  disabled until all of it is true, and `TC.bankTransfer` re-checks every condition anyway
+  — it is the thing that moves money.
+
+- **No card is needed at the far end**, deliberately. Paying into an account you cannot
+  open is what knowing somebody's number lets you do, and it cannot dodge the access rule:
+  the money lands somewhere that still needs its own card to be taken out again. This is
+  also the honest answer to *"I found the old card, how do I merge it"* — insert the old
+  card and send its balance across.
+
+- **Both statements name the other end.** *Sent to 8415*, *Received from 8000*. A transfer
+  read from one side without it is a balance that changed for no stated reason, and where
+  it went is the one thing the reader wants to know.
+
+### Changed
+- **Account numbers now have unique last four digits**, refused at the point the number is
+  minted. Four digits can only *be* an address if two of the character's accounts cannot
+  share them, and settling it in `newAccountNumber` means no screen downstream ever has to
+  ask "which 8000 did you mean".
+
+### Fixed
+- **Cards printed before 0.2.0-beta kept their old name** — `Credit Card - Bob Smith`,
+  with no digits on it. They went on working, since an account is matched by modData and
+  never by the label, but two of them in a bag were indistinguishable and telling you which
+  card it is is the one job a card has outside the machine. They are renamed the first time
+  the machine looks at them, which makes it a migration and puts it beside the modData one.
+
+  The rename sits behind a string compare, which is not an optimisation but the whole
+  safety of doing this on a scan that runs several times a second while the chooser is
+  open: the ordinary case costs nothing and each card is renamed exactly once, ever.
+
+---
+
 ## 0.2.1-beta — 2026-08-29
 
 ### Fixed

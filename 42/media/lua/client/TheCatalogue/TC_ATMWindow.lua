@@ -173,6 +173,15 @@ local KINDS = {
     card     = { key = "IGUI_TC_BankKindCard",     sign = nil, r = 0.62, g = 0.62, b = 0.66 },
     deposit  = { key = "IGUI_TC_BankKindDeposit",  sign = "+", r = 0.66, g = 0.94, b = 0.66 },
     withdraw = { key = "IGUI_TC_BankKindWithdraw", sign = "-", r = 0.96, g = 0.66, b = 0.62 },
+
+    --[[ The two halves of a transfer, and they NAME THE OTHER END.
+
+         `other` says the line's label takes the far account's last four as an argument:
+         "Sent to 8415", not "Sent". A transfer read from one side without it is a balance
+         that changed for no stated reason, and where it went is the one thing the reader
+         of a statement wants to know. ]]
+    sent     = { key = "IGUI_TC_BankKindSent",     sign = "-", r = 0.96, g = 0.66, b = 0.62, other = true },
+    received = { key = "IGUI_TC_BankKindReceived", sign = "+", r = 0.66, g = 0.94, b = 0.66, other = true },
 }
 
 TC_StatementList = ISScrollingListBox:derive("TC_StatementList")
@@ -195,7 +204,11 @@ function TC_StatementList:doDrawItem(y, item, alt)
 
     self:drawText(TC.truncate(F, line.when or "?", c.whenW),
                   c.whenLeft, ty, 0.62, 0.62, 0.66, 1, F)
-    self:drawText(TC.truncate(F, getText(kind.key), c.whatW),
+    -- A transfer line names the account at the other end; everything else is a bare label.
+    local what = getText(kind.key)
+    if kind.other then what = getText(kind.key, line.other or "?") end
+
+    self:drawText(TC.truncate(F, what, c.whatW),
                   c.whatLeft, ty, 0.92, 0.92, 0.95, 1, F)
 
     local amountText = getText("IGUI_TC_BankNoMovement")
@@ -325,6 +338,7 @@ local function minimumWidth()
         pitch / 2,
         TC.buttonRowWidth({ getText("IGUI_TC_BankDeposit"),
                             getText("IGUI_TC_BankWithdraw"),
+                            getText("IGUI_TC_BankTransfer"),
                             getText("IGUI_TC_BankDone") }, UIFont.Medium),
         TC.buttonRowWidth(quick, UIFont.Medium),
         TC.buttonRowWidth({ getText("IGUI_TC_BankConfirm"),
@@ -531,6 +545,7 @@ function TC_ATMWindow:createChildren()
 
     self.depositBtn  = self:mkButton(getText("IGUI_TC_BankDeposit"),  TC_ATMWindow.onDeposit)
     self.withdrawBtn = self:mkButton(getText("IGUI_TC_BankWithdraw"), TC_ATMWindow.onWithdraw)
+    self.transferBtn = self:mkButton(getText("IGUI_TC_BankTransfer"), TC_ATMWindow.onTransfer)
     self.doneBtn     = self:mkButton(getText("IGUI_TC_BankDone"),     TC_ATMWindow.onDone)
 
     -- amount
@@ -602,6 +617,7 @@ function TC_ATMWindow:applyScreen()
     self.list:setVisible(s == ACCOUNT)
     self.depositBtn:setVisible(s == ACCOUNT)
     self.withdrawBtn:setVisible(s == ACCOUNT)
+    self.transferBtn:setVisible(s == ACCOUNT)
     self.doneBtn:setVisible(s == ACCOUNT)
 
     for _, b in ipairs(self.quickBtns) do b:setVisible(s == AMOUNT) end
@@ -681,10 +697,12 @@ function TC_ATMWindow:layoutWidgets()
 
         local slots = TC.buttonRow(L.x, L.w, { getText("IGUI_TC_BankDeposit"),
                                                getText("IGUI_TC_BankWithdraw"),
+                                               getText("IGUI_TC_BankTransfer"),
                                                getText("IGUI_TC_BankDone") }, UIFont.Medium)
         self:place(self.depositBtn,  slots[1], L.buttonY)
         self:place(self.withdrawBtn, slots[2], L.buttonY)
-        self:place(self.doneBtn,     slots[3], L.buttonY)
+        self:place(self.transferBtn, slots[3], L.buttonY)
+        self:place(self.doneBtn,     slots[4], L.buttonY)
 
     elseif s == AMOUNT then
         local G = self:amountGeometry()
@@ -911,6 +929,18 @@ end
 
 function TC_ATMWindow:onDeposit()  self:startAmount("deposit")  end
 function TC_ATMWindow:onWithdraw() self:startAmount("withdraw") end
+
+--[[ Sending money is the one thing here that does NOT take over the screen.
+
+     Deposit and Withdraw replace the account screen for a moment and hand it straight
+     back. A transfer is read against the balance it is coming out of while the figure is
+     typed, so covering that balance would hide the number the decision is being made
+     against -- the cart's argument, in TC_CartWindow's header, arrived at again. It docks
+     beside the machine instead, and this button toggles it: once it is sitting there, the
+     button that opened it is the obvious way to get the space back. ]]
+function TC_ATMWindow:onTransfer()
+    TC.toggleTransferWindow(self.playerNum, self.accountNumber)
+end
 
 --[[ Open the amount screen with nothing filled in.
 
@@ -1378,6 +1408,12 @@ function TC_ATMWindow:close()
     -- table that something else might still be holding a reference to.
     self.pinBuffer = ""
     self.pinFirst  = ""
+
+    --[[ The transfer window belongs to this session, not to the character, so it goes when
+         the machine does. Its own prerender would notice and close it a frame later
+         anyway; doing it here means the two disappear together rather than in sequence. ]]
+    local transfer = TC_TransferWindow and TC_TransferWindow.instances[self.playerNum]
+    if transfer then transfer:close() end
 
     TC.playSound(self.player, "atmClose")
     ISCollapsableWindow.close(self)

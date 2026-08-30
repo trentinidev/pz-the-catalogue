@@ -5,7 +5,7 @@ What is deliberately not built yet, and why. Everything here was considered and
 parked on purpose -- none of it is rejected. Landed work lives in CHANGELOG.md;
 this file is the other half of that story.
 
-Current version: 0.2.1-beta. 1.0.0 is reserved for the first build that has been
+Current version: 0.3.0-beta. 1.0.0 is reserved for the first build that has been
 played end to end. It does NOT promise a dedicated server: server authority is
 deferred past 1.0 rather than half-done before it, and the README says the same.
 
@@ -132,5 +132,6 @@ Kept here so nothing on the list gets proposed twice:
   - Requiring the catalogue in hand while the window is open
   - Mod-item integration: other mods' items priced by the same rules and
     filterable by source mod
-  - Cash machines: one account per credit card, a PIN, and deposits and
-    withdrawals in real notes at any vanilla ATM. The card must be on you.
+  - Cash machines: one account per credit card, a PIN, deposits and
+    withdrawals in real notes at any vanilla ATM, and transfers between
+    accounts addressed by the last four digits. The card must be on you.
