@@ -12,6 +12,52 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.10.2-beta — 2026-08-30
+
+### Changed
+- **The book on the ground is our own mesh now.** `42/media/models_X/ShopCatalogue.fbx`,
+  modelled by Vitor, replacing the re-skin of vanilla's `WorldItems/Catalogue`. Its UVs were
+  built against `ShopCatalogueWorld.png` — the FBX references that file by name — so the
+  texture and `tools/gen_art.ps1` are unchanged.
+
+- **`scale = 0.125` is MEASURED, not inherited.** This mod has been burned by FBX scale
+  before: the oversized parcels shipped custom meshes that rendered at the wrong size, four
+  readings of how PZ scales an FBX were tried against the actual box on the actual tile, and
+  the meshes were pulled rather than left half-working.
+
+  So both files were measured rather than assumed:
+
+  | mesh | X | Y | Z |
+  |---|---|---|---|
+  | vanilla `WorldItems/Catalogue` | 14.7409 | 21.4300 | 0.7975 |
+  | ours `ShopCatalogue` | 14.7200 | 21.4200 | 0.8400 |
+
+  The same book to within a fifth of a millimetre, so the scale vanilla is known to work at
+  is the scale this needs. **Settled without launching the game.**
+
+### Added
+- **`tools/fbx_bbox.ps1`** — the measuring tool that answered it, kept because the question
+  will come back with the parcel models. The scale in a model block cannot be checked by
+  reading it: a mesh twice too big and a scale half too small look exactly like a correct
+  pair until the thing is on a tile in front of you. Measure the new mesh, measure a vanilla
+  one whose scale is known good, compare.
+
+  It finds the `Vertices` node by name and decodes that one array rather than walking the
+  FBX tree — a full parser is a lot of PowerShell to answer one question, and the first
+  attempt at one hung.
+
+### Watch for this in game
+**The axis order differs.** Vanilla is X wide, Y tall, Z thick; ours is X wide, Z tall,
+Y thick — a Z-up export against a Y-up mesh. If the book stands on its edge on the floor,
+that is why, and the fix is a re-export with the up axis matched: `rotate` appears only
+inside `attachment` blocks in vanilla's own scripts, never on a model, so there is nothing
+in the script that can turn it.
+
+`StaticModel` — the open book the character holds while ordering — is still vanilla's. It
+is a different mesh with a two-page spread, and the cover art has no spread to put on it.
+
+---
+
 ## 0.10.1-beta — 2026-08-30
 
 ### Changed
