@@ -8,23 +8,32 @@ module Catalogue
        that nothing about this item needed a shape vanilla did not already have. That held
        right up until there was a modelled one to use.
 
-       SCALE 0.125 IS MEASURED, NOT INHERITED. This mod has been burned by FBX scale
-       before: the oversized parcels shipped custom meshes that rendered at the wrong size,
-       four different readings of how PZ scales an FBX were tried against the actual box on
-       the actual tile, and the meshes were pulled rather than left half-working. So both
-       files were measured rather than assumed --
+       WHY THE SCALE IS 0.0041 AND NOT 0.125, which is the whole story of this block.
+
+       The first attempt kept vanilla's 0.125, on measured evidence: both meshes are the
+       same book to within a fifth of a millimetre.
 
            vanilla WorldItems/Catalogue   14.7409 x 21.4300 x 0.7975
            ours    ShopCatalogue          14.7200 x 21.4200 x 0.8400
 
-       -- and they are the same book to within a fifth of a millimetre. The scale vanilla
-       uses is therefore the scale this needs, and 0.125 carries over untouched.
+       In game it came out the size of a swimming pool. THE BOUNDING BOX IS NOT THE WHOLE
+       ANSWER, and that is the lesson: an FBX also carries a UnitScaleFactor, and PZ applies
+       it. Every vanilla mesh is exported at 30.48 -- the number of centimetres in a foot --
+       and this one came out of Blender at 1.0.
 
-       THE AXIS ORDER DIFFERS, and that is the one thing to watch in game. Vanilla is X
-       wide, Y tall, Z thick; ours is X wide, Z tall, Y thick -- a Z-up export against a
-       Y-up mesh. If the book stands on its edge on the floor, that is why, and the fix is
-       a re-export with the up axis matched rather than anything in this file: `rotate`
-       appears only inside attachment blocks in vanilla's own scripts, never on a model.
+           vanilla Catalogue          UnitScaleFactor 30.48
+           vanilla BookFancy_Closed   UnitScaleFactor 30.48
+           ours    ShopCatalogue      UnitScaleFactor  1.00
+
+       Same vertices, thirty times the size. So the scale that matches vanilla's is
+       0.125 / 30.48 = 0.0041, and that is what is written below.
+
+       THE CLEANER FIX IS AT THE OTHER END: re-export with the unit scale set so the file
+       says 30.48 like every vanilla mesh does, and then this line goes back to 0.125 and
+       agrees with the rest of the game. Until then the arithmetic lives here.
+
+       tools/fbx_bbox.ps1 reports both numbers now, because the box alone was the thing
+       that misled.
 
        The texture is unchanged and still ours. The FBX references ShopCatalogueWorld.png
        by name, so its UVs were built against the sheet tools/gen_art.ps1 produces --
@@ -33,7 +42,7 @@ module Catalogue
     {
         mesh = ShopCatalogue,
         texture = TheCatalogue/ShopCatalogueWorld,
-        scale = 0.125,
+        scale = 0.0041,
     }
 
     /* The catalogue itself. Deliberately a plain "normal" item and NOT literature:

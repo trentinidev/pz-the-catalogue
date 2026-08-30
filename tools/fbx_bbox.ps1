@@ -20,6 +20,48 @@
 # to answer one question.
 param([string]$Path)
 $b = [System.IO.File]::ReadAllBytes($Path)
+
+
+# ---------------------------------------------------------------------------
+# The other half of the answer: UnitScaleFactor.
+# ---------------------------------------------------------------------------
+#
+# THE BOX ALONE MISLEADS, and it did. The catalogue mesh measured the same as vanilla's to
+# within a fifth of a millimetre, kept vanilla's scale on that evidence, and came out the
+# size of a swimming pool -- because PZ applies the file's UnitScaleFactor as well, and
+# every vanilla mesh carries 30.48 (centimetres in a foot) while a default Blender export
+# carries 1.0. Same vertices, thirty times the size.
+#
+# So the rule is: two meshes are the same size in game when the box AND this number match.
+# If they do not, the scale in the model block has to carry the ratio.
+
+function Find-Double([byte[]]$b, [string]$name) {
+    $n = [System.Text.Encoding]::ASCII.GetBytes($name)
+    for ($i = 0; $i -lt $b.Length - 200; $i++) {
+        $hit = $true
+        for ($j = 0; $j -lt $n.Length; $j++) { if ($b[$i+$j] -ne $n[$j]) { $hit = $false; break } }
+        if (-not $hit) { continue }
+        for ($k = $i + $n.Length; $k -lt $i + 220 -and $k -lt $b.Length - 9; $k++) {
+            if ($b[$k] -eq 0x44) { return [BitConverter]::ToDouble($b, $k+1) }
+        }
+    }
+    return $null
+}
+
+function Report-UnitScale([byte[]]$b) {
+$usf = Find-Double $b "UnitScaleFactor"
+if ($usf -ne $null) {
+    Write-Output ("UnitScaleFactor {0:N4}   (vanilla meshes use 30.48)" -f $usf)
+    if ([Math]::Abs($usf - 30.48) -gt 0.01) {
+        $ratio = 30.48 / $usf
+        Write-Output ("  -> this file renders {0:N2}x the size of a vanilla mesh with the same box." -f $ratio)
+        Write-Output ("     Divide the vanilla scale by {0:N2}, or re-export with the unit scale fixed." -f $ratio)
+    }
+} else {
+    Write-Output "UnitScaleFactor (not found)"
+}
+}
+
 $needle = [System.Text.Encoding]::ASCII.GetBytes("Vertices")
 
 for ($i = 0; $i -lt $b.Length - 40; $i++) {
@@ -66,6 +108,7 @@ for ($i = 0; $i -lt $b.Length - 40; $i++) {
     Write-Output ("X {0:N4} .. {1:N4}  size {2:N4}" -f $minx,$maxx,($maxx-$minx))
     Write-Output ("Y {0:N4} .. {1:N4}  size {2:N4}" -f $miny,$maxy,($maxy-$miny))
     Write-Output ("Z {0:N4} .. {1:N4}  size {2:N4}" -f $minz,$maxz,($maxz-$minz))
+    Report-UnitScale $b
     exit 0
 }
 Write-Output "no Vertices array found"
