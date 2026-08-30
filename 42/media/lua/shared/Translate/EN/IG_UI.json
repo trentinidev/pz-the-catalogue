@@ -121,6 +121,8 @@
     "IGUI_TC_NothingStaged": "Nothing to sell",
     "IGUI_TC_Staged": "Added %1 item(s)",
     "IGUI_TC_StagedSomeRefused": "Added %1, refused %2",
+    "IGUI_TC_SoldFurniture": "Sold for $%1",
+    "IGUI_TC_CannotPickUp": "You cannot take this one apart -- wrong tool, or not enough carpentry.",
     "IGUI_TC_Sold": "Sold %1 item(s) for $%2",
     "IGUI_TC_SoldAndKept": "Sold %1 item(s) for $%2 - kept %3 protected item(s)",
     "IGUI_TC_DroppedUnreachable": "%1 item(s) are no longer on you and were removed",

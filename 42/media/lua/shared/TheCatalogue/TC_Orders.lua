@@ -217,6 +217,24 @@ local function smallestParcelFor(weight)
     return PARCELS[#PARCELS]
 end
 
+--[[ Put one unit on the ground.
+
+     Built as an object rather than handed over as a fullType string, because furniture
+     is not a script item: "Moveables.<sprite>" is an address the engine understands
+     only through its own factory, and TC.createItem is where this mod does the same
+     thing on purpose -- including picking the anchor tile of a multi-tile piece, which
+     is the difference between delivering a bed and delivering half of one. ]]
+local function dropOne(square, fullType)
+    local item = TC.createItem(fullType)
+    if item then
+        square:AddWorldInventoryItem(item, 0, 0, 0)
+    else
+        -- Last resort: let the engine try the string. A delivery that arrives as the
+        -- wrong thing is still better than one that silently arrives as nothing.
+        square:AddWorldInventoryItem(fullType, 0, 0, 0)
+    end
+end
+
 --[[ Pack a delivery into as few parcels as it needs and drop them at the player's feet.
 
      Greedy, and deliberately so: the goods are already paid for, so there is nothing to
@@ -225,9 +243,9 @@ end
      would not fit.
 
      An item heavier than the largest crate cannot be boxed at all and is set down
-     beside the parcels. With the XXL sizes that only happens above 100 units, which no
-     single vanilla item reaches -- but the branch exists because a modded item could,
-     and a delivery that silently skipped it would be the worst kind of bug.
+     beside the parcels. That used to be a branch kept for a modded item that might one
+     day be heavy enough; furniture walks straight into it, because a wardrobe weighs
+     more than the biggest crate holds and arrives standing beside the boxes.
 ]]
 function TC.packAndDrop(player, lines)
     local square = player:getSquare()
@@ -250,7 +268,7 @@ function TC.packAndDrop(player, lines)
 
     while i <= #units do
         if units[i].weight > LARGEST_CAP then
-            square:AddWorldInventoryItem(units[i].fullType, 0, 0, 0)
+            dropOne(square, units[i].fullType)
             looseCount = looseCount + 1
             i = i + 1
         else
@@ -264,7 +282,7 @@ function TC.packAndDrop(player, lines)
             if not parcel then
                 -- Cannot make the box: set the goods down rather than lose them.
                 for j = i, #units do
-                    square:AddWorldInventoryItem(units[j].fullType, 0, 0, 0)
+                    dropOne(square, units[j].fullType)
                     looseCount = looseCount + 1
                 end
                 break
@@ -275,7 +293,8 @@ function TC.packAndDrop(player, lines)
                 local u = units[i]
                 if u.weight > LARGEST_CAP then break end
                 if used + u.weight > spec.cap then break end
-                inv:AddItem(u.fullType)
+                local made = TC.createItem(u.fullType)
+                if made then inv:AddItem(made) else dropOne(square, u.fullType) end
                 used = used + u.weight
                 i = i + 1
             end

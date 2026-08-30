@@ -19,7 +19,7 @@ a price. You pay in real banknotes and you get paid in real banknotes.
 ## Contents
 
 - [What it is for](#what-it-is-for) — the problem, and why the answer is a catalogue
-- [What it does](#what-it-does) — the features, one paragraph each
+- [What it does](#what-it-does) — the features, one paragraph each, [furniture](#furniture) included
 - [What to expect](#what-to-expect) — the honest limits, before you install
 - [Installing](#installing) and [Sandbox options](#sandbox-options)
 - [Design notes](#design-notes) — why the awkward parts are shaped the way they are
@@ -199,6 +199,33 @@ cash drawer.
 ...unless you strip the **note gear** out of a wrecked ATM at **Electrical 6** and fit it.
 One per machine in the county, and then that computer takes notes **in**. Taking them out
 still means walking to a real machine.
+
+### Furniture
+
+**1,119 pieces of furniture**, from rugs and posters to sofas, beds, wardrobes, shop
+counters and industrial fridges. Bought like anything else and delivered as a **placeable
+moveable** -- the same item you would get by prising it off a floor yourself.
+
+Only **340** pieces of furniture are items the game ships. Everything else in Knox County
+is a **tile**: pick one up and you get a `Base.Moveable` with the sprite written into it,
+which is why every sofa, fridge and road cone in this mod used to be worth exactly five
+dollars and why the shelf carried one meaningless entry called *Moveable*. The catalogue
+now reads the game's own tile definitions, so a sprite name is a piece of furniture with a
+name, a weight and a price.
+
+**Selling yours works two ways.** Carry it in like any other item, or **right-click the
+piece where it stands** and take the price off the menu. The world entry only appears
+while you are carrying the catalogue -- ordinary house floors are moveables too, and a
+mod that grows a line on every right-click in the county is a mod people uninstall. The second route skips the
+carrying and nothing else: it queues the game's own pickup, so a piece that needs a
+screwdriver still needs one, a piece above your carpentry is still refused, and a double
+bed still comes up as one piece. A piece you cannot take is greyed out with the reason,
+because "the catalogue does not buy wardrobes" and "this one is bolted down" are different
+facts.
+
+A wardrobe weighs more than the largest crate holds, so heavy furniture arrives standing
+beside the parcels rather than inside one.
+
 
 ---
 
@@ -458,6 +485,15 @@ That last figure is the shape of the change. The old generated table topped out 
 $1,313 and had a median of $16; the catalogue is now **cheaper in the body and far
 steeper at the top**. Ordinary loot is ordinary, and the handful of things that are
 genuinely worth something are priced like it.
+
+**Furniture is the one exception, and deliberately.** The study priced 5,092 *items*; a
+sofa is not an item, so it was never in it. Rather than invent 1,119 numbers, every piece
+carries a category and `TC_Furniture.lua` carries twenty prices you can read in one
+screen. Those twenty are anchored on the study wherever it does have an opinion about a
+piece of furniture the game happens to ship as an item: chair $20, table $31, lamp $7,
+fridge $175, desktop computer $355. It means a shop counter costs what a kitchen counter
+costs, which is the price of the approach.
+
 
 Money, MoneyBundle and BareHands are excluded from the catalogue: a currency that can be
 bought and sold at any spread other than exactly 1.0 is an arbitrage loop. The study
