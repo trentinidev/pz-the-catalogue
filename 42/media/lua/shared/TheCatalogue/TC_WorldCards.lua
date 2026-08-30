@@ -192,11 +192,16 @@ function TC.blessCard(item)
     local acct = {
         number  = number,
         holder  = rollHolder(),
-        pin     = string.format("%04d", ZombRand(10000)),
+        -- One card in five uses a PIN a person would actually pick. See TC_CardSecrets.
+        pin     = TC.rollForeignPin(),
         balance = rollBalance(),
         opened  = TC.gameStamp(),
         seq     = 0,
         entries = {},
+        -- What this particular card gives up to somebody who looks at it: the number
+        -- written on the back, a note in the wallet, a note elsewhere in the building, or
+        -- nothing but the pencil impression.
+        secret  = TC.rollCardSecret(),
         -- Marks an account the player did not open. Nothing reads it to decide access --
         -- the card and the PIN do that -- but it is what tells a future feature, and a
         -- future reader of a save file, that this money was somebody else's.
@@ -213,15 +218,110 @@ function TC.blessCard(item)
     return acct
 end
 
+-- ---------------------------------------------------------------------------
+-- The notes people wrote their PIN on
+-- ---------------------------------------------------------------------------
+
+--[[ A scrap of paper carrying one account's PIN.
+
+     VANILLA'S OWN SHEET OF PAPER, renamed and stamped, for the same reason the card is
+     vanilla's card: the mod ships no art to draw a rectangle the game already draws. What
+     makes it ours is the modData and a name that says which card it belongs to -- "Scrap
+     of Paper (card 8471)" -- because a note whose name gave nothing away would be a note
+     every player throws out of a full inventory without ever reading it.
+
+     The number is NOT in the name. Reading it is a deliberate act with its own context
+     option, so finding the note and learning the PIN stay two separate moments. ]]
+local NOTE_ITEM = "Base.SheetPaper2"
+
+function TC.makePinNote(container, acct)
+    if not container or not acct then return nil end
+
+    local note = container:AddItem(NOTE_ITEM)
+    if not note then return nil end
+
+    local md = note:getModData()
+    md.TC_pinFor = acct.number
+
+    note:setName(getText("IGUI_TC_NoteName", TC.cardTail(acct.number)))
+    note:setCustomName(true)
+    note:syncItemFields()
+    return note
+end
+
+--[[ The account a note is about, or nil if this is just paper.
+
+     Looked up through TC.account so a note works for a card of the player's own as
+     readily as for a stranger's -- there is no rule here that says whose PIN may be
+     written down. ]]
+function TC.noteAccount(player, item)
+    if not item then return nil end
+
+    local md = item:getModData()
+    if not md or not md.TC_pinFor then return nil end
+
+    return TC.account(player, md.TC_pinFor)
+end
+
+--[[ Notes waiting to be put somewhere else in the same building.
+
+     The "house" secret means the owner wrote the number down and left it in a drawer in
+     another room, which cannot be honoured at the moment the card is named -- loot is
+     generated one container at a time and the other drawers do not exist yet. So the note
+     is QUEUED against the square the card was found on, and the next container filled
+     close enough to it gets the paper.
+
+     THE QUEUE IS ALLOWED TO FAIL. A player who loots the wallet and never opens another
+     drawer in that building simply never finds the note, which is the honest outcome and
+     the one a real house would produce. Entries are dropped once the queue grows past a
+     handful, so a long session cannot accumulate them. ]]
+local PENDING_MAX   = 16
+local PENDING_TILES = 12
+
+local pending = {}
+
+function TC.queueHouseNote(acct, square)
+    if not acct or not square then return end
+
+    table.insert(pending, { number = acct.number, x = square:getX(),
+                            y = square:getY(), z = square:getZ() })
+
+    while #pending > PENDING_MAX do table.remove(pending, 1) end
+end
+
+--[[ Drop any queued note that belongs near this container. Called as each one is filled. ]]
+function TC.placeHouseNotes(player, container, square)
+    if not container or not square then return 0 end
+
+    local x, y, z = square:getX(), square:getY(), square:getZ()
+    local placed = 0
+
+    for i = #pending, 1, -1 do
+        local want = pending[i]
+        if want.z == z
+           and math.abs(want.x - x) <= PENDING_TILES
+           and math.abs(want.y - y) <= PENDING_TILES then
+
+            local acct = TC.account(player, want.number)
+            if acct and TC.makePinNote(container, acct) then placed = placed + 1 end
+            table.remove(pending, i)
+        end
+    end
+
+    return placed
+end
+
 --[[ Walk a container and name every card in it, nested containers included.
 
      Wallets are the point of the recursion: vanilla's own distribution puts CreditCard
      inside a wallet and the wallet inside a bag, and a card that only got its identity
      when it was loose would be the one card the feature missed. The depth guard is the
      one TC.ownedTypes uses, and for the same reason. ]]
-function TC.blessContainer(container, guard)
+function TC.blessContainer(container, guard, top, square)
     guard = (guard or 0) + 1
     if guard > 8 or not container then return 0 end
+
+    top = top or container
 
     local n = 0
     local items = container:getItems()
@@ -231,10 +331,26 @@ function TC.blessContainer(container, guard)
         local item = items:get(i)
 
         if TC.isCardItem(item) then
-            if TC.blessCard(item) then n = n + 1 end
+            local acct = TC.blessCard(item)
+            if acct then
+                n = n + 1
+
+                --[[ The note goes in the TOP container, not the wallet the card was in.
+
+                     A scrap of paper folded inside the same wallet is the note the owner
+                     kept with the card, which is exactly what "note" means -- but the
+                     wallet is a small container and vanilla fills it to capacity, so
+                     adding to it can silently fail. The drawer the wallet is in has room.
+                     Either way the player finds them together. ]]
+                if acct.secret == "note" then
+                    TC.makePinNote(top, acct)
+                elseif acct.secret == "house" then
+                    TC.queueHouseNote(acct, square)
+                end
+            end
         else
             local inner = TC.contentsOf(item)
-            if inner then n = n + TC.blessContainer(inner, guard) end
+            if inner then n = n + TC.blessContainer(inner, guard, top, square) end
         end
     end
 

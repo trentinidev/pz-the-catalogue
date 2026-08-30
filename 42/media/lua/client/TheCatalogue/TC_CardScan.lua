@@ -38,9 +38,22 @@ local lastSweep = 0
 local function onFillContainer(roomName, containerType, container)
     if not container then return end
 
-    local n = TC.blessContainer(container)
+    --[[ Where this container is, which the "note elsewhere in the building" secret needs.
+         The container hangs off a world object; that object knows its square. Both can be
+         absent -- a vehicle's glovebox, most obviously -- and a card in one simply cannot
+         queue a note, which is right. ]]
+    local parent = container:getParent()
+    local square = parent and parent:getSquare()
+
+    local n = TC.blessContainer(container, nil, container, square)
     if n > 0 then
         TC.log("named %d card(s) in a %s", n, tostring(containerType))
+    end
+
+    -- And drop any note a card found in a nearby drawer was waiting for.
+    if square then
+        local notes = TC.placeHouseNotes(getSpecificPlayer(0), container, square)
+        if notes > 0 then TC.log("left %d PIN note(s) in a %s", notes, tostring(containerType)) end
     end
 end
 
