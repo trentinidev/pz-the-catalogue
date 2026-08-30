@@ -123,6 +123,17 @@ TC.EXCLUDED_ITEMS = {
     ["Base.MoneyBundle"] = true,
     ["Base.BareHands"]   = true,
 
+    --[[ The blank moveable. Not furniture -- the ABSENCE of furniture.
+
+         Every piece of furniture the world generated is a Base.Moveable with a sprite
+         name written into the instance, so this one fullType stood in the catalogue for
+         all of them at a flat five dollars, and buying it handed over a Moveable with no
+         sprite in it: an item that cannot be placed, cannot be identified and cannot be
+         given back. The 1,119 real pieces in TC_FurnitureTable.lua take its place, and
+         TC_Prices reads a Moveable's sprite before it reads this list, so excluding the
+         empty one does not exclude the sofa. ]]
+    ["Base.Moveable"]    = true,
+
     -- Our oversized parcels are packaging, not merchandise. Listing them would put a
     -- 100-capacity container on the shelf for pocket change, which is a far better
     -- deal than anything else in the catalogue.
@@ -246,7 +257,7 @@ end
      A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
      sandbox option and this line has to be there whether or not anyone turned it on.
      tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
-TC.VERSION = "0.11.2-beta"
+TC.VERSION = "0.12.0-beta"
 print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging

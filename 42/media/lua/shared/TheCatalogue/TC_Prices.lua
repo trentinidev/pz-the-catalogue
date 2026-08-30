@@ -382,6 +382,52 @@ function TC.buildIndex()
         TC.log("priced %d of %d packs from what they hold", resolved, #packs)
     end
 
+    --[[ And the furniture, which getAllItems() cannot show us.
+
+         A sofa is not an item in this game, it is a tile; picking one up makes a
+         Base.Moveable carrying the sprite. So the loop above sees ONE entry called
+         "Moveable" standing for every piece of furniture in Knox County, and buying it
+         hands over a Moveable with no sprite in it, which cannot be placed. That entry
+         is dropped by TC.EXCLUDED_ITEMS and these 1,119 stand in its place.
+
+         The fullType is "Moveables." .. sprite, which the engine's InventoryItemFactory
+         reads directly, so these behave like any other fullType everywhere downstream --
+         cart, ledger, orders, sell window. TC.createItem is what turns one back into an
+         item; see its note on sprite grids.
+
+         Priced per category rather than per piece: TC_Furniture.lua says why, and holds
+         the money. ]]
+    local moveableScript = getScriptManager():FindItem("Base.Moveable")
+    local furniture = 0
+
+    for i = 1, #(TC.FURNITURE or {}) do
+        local row = TC.FURNITURE[i]
+        local fullType = TC.furnitureType(row.s)
+        local price = TC.furnitureBase(row.s)
+
+        if price and not TC.EXCLUDED_ITEMS[fullType] and not TC.priceByType[fullType] then
+            TC.priceByType[fullType] = price
+            n = n + 1
+            furniture = furniture + 1
+            TC.entries[n] = {
+                fullType = fullType,
+                name     = row.n,
+                lower    = string.lower(row.n .. " " .. fullType),
+                price    = price,
+                -- The same DisplayCategory the 340 furniture ITEMS carry, so one filter
+                -- shows the whole department instead of splitting it in two.
+                category = "Furniture",
+                module   = "Base",
+                weight   = row.w or 0,
+                -- Every piece shares the Moveable icon, because that is the icon the
+                -- game itself draws for one in an inventory.
+                script   = moveableScript,
+            }
+        end
+    end
+
+    if furniture > 0 then TC.log("listed %d pieces of furniture", furniture) end
+
     -- mergeSort, not table.sort: see its header. This call has never been the one that
     -- overflowed -- getAllItems order is not pathological -- but there is no reason to
     -- keep a second, riskier sort in the file for it.
@@ -431,8 +477,14 @@ function TC.iconFor(fullType)
     if not fullType then return nil end
 
     if iconCache[fullType] == nil then
+        -- Furniture has no script item of its own to ask -- "Moveables.<sprite>" is an
+        -- address, not an entry in the script manager -- so it borrows the icon the
+        -- game draws for a moveable in an inventory, which is the same picture the buy
+        -- window shows for it.
+        local ask = TC.furnitureSprite(fullType) and "Base.Moveable" or fullType
+
         local ok, tex = pcall(function()
-            local script = getScriptManager():FindItem(fullType)
+            local script = getScriptManager():FindItem(ask)
             return script and script:getNormalTexture() or false
         end)
         iconCache[fullType] = (ok and tex) or false
@@ -659,9 +711,34 @@ local function rawValue(item, visited)
     if TC.isPackaging(item) then
         value = 0
     else
-        if TC.EXCLUDED_ITEMS[fullType] then return nil, "excluded" end
+        --[[ Furniture is addressed by its SPRITE, not by its fullType.
 
-        local unit = TC.getBuyPrice(fullType)
+             A sofa picked up in the world is a Base.Moveable carrying a sprite name, and
+             so is a fridge, and so is a road cone -- one fullType for every piece of
+             furniture in Knox County. That fullType is on the exclusion list precisely
+             so the one meaningless entry it stands for stays off the shelf, and asking
+             the sprite FIRST is what stops the exclusion from swallowing the sofa along
+             with it.
+
+             Three answers, in order. The sprite, for the 1,119 pieces the catalogue
+             lists. Then the item's own fullType, which is what the 340 pieces the game
+             ships AS items have and what keeps their study prices. Then the Misc rate,
+             for a tile from a mod that this build has never seen -- unlisted furniture
+             is still furniture, and refusing to buy it would be a worse answer than
+             paying the going rate for an unknown piece. ]]
+        local sprite = TC.moveableSprite(item)
+
+        local unit
+        if sprite then
+            unit = TC.getBuyPrice(TC.furnitureType(sprite))
+                or TC.getBuyPrice(fullType)
+                or roundPrice(TC.FURNITURE_PRICES.Misc * TC.PRICE_SCALE
+                              * TC.opt("PriceMultiplier"))
+        else
+            if TC.EXCLUDED_ITEMS[fullType] then return nil, "excluded" end
+            unit = TC.getBuyPrice(fullType)
+        end
+
         if not unit then return nil, "notlisted" end
 
         local ratio = TC.conditionRatio(item)

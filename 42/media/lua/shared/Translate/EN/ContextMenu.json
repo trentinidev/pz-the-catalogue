@@ -17,5 +17,7 @@
     "ContextMenu_TC_InternetBanking": "Internet Banking",
     "ContextMenu_TC_ATMTamper": "The machine itself",
     "ContextMenu_TC_WireATM": "Wire the card reader",
-    "ContextMenu_TC_ForceATM": "Force the cashbox"
+    "ContextMenu_TC_ForceATM": "Force the cashbox",
+    "ContextMenu_TC_SellFurniture": "Sell %1 to the catalogue -- $%2",
+    "ContextMenu_TC_SellFurnitureMany": "Sell furniture to the catalogue"
 }
