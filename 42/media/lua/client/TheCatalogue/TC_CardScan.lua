@@ -45,6 +45,24 @@ local function onFillContainer(roomName, containerType, container)
     if not TC.opt("BankingEnabled") then return end
     if not container then return end
 
+    --[[ B42.20 fires this event from more than one place, and one of them lies about
+         what it is handing over.
+
+         When the loot roll produces a BAG, ItemPickerJava fills the bag and re-fires
+         OnFillContainer for it -- but passes the distribution DEFINITION
+         (ItemPickerJava$ItemPickerContainer, a bare struct of items/junk/rolls) where an
+         ItemContainer belongs. Indexing that for getParent is a hard Kahlua error, and
+         it fired eight times on a single chunk load. Vanilla trips on it too: LootLog.lua
+         calls the same getParent and only survives because it is cheat-gated.
+
+         The ordinary container path still passes a real ItemContainer, so this guard
+         costs nothing -- and the bag is reached anyway, because it lands in a container
+         whose own fill recurses into it, and the sweep below is behind that.
+
+         instanceof is a Java global taking (Object, String); unlike a method call it is
+         safe to point at an object of a class Lua has never been shown. ]]
+    if not instanceof(container, "ItemContainer") then return end
+
     --[[ Where this container is, which the "note elsewhere in the building" secret needs.
          The container hangs off a world object; that object knows its square. Both can be
          absent -- a vehicle's glovebox, most obviously -- and a card in one simply cannot

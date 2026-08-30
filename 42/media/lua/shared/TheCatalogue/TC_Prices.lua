@@ -583,9 +583,19 @@ function TC.conditionRatio(item)
         return 1
     end
 
+    --[[ How full a drainable is. NOT getUsedDelta -- that getter is gone in B42.
+
+         B41 spelled the remaining fraction usedDelta. B42 kept setUsedDelta and dropped
+         the getter, and the reading half is now getCurrentUsesFloat: 1.0 for a full can
+         of petrol, 0.0 for an empty one. getUseDelta survives but means something else
+         entirely -- how much ONE use consumes -- so reaching for the nearest-looking
+         name would have priced a bottle by its sip size.
+
+         The old call was nil, and calling nil is a hard error rather than a nil result,
+         so every attempt to stage a drainable for sale threw. ]]
     if instanceof(item, "DrainableComboItem") then
-        local used = item:getUsedDelta()
-        if type(used) == "number" and used >= 0 and used <= 1 then return used end
+        local left = item:getCurrentUsesFloat()
+        if type(left) == "number" and left >= 0 and left <= 1 then return left end
         return 1
     end
 
