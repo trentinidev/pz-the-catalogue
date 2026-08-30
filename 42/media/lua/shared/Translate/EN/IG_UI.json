@@ -6,8 +6,9 @@
     "IGUI_TC_OnlineSellTitle": "Online Catalogue - Sell",
     "IGUI_TC_OnlineCartTitle": "Online Catalogue - Cart",
     "IGUI_TC_OnlineLedgerTitle": "Online Catalogue - Ledger",
-    "IGUI_TC_OnlineDiscName": "Online Catalogue (account %1)",
-    "IGUI_TC_OnlineNoAccount": "This disc is burned for an account you cannot reach. You need the card for it on you.",
+    "IGUI_TC_OnlineInstalled": "The catalogue is installed on this machine",
+    "IGUI_TC_OnlineNeedsCard": "You need a credit card on you - the online catalogue bills an account, never cash.",
+    "IGUI_TC_OnlineBillTo": "Bill account %1",
 
     "IGUI_TC_RailBuy": "Buy",
     "IGUI_TC_RailSell": "Sell",
