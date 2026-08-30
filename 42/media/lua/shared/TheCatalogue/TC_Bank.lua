@@ -155,16 +155,30 @@ end
      about it.
 
      ZombRand rather than math.random: it is the game's own generator, and it behaves
-     identically on both sides of the client/server split. ]]
-local function newAccountNumber(taken)
-    for _ = 1, 32 do
+     identically on both sides of the client/server split.
+
+     THE LAST FOUR DIGITS ARE MADE UNIQUE TOO, and that is the interesting half. A transfer
+     is addressed by tail alone -- four digits typed into a keypad, because sixteen would be
+     an errand -- so two of the character's accounts ending in the same four would make the
+     destination ambiguous at the worst possible moment. Rejecting the collision at the
+     point the number is minted means the identifier the player actually uses is unique by
+     construction, and no screen downstream has to ask "which 8000 did you mean". ]]
+local function newAccountNumber(accounts)
+    local tails = {}
+    for number in pairs(accounts) do
+        tails[TC.cardTail(number)] = true
+    end
+
+    for _ = 1, 64 do
         local groups = {}
         for i = 1, 4 do
             groups[i] = string.format("%04d", ZombRand(10000))
         end
 
         local number = table.concat(groups, " ")
-        if not taken[number] then return number end
+        if not accounts[number] and not tails[TC.cardTail(number)] then
+            return number
+        end
     end
     return nil
 end
@@ -185,7 +199,7 @@ end
      TC.gameStamp is the ledger's world clock, over in TC_History.lua, because the ledger
      needed it first. Shared Lua loads alphabetically so that file is read AFTER this one,
      which does not matter: nothing here runs until a player is standing at a machine. ]]
-local function push(acct, kind, amount, balance)
+local function push(acct, kind, amount, balance, other)
     if type(acct.entries) ~= "table" then acct.entries = {} end
 
     table.insert(acct.entries, 1, {
@@ -193,6 +207,9 @@ local function push(acct, kind, amount, balance)
         amount  = math.floor((amount or 0) + 0.5),
         balance = math.floor((balance or 0) + 0.5),
         when    = TC.gameStamp(),
+        -- The tail of the account at the other end, on a transfer. nil on everything else,
+        -- which is what the statement reads to decide whether the line names anybody.
+        other   = other,
     })
 
     while #acct.entries > MAX_ENTRIES do
@@ -338,6 +355,84 @@ function TC.bankWithdraw(player, number, amount)
     return true
 end
 
+--[[ The account whose number ends in these four digits, or nil.
+
+     FOUR DIGITS IS THE WHOLE ADDRESS, because sixteen typed into a keypad is an errand and
+     because the tail is what is printed on the card and shown on every screen. It can be
+     unambiguous because newAccountNumber refuses to mint a number whose tail is already
+     taken -- so the second return value, "more than one matched", is reachable only for
+     accounts that predate that rule. It is reported rather than guessed at: silently
+     picking one of two accounts to send money to is the worst possible answer. ]]
+function TC.accountByTail(player, tail)
+    if type(tail) ~= "string" then return nil, false end
+
+    local found, many = nil, false
+    for number, acct in pairs(TC.accounts(player)) do
+        if TC.cardTail(number) == tail then
+            if found then many = true else found = acct end
+        end
+    end
+
+    if many then return nil, true end
+    return found, false
+end
+
+--[[ Move money from one account to another, addressed by the destination's last four.
+
+     NO CARD IS NEEDED FOR THE DESTINATION, and that is deliberate rather than an oversight.
+     Paying INTO an account you cannot open is exactly what knowing somebody's number lets
+     you do in life, and it cannot be used to get around the access rule: the money lands
+     somewhere that still needs its own card to be taken out again. The card requirement
+     lives on the withdrawing end, where it belongs.
+
+     So this is also the honest answer to "I found the old card, how do I merge it": insert
+     the old card, send its balance to the new account's tail, and the old account is left
+     empty rather than the old card being made to open the new account.
+
+     Debit then credit, both in the same call and neither able to fail once the checks
+     above them have passed -- there is no half-transferred state to unwind, which is the
+     same reason the purchase path commits atomically.
+
+     Returns true and the destination account, or false and a translated reason. ]]
+function TC.bankTransfer(player, fromNumber, tail, amount)
+    local from = TC.account(player, fromNumber)
+    if not from then return false, getText("IGUI_TC_BankNoAccount") end
+
+    amount = math.floor((amount or 0) + 0.5)
+    if amount <= 0 then return false, getText("IGUI_TC_BankBadAmount") end
+
+    if type(tail) ~= "string" or not string.match(tail, "^%d%d%d%d$") then
+        return false, getText("IGUI_TC_BankBadTail")
+    end
+
+    local to, ambiguous = TC.accountByTail(player, tail)
+    if ambiguous then return false, getText("IGUI_TC_BankTailAmbiguous", tail) end
+    if not to        then return false, getText("IGUI_TC_BankNoSuchAccount", tail) end
+
+    if to.number == from.number then
+        return false, getText("IGUI_TC_BankSameAccount")
+    end
+
+    local have = TC.bankBalance(player, from.number)
+    if have < amount then
+        return false, getText("IGUI_TC_BankNotEnoughFunds")
+    end
+
+    from.balance = have - amount
+    to.balance   = TC.bankBalance(player, to.number) + amount
+
+    --[[ Two lines, one on each statement, each naming the OTHER end.
+
+         A transfer read from one side only is a balance that changed for no stated reason,
+         and the account it went to is the one thing the reader wants to know. `other` is
+         the tail rather than the whole number because the tail is the address the player
+         typed and the one they will recognise. ]]
+    push(from, "sent",     amount, from.balance, TC.cardTail(to.number))
+    push(to,   "received", amount, to.balance,   TC.cardTail(from.number))
+
+    return true, to
+end
+
 -- ---------------------------------------------------------------------------
 -- The cards
 -- ---------------------------------------------------------------------------
@@ -417,6 +512,11 @@ function TC.cardsOnPlayer(player)
         -- same account twice in the list it asks the player to choose from.
         if acct and not seen[num] then
             seen[num] = true
+
+            -- Bring a card printed by an older version up to the current name. Costs a
+            -- string compare per card per scan; see TC.nameCard.
+            TC.nameCard(item, acct)
+
             table.insert(out, {
                 item    = item,
                 account = acct,
@@ -474,12 +574,41 @@ function TC.issueCard(player, acct)
     md.TC_account = acct.number
     md.TC_holder  = acct.holder
 
-    card:setName(getText("IGUI_TC_CardName", acct.holder, TC.cardTail(acct.number)))
-    card:setCustomName(true)
-    card:syncItemFields()
+    TC.nameCard(card, acct)
 
     push(acct, "card", 0, acct.balance or 0)
     return card
+end
+
+--[[ Write the account's name onto the plastic, and DO IT AGAIN whenever the card is seen.
+
+     Not only at issue, which is where it used to happen and where it was not enough. Cards
+     printed by 0.1.0-beta read "Credit Card - Bob Smith" with no digits on them, because
+     the tail was not part of the name yet; they went on working -- the account is matched
+     by modData, never by the label -- but two of them in a bag were indistinguishable, and
+     the one thing a card has to do outside the machine is tell you which card it is.
+     Renaming them the first time the machine looks at them is a migration, and it belongs
+     next to the modData one at the top of this file.
+
+     THE COMPARISON IS NOT AN OPTIMISATION, it is the whole safety of doing this on a scan
+     that runs several times a second while the chooser is open. setName, setCustomName and
+     syncItemFields on every card on every pass would be real work for no change; the string
+     compare in front of them means the ordinary case costs nothing and the rename happens
+     exactly once per card, ever. ]]
+function TC.nameCard(card, acct)
+    if not card or not acct then return false end
+
+    local want = getText("IGUI_TC_CardName", acct.holder or "?", TC.cardTail(acct.number))
+    if card:getName() == want then return false end
+
+    card:setName(want)
+    -- The flag that stops the game re-deriving the display name from the item script --
+    -- the step that is easy to leave out and that makes a rename look like it silently
+    -- failed. syncItemFields is what vanilla's own rename does afterwards, so that an
+    -- inventory pane which is already open redraws.
+    card:setCustomName(true)
+    card:syncItemFields()
+    return true
 end
 
 --[[ The last four digits, which is how a card is told from another card everywhere but on
