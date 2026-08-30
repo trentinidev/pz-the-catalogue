@@ -5,5 +5,5 @@ description=Craft The Catalogue from a notebook and any pen or pencil, then use 
 icon=icon.png
 poster=poster.png
 category=features
-modversion=0.6.0-beta
+modversion=0.6.1-beta
 versionMin=42.20.0

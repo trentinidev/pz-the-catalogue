@@ -70,16 +70,11 @@ local function sweep(player)
     if (now - lastSweep) < SWEEP_MS then return end
     lastSweep = now
 
-    local inv = player:getInventory()
-    if not inv then return end
-
-    for _, t in ipairs({ TC.CARD_ITEM, "CreditCard", "Base.CreditCard_Stolen" }) do
-        local list = inv:getAllTypeRecurse(t)
-        if list then
-            for i = 0, list:size() - 1 do
-                TC.blessCard(list:get(i))
-            end
-        end
+    -- The same lookup the machine uses, so a card the sweep names is a card the machine
+    -- can see. These were two separate lists once, they disagreed about the stolen
+    -- variant, and a stolen card ended up with an account that no ATM would offer.
+    for _, item in ipairs(TC.cardItemsOn(player)) do
+        TC.blessCard(item)
     end
 end
 

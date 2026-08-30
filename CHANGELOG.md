@@ -12,6 +12,49 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.6.1-beta — 2026-08-29
+
+### Fixed
+- **Right-clicking a cash machine threw a Java exception every time.**
+  `getFirstTagRecurse` is a Java method that takes an `ItemTag` enum, and it was being
+  handed the string `"Screwdriver"` — Kahlua will not coerce one into the other, so it
+  threw `expected argument of type ItemTag, got String` and aborted the menu builder
+  half-way through. `ItemTag.SCREWDRIVER` is the constant, and the lookup is wrapped so
+  that a missing enum on some future build costs an option rather than the menu.
+
+  `findPryBar` had the same class of mistake one line below and no exception to announce
+  it: it asked for `Base.Crowbar`, and `getFirstTypeRecurse` answers on the bare name. A
+  bag with a crowbar in it silently did not have one.
+
+- **A stolen card never appeared in the machine's card list.** There were three separate
+  places asking the inventory for credit cards and they disagreed about which spellings to
+  try — the sweep that names cards looked for `CreditCard_Stolen`, and the lookup the
+  machine uses did not. So a stolen card was given an account, given a name, given an
+  *Examine* option, and was then invisible to every ATM in the county.
+
+  All three now go through `TC.cardItemsOn`, which asks for both types in both spellings
+  and de-duplicates. The mod has been guessing whether `getAllTypeRecurse` wants the module
+  prefix since `TC_Money.lua`; asking for all four costs a walk of an inventory with two
+  cards in it.
+
+- **Examining a card always paid, and most of them should give nothing.** Half the weight
+  now goes to a card with nothing written on it anywhere. Measured over 6,000 rolls:
+  **7.7% hand over the PIN, 19.9% show the pencil impression, 72.4% find nothing.**
+
+  Two things had made it always pay. The `else` branch revealed the digits, so a card whose
+  secret was a note in a drawer — which has nothing on the card at all — fell into it; and
+  so did a card named by 0.4.0-beta, before secrets existed, whose `secret` field is nil.
+  Each outcome is named explicitly now and anything else finds nothing, and a card from an
+  older save is rolled once on first examination so it joins the same distribution instead
+  of being permanently generous.
+
+- **The Examine option stayed on a card that had nothing to give.** It required that the
+  digits had become known before it would disappear, so a card with nothing on it could be
+  examined until the player gave up. Examining is about the card, and a card does not
+  change: once looked at, the option is gone whatever the looking found.
+
+---
+
 ## 0.6.0-beta — 2026-08-29
 
 ### Added

@@ -506,19 +506,9 @@ function TC.cardsOnPlayer(player)
     local out = {}
     if not player then return out end
 
-    local inv = player:getInventory()
-    if not inv then return out end
-
-    local list = inv:getAllTypeRecurse(TC.CARD_ITEM)
-    if (not list or list:size() == 0) then
-        list = inv:getAllTypeRecurse("CreditCard")
-    end
-    if not list then return out end
-
     local seen = {}
 
-    for i = 0, list:size() - 1 do
-        local item = list:get(i)
+    for _, item in ipairs(TC.cardItemsOn(player)) do
         local md   = item:getModData()
         local num  = md and md.TC_account
 
