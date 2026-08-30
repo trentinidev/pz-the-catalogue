@@ -367,6 +367,11 @@ local function minimumHeight()
 
     return titleBar
            + PAD + FONT_HGT_LARGE                       -- headline
+           --[[ Two lines for what is known about the card, held whether or not there is
+                anything to say. Without them in the count, a window dragged to its minimum
+                had exactly enough room for the prompt and the boxes, and the card-knowledge
+                line went in on top of the headline. ]]
+           + PAD + FONT_HGT_SMALL * 2 + MSG_LEADING     -- "pressed into the plastic: ..."
            + PAD + FONT_HGT_SMALL                       -- keypad prompt
            + PAD + FONT_HGT_MEDIUM + 12                 -- the PIN boxes
            + PAD + BUTTON_HGT * 4 + KEY_GAP * 3         -- the keys
@@ -472,6 +477,42 @@ function TC_ATMWindow:layout()
     L.msgY  = L.buttonY - PAD - L.msgH
     L.bodyH = math.max(0, L.msgY - PAD - L.bodyY)
     return L
+end
+
+--[[ The keypad screen, laid out in ONE place from the bottom up.
+
+     THE KEYS AND THE BOXES USED TO BE WORKED OUT SEPARATELY, and they collided. The keypad
+     was anchored to the bottom of the body; the prompt and the row of PIN boxes flowed
+     down from the top. On a short window -- or once a line was added saying what is known
+     about the card -- the two met in the middle and the boxes were drawn underneath the
+     digits. Two independent pieces of arithmetic about one screen is the same mistake the
+     arrival window's layout() exists to prevent, and it went in anyway.
+
+     So everything is measured back from the keys. The keypad sits at the bottom of the
+     body, the boxes a padding above it, the prompt above those, and the "what you know"
+     line above that when there is one. Whatever slack a taller window has ends up as empty
+     space at the TOP, which is where nothing is competing for it.
+
+     `knownLines` is how many lines of card knowledge are being shown, which the caller
+     knows and this does not. ]]
+function TC_ATMWindow:pinGeometry(knownLines)
+    local L = self:layout()
+    knownLines = knownLines or 0
+
+    local G = {}
+    G.L      = L
+    G.boxH   = FONT_HGT_MEDIUM + 12
+    G.boxW   = math.floor(G.boxH * 0.85)
+    G.keysH  = BUTTON_HGT * 4 + KEY_GAP * 3
+
+    G.keyY   = L.bodyY + L.bodyH - G.keysH
+    G.boxY   = G.keyY - PAD - G.boxH
+    G.promptY = G.boxY - PAD - FONT_HGT_SMALL
+    G.knownY  = G.promptY - MSG_LEADING
+                          - knownLines * FONT_HGT_SMALL
+                          - math.max(0, knownLines - 1) * MSG_LEADING
+
+    return G
 end
 
 --[[ How tall the account screen's summary panel is: two label rows, a rule, the balance
@@ -676,10 +717,9 @@ function TC_ATMWindow:layoutWidgets()
     elseif s == PIN then
         local kw  = keyWidth()
         local kx0 = L.x + math.floor((L.w - keypadWidth()) / 2)
-        -- The keypad hangs off the BOTTOM of the body rather than the top, so that the
-        -- prompt and the PIN boxes above it get whatever slack a taller window gives and
-        -- the keys stay a constant distance from the buttons under them.
-        local ky0 = L.bodyY + L.bodyH - (BUTTON_HGT * 4 + KEY_GAP * 3)
+        -- Through pinGeometry, the same function drawPin measures the boxes against, so
+        -- the keys and the boxes cannot end up on top of each other again.
+        local ky0 = self:pinGeometry(0).keyY
 
         for i, b in ipairs(self.keys) do
             local col = (i - 1) % 3
@@ -1274,53 +1314,73 @@ end
      coverage for those code points, and a missing glyph renders as nothing at all -- which
      here would mean a PIN field that never appears to accept anything. Rectangles always
      draw. ]]
+--[[ What is known about the card in the machine, as wrapped lines and a colour.
+
+     The examine action says it once in halo text and then it is gone, and the player who
+     learned "1 3 3 7" three days and two towns ago will not remember it. So the machine
+     repeats it at the moment it is useful, which is the only moment it matters.
+
+     WRAPPED, because it did not fit. "Pressed into the plastic: 1 3 3 7 - the order is
+     yours to find" ran off both edges of the window at the size it opens at -- drawCentred
+     will happily centre a string wider than the box it is centred in, which puts equal
+     amounts of it outside each border. Every other run of prose in this mod goes through
+     TC.wrapText and this one was written before that existed.
+
+     Nothing at all while a PIN is being CHOSEN: there is no secret to know about an
+     account that does not exist yet. ]]
+function TC_ATMWindow:knownLines(width)
+    if self.pinMode ~= "enter" then return nil end
+
+    local acct = TC.account(self.player, self.accountNumber)
+    if not acct then return nil end
+
+    if TC.knowsPin(acct) then
+        return TC.wrapText(UIFont.Small, getText("IGUI_TC_PinKnown", acct.pin), width),
+               0.66, 0.94, 0.66
+    end
+
+    if TC.knowsDigits(acct) then
+        return TC.wrapText(UIFont.Small,
+                           getText("IGUI_TC_PinDigitsKnown", TC.pinDigits(acct)), width),
+               0.94, 0.88, 0.62
+    end
+
+    return nil
+end
+
 function TC_ATMWindow:drawPin(L)
-    -- Sized off the same font height a keypad key is, rather than off a pixel number, so
-    -- the row of boxes stays in proportion with the keys under it at any UI scale.
-    local boxH = FONT_HGT_MEDIUM + 12
-    local boxW = math.floor(boxH * 0.85)
-    local gap  = KEY_GAP
-    local total = boxW * TC.PIN_LENGTH + gap * (TC.PIN_LENGTH - 1)
+    local textW = L.w - PAD * 2
 
-    --[[ What is known about this card, kept where the digits are being typed.
+    local lines, kr, kg, kb = self:knownLines(textW)
+    local G = self:pinGeometry(lines and #lines or 0)
 
-         The examine action says it once in halo text and then it is gone, and the player
-         who learned "1 2 4 7" three days and two towns ago is not going to remember it. So
-         the machine repeats it at the moment it is useful, which is the only moment it
-         matters. Nothing is shown for a card nobody has looked at, and nothing at all is
-         shown while a new PIN is being chosen -- there is no secret to know about a card
-         that does not exist yet. ]]
-    local promptY = L.bodyY
-
-    if self.pinMode == "enter" then
-        local acct = TC.account(self.player, self.accountNumber)
-
-        if acct and TC.knowsPin(acct) then
-            TC.drawCentred(self, getText("IGUI_TC_PinKnown", acct.pin),
-                           L.x, L.w, promptY, UIFont.Small, 0.66, 0.94, 0.66)
-            promptY = promptY + FONT_HGT_SMALL + MSG_LEADING
-
-        elseif acct and TC.knowsDigits(acct) then
-            TC.drawCentred(self, getText("IGUI_TC_PinDigitsKnown", TC.pinDigits(acct)),
-                           L.x, L.w, promptY, UIFont.Small, 0.94, 0.88, 0.62)
-            promptY = promptY + FONT_HGT_SMALL + MSG_LEADING
+    if lines then
+        local y = G.knownY
+        for _, line in ipairs(lines) do
+            TC.drawCentred(self, line, L.x, L.w, y, UIFont.Small, kr, kg, kb)
+            y = y + FONT_HGT_SMALL + MSG_LEADING
         end
     end
 
-    TC.drawCentred(self, TC.truncate(UIFont.Small, getText("IGUI_TC_PinPrompt"), L.w),
-                   L.x, L.w, promptY, UIFont.Small, 0.68, 0.68, 0.72)
+    TC.drawCentred(self, TC.truncate(UIFont.Small, getText("IGUI_TC_PinPrompt"), textW),
+                   L.x, L.w, G.promptY, UIFont.Small, 0.68, 0.68, 0.72)
 
+    --[[ The four boxes, sitting a full padding above the keys because pinGeometry put
+         them there. A filled box is a small SQUARE and not a bullet character, for the
+         reason TC.drawSortArrow gives about its triangles: the bitmap fonts have no
+         guaranteed coverage for those code points, and a missing glyph renders as nothing
+         at all -- which here would be a PIN field that never appears to accept anything. ]]
+    local total = G.boxW * TC.PIN_LENGTH + KEY_GAP * (TC.PIN_LENGTH - 1)
     local x = L.x + math.floor((L.w - total) / 2)
-    local y = promptY + FONT_HGT_SMALL + PAD
 
     for i = 1, TC.PIN_LENGTH do
-        local bx = x + (i - 1) * (boxW + gap)
-        self:drawRect(bx, y, boxW, boxH, 0.5, 0, 0, 0)
-        self:drawRectBorder(bx, y, boxW, boxH, 0.6, 0.45, 0.45, 0.45)
+        local bx = x + (i - 1) * (G.boxW + KEY_GAP)
+        self:drawRect(bx, G.boxY, G.boxW, G.boxH, 0.5, 0, 0, 0)
+        self:drawRectBorder(bx, G.boxY, G.boxW, G.boxH, 0.6, 0.45, 0.45, 0.45)
 
         if i <= #self.pinBuffer then
             local dot = 8
-            self:drawRect(bx + (boxW - dot) / 2, y + (boxH - dot) / 2, dot, dot,
+            self:drawRect(bx + (G.boxW - dot) / 2, G.boxY + (G.boxH - dot) / 2, dot, dot,
                           0.95, 0.85, 1, 0.85)
         end
     end
