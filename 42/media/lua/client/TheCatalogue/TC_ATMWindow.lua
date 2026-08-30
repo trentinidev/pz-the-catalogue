@@ -386,7 +386,7 @@ local function minimumHeight()
            + PAD + BUTTON_HGT + BOTTOM_PAD              -- the button row
 end
 
-function TC_ATMWindow:new(x, y, w, h, playerNum, atm)
+function TC_ATMWindow:new(x, y, w, h, playerNum, atm, remoteAccount)
     local o = ISCollapsableWindow:new(x, y, w, h)
     setmetatable(o, self)
     self.__index = self
@@ -394,6 +394,13 @@ function TC_ATMWindow:new(x, y, w, h, playerNum, atm)
     o.playerNum = playerNum
     o.player    = getSpecificPlayer(playerNum)
     o.atm       = atm
+
+    --[[ Internet banking: the same machine, reached from a desk.
+
+         `remote` hides the two things a computer physically cannot do, and nothing else.
+         The account is known before the window opens because the card was chosen from the
+         context menu, so this session skips the chooser and goes straight to the keypad. ]]
+    o.remote    = remoteAccount ~= nil
 
     o.pinMode    = "enter"          -- enter | new | confirm
     o.pinBuffer  = ""
@@ -406,7 +413,7 @@ function TC_ATMWindow:new(x, y, w, h, playerNum, atm)
          withdrawal -- is addressed by this number rather than by "the player's account",
          because a player may hold several cards and the machine has to be talking about
          exactly one of them. ]]
-    o.accountNumber = nil
+    o.accountNumber = remoteAccount
 
     o.screen = o:openingScreen()
 
@@ -430,6 +437,11 @@ end
                      a question with one answer and a click to give it.
          several     the chooser, because the machine cannot know which one they meant. ]]
 function TC_ATMWindow:openingScreen()
+    --[[ Internet banking has already asked which card, in the context menu, so there is
+         nothing left to choose and no account to open -- a computer cannot print plastic.
+         Straight to the keypad, which is the one thing a desk cannot skip. ]]
+    if self.remote then return PIN end
+
     local cards = TC.cardsOnPlayer(self.player)
 
     if #cards == 0 then return WELCOME end
@@ -676,8 +688,13 @@ function TC_ATMWindow:applyScreen()
     self.chooseCancelBtn:setVisible(s == CHOOSE)
 
     self.list:setVisible(s == ACCOUNT)
-    self.depositBtn:setVisible(s == ACCOUNT)
-    self.withdrawBtn:setVisible(s == ACCOUNT)
+
+    --[[ A computer has no cash drawer. Deposit and Withdraw are the only two things on
+         this window that move physical notes, so they are the only two that a desk cannot
+         offer -- hidden rather than greyed out, because there is no circumstance in a
+         remote session under which they would come back. ]]
+    self.depositBtn:setVisible(s == ACCOUNT and not self.remote)
+    self.withdrawBtn:setVisible(s == ACCOUNT and not self.remote)
     self.transferBtn:setVisible(s == ACCOUNT)
     self.doneBtn:setVisible(s == ACCOUNT)
 
@@ -755,14 +772,24 @@ function TC_ATMWindow:layoutWidgets()
         self.list:setWidth(L.w)
         self.list:setHeight(math.max(ROW_HGT, L.bodyY + L.bodyH - listY))
 
-        local slots = TC.buttonRow(L.x, L.w, { getText("IGUI_TC_BankDeposit"),
-                                               getText("IGUI_TC_BankWithdraw"),
-                                               getText("IGUI_TC_BankTransfer"),
-                                               getText("IGUI_TC_BankDone") }, UIFont.Medium)
-        self:place(self.depositBtn,  slots[1], L.buttonY)
-        self:place(self.withdrawBtn, slots[2], L.buttonY)
-        self:place(self.transferBtn, slots[3], L.buttonY)
-        self:place(self.doneBtn,     slots[4], L.buttonY)
+        --[[ Two buttons remotely, four at a machine. Laid out from the list that is
+             actually shown, so the row fills the width either way instead of leaving two
+             gaps where the cash buttons used to be. ]]
+        if self.remote then
+            local slots = TC.buttonRow(L.x, L.w, { getText("IGUI_TC_BankTransfer"),
+                                                   getText("IGUI_TC_BankDone") }, UIFont.Medium)
+            self:place(self.transferBtn, slots[1], L.buttonY)
+            self:place(self.doneBtn,     slots[2], L.buttonY)
+        else
+            local slots = TC.buttonRow(L.x, L.w, { getText("IGUI_TC_BankDeposit"),
+                                                   getText("IGUI_TC_BankWithdraw"),
+                                                   getText("IGUI_TC_BankTransfer"),
+                                                   getText("IGUI_TC_BankDone") }, UIFont.Medium)
+            self:place(self.depositBtn,  slots[1], L.buttonY)
+            self:place(self.withdrawBtn, slots[2], L.buttonY)
+            self:place(self.transferBtn, slots[3], L.buttonY)
+            self:place(self.doneBtn,     slots[4], L.buttonY)
+        end
 
     elseif s == AMOUNT then
         local G = self:amountGeometry()
@@ -1555,7 +1582,17 @@ TC.applyMessageBehaviour(TC_ATMWindow)
      keep their shared rectangle, and this window is deliberately not part of that set: it
      is a different size, it has no rail, and it belongs to a place rather than to the
      book. Sharing the frame would drag the catalogue's size onto it and back again. ]]
-function TC.openATMWindow(playerNum, atm)
+--[[ `remoteAccount` turns this into INTERNET BANKING: the same window, opened at a
+     computer instead of at a machine, already knowing which card it is billing.
+
+     Deposit and Withdraw are hidden in that mode and nothing else changes. A desktop has
+     no cash drawer, and making notes appear in an inventory from a computer would break
+     the rule the whole mod rests on -- that no dollar is ever created. Balance, statement
+     and transfers are exactly what a computer CAN do.
+
+     `atm` is whatever object the session is anchored to. The range check only ever asks it
+     for a square, so a desktop works there unchanged. ]]
+function TC.openATMWindow(playerNum, atm, remoteAccount)
     local player = getSpecificPlayer(playerNum)
     if not player then return nil end
 
@@ -1571,9 +1608,10 @@ function TC.openATMWindow(playerNum, atm)
     local w = math.min(620, sw - 80)
     local h = math.min(640, sh - 80)
 
-    local win = TC_ATMWindow:new((sw - w) / 2, (sh - h) / 2, w, h, playerNum, atm)
+    local win = TC_ATMWindow:new((sw - w) / 2, (sh - h) / 2, w, h, playerNum, atm, remoteAccount)
     win:initialise(); win:instantiate()
-    win:setTitle(getText("IGUI_TC_ATMTitle"))
+    win:setTitle(remoteAccount and getText("IGUI_TC_BankingTitle")
+                                or getText("IGUI_TC_ATMTitle"))
     win:addToUIManager()
     TC_ATMWindow.instances[playerNum] = win
 

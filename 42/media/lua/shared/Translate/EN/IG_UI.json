@@ -187,6 +187,16 @@
     "IGUI_TC_ATMForced": "The cashbox gives up $%1",
     "IGUI_TC_ATMForcedEmpty": "The cashbox was already empty",
     "IGUI_TC_ATMIsBroken": "Somebody has already torn this one open.",
+    "IGUI_TC_ATMCloned": "The bank software is on the disc",
+    "IGUI_TC_CloneWhat": "Copies this machine's software onto a blank disc. Install it on a computer for Internet Banking.",
+    "IGUI_TC_CloneNeedsDisc": "Needs a blank CD.",
+    "IGUI_TC_CloneNeedsTool": "Needs a screwdriver.",
+    "IGUI_TC_CloneNeedsSkill": "Needs Electrical %1.",
+
+    "IGUI_TC_BankingTitle": "Internet Banking",
+    "IGUI_TC_BankingInstalled": "Internet Banking is installed on this machine",
+    "IGUI_TC_BankingNeedsReader": "Needs a card reader as well - a computer cannot read a strip on its own.",
+    "IGUI_TC_BankingConsumes": "Consumes the disc AND the card reader. The machine then reads cards forever.",
 
     "IGUI_TC_BankOpenAccount": "Open an account",
     "IGUI_TC_BankOpenFailed": "The machine could not open an account",

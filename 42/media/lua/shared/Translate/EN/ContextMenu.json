@@ -10,6 +10,9 @@
     "ContextMenu_TC_SkimCard": "Run it through the reader",
     "ContextMenu_TC_OnlineCatalogue": "Online Catalogue",
     "ContextMenu_TC_InstallCatalogue": "Install the Online Catalogue",
+    "ContextMenu_TC_CloneATM": "Clone the machine software",
+    "ContextMenu_TC_InstallBanking": "Install Internet Banking",
+    "ContextMenu_TC_InternetBanking": "Internet Banking",
     "ContextMenu_TC_ATMTamper": "The machine itself",
     "ContextMenu_TC_WireATM": "Wire the card reader",
     "ContextMenu_TC_ForceATM": "Force the cashbox"

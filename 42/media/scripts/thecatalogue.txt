@@ -189,6 +189,23 @@ module Catalogue
         Tags = base:electronic,
     }
 
+    /* The clone of a cash machine's own software.
+
+       Made at a WRECKED ATM, and that is the whole trade. The cabinet has to have been
+       forced open first -- which takes the machine out of the world permanently, for you
+       and for anybody else -- and only then is the board inside reachable. An internet
+       banking disc costs one cash machine, and the county has a finite number of them.
+
+       Same icon as the blank disc it was burned from, because that is what it is. */
+    item BankingCD
+    {
+        DisplayCategory = Electronics,
+        ItemType = base:normal,
+        Weight = 0.1,
+        Icon = BlankCD,
+        Tags = base:electronic,
+    }
+
     /* Burning the disc.
 
        NO CARD IN THE RECIPE ANY MORE. It used to want one, because the disc used to be

@@ -64,6 +64,16 @@ local function onWire(worldobjects, playerNum, atm)
     end
 end
 
+local function onClone(worldobjects, playerNum, atm)
+    local player = getSpecificPlayer(playerNum)
+    if not player or not atm then return end
+
+    local square = atm:getSquare()
+    if square and luautils.walkAdj(player, square, true) then
+        ISTimedActionQueue.add(TC_CloneATMAction:new(player, atm))
+    end
+end
+
 local function onForce(worldobjects, playerNum, atm)
     local player = getSpecificPlayer(playerNum)
     if not player or not atm then return end
@@ -114,13 +124,38 @@ local function addOptions(playerNum, context, worldobjects, test)
     local option = TC.addOption(context, getText("ContextMenu_TC_UseATM"),
                                 worldobjects, onUse, playerNum, atm)
 
-    --[[ A machine somebody has already forced open is a wrecked cabinet. It takes no
-         cards and there is nothing left in it, so the only honest thing the menu can do is
-         say so and offer nothing. ]]
+    --[[ A machine somebody has forced open takes no cards and has nothing left in it.
+
+         IT IS NOT A DEAD END ANY MORE, THOUGH. The cabinet being open is exactly what puts
+         the board inside within reach, so a wrecked ATM is the one place in the game an
+         internet banking disc can be cloned -- and that is the whole price of the feature:
+         one cash machine, gone from the world for good. ]]
     if TC.atmBroken(atm) then
         option.notAvailable = true
         option.toolTip = tooltip(getText("ContextMenu_TC_UseATM"),
                                  getText("IGUI_TC_ATMIsBroken"))
+
+        local clone = TC.addOption(context, getText("ContextMenu_TC_CloneATM"),
+                                   worldobjects, onClone, playerNum, atm)
+
+        local level = player:getPerkLevel(Perks.Electricity)
+        local why   = nil
+
+        if not TC.findBlankDisc(player) then
+            why = getText("IGUI_TC_CloneNeedsDisc")
+        elseif not TC.findScrewdriver(player) then
+            why = getText("IGUI_TC_CloneNeedsTool")
+        elseif level < TC.CLONE_ELEC_MIN then
+            why = getText("IGUI_TC_CloneNeedsSkill", TC.CLONE_ELEC_MIN)
+        end
+
+        if why then
+            clone.notAvailable = true
+            clone.toolTip = tooltip(getText("ContextMenu_TC_CloneATM"), why)
+        else
+            clone.toolTip = tooltip(getText("ContextMenu_TC_CloneATM"),
+                                    getText("IGUI_TC_CloneWhat"))
+        end
         return
     end
 
