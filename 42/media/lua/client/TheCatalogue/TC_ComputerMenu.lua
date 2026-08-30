@@ -129,6 +129,25 @@ function TC.installBanking(pc)
     return true
 end
 
+--[[ The note gear, which is a third install and not part of the second.
+
+     Banking without it is a screen: balances, statements, transfers -- numbers moving
+     between accounts. The cassette is the only thing in this mod that lets physical notes
+     go INTO an account anywhere but at a cash machine, and it is tracked separately
+     because a player can perfectly well have one and not the other. ]]
+function TC.cassetteInstalled(pc)
+    local rec = record(pc)
+    return rec ~= nil and rec.cassette == true
+end
+
+function TC.installCassette(pc)
+    local rec = record(pc)
+    if not rec then return false end
+
+    rec.cassette = true
+    return true
+end
+
 -- ---------------------------------------------------------------------------
 -- The disc, as an item and nothing more
 -- ---------------------------------------------------------------------------
@@ -248,6 +267,16 @@ function TC.findBankingDisc(player)
     return nil
 end
 
+local function onInstallCassette(worldobjects, playerNum, pc)
+    local player = getSpecificPlayer(playerNum)
+    if not player or not pc then return end
+
+    local square = pc:getSquare()
+    if square and luautils.walkAdj(player, square, true) then
+        ISTimedActionQueue.add(TC_InstallCassetteAction:new(player, pc))
+    end
+end
+
 local function onInstallBanking(worldobjects, playerNum, pc)
     local player = getSpecificPlayer(playerNum)
     if not player or not pc then return end
@@ -336,6 +365,24 @@ local function addOptions(playerNum, context, worldobjects, test)
 
     if hasBank then
         addBankingEntries(context, playerNum, player, pc)
+
+        --[[ The note gear goes in AFTER the banking software, not instead of it. A
+             cassette wired to a machine that has no bank on it has nothing to deposit
+             into, so the entry only appears once banking is there. ]]
+        if not TC.cassetteInstalled(pc) and TC.findCassette(player) then
+            local slot = TC.addOption(context, getText("ContextMenu_TC_InstallCassette"),
+                                      worldobjects, onInstallCassette, playerNum, pc)
+
+            local level = player:getPerkLevel(Perks.Electricity)
+            if level < TC.CASSETTE_ELEC_MIN then
+                slot.notAvailable = true
+                slot.toolTip = tooltip(getText("ContextMenu_TC_InstallCassette"),
+                                       getText("IGUI_TC_CloneNeedsSkill", TC.CASSETTE_ELEC_MIN))
+            else
+                slot.toolTip = tooltip(getText("ContextMenu_TC_InstallCassette"),
+                                       getText("IGUI_TC_CassetteConsumes"))
+            end
+        end
 
     elseif bankDisc then
         local option = TC.addOption(context, getText("ContextMenu_TC_InstallBanking"),

@@ -12,6 +12,50 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.10.0-beta — 2026-08-29
+
+### Added
+- **The note gear, and deposits at a computer.** Strip the cassette, stacker and feed
+  mechanism out of a **wrecked** cash machine at **Electrical 6**, fit it to a computer that
+  already runs Internet Banking, and that machine takes notes in.
+
+  **Software is copied; hardware is taken.** A banking disc can be burned as many times as
+  there are blank CDs, because copying costs the original nothing. This is a steel assembly
+  bolted inside one particular ATM: **one per machine in the county, forever**, and once it
+  is fitted to a desk it is gone from everywhere else. It is the most expensive single
+  decision in the mod.
+
+  Both jobs can be done on the same wreck, which is right — the cabinet is open and
+  everything in it is reachable, and stripping it properly is what somebody who came
+  prepared would do.
+
+- **Deposit comes back; withdrawal never does.** A cassette is a box that swallows notes and
+  counts them, not one that hands them back, so taking money out still means walking to a
+  real machine. That asymmetry is the feature rather than a limitation: cash goes in
+  wherever you built for it, and only a bank gives it back.
+
+### Changed
+- **Cloning a machine's software is Electrical 3, down from 5.** Vitor's call, and the
+  reasoning holds better than mine did: 5 was justified as "copying a bank should be the
+  most advanced thing here", and then the note gear arrived above it at 6, which is where
+  that argument belongs. Three jobs of one system all sitting on the same rung is what a
+  floor *is* — the ladder is **3 for software, 6 for the hardware that handles cash**.
+
+### Details
+- **The machine is marked as stripped only once the part is really in the player's hands.**
+  Marking first and adding second would lose the assembly for good on the one failure that
+  matters — an inventory that would not take it — and there is no second ATM that can give
+  this particular one back.
+- **A computer now tracks three installs**, independently: shop, bank, note gear. The
+  cassette entry only appears once banking is there, because a note path wired to a machine
+  with no bank on it has nothing to deposit into.
+- **The cassette is not sold by the catalogue**, alongside the reader and the three discs.
+
+### Note
+The sprite is Vitor's; source kept in `art/cassette_icon.png`.
+
+---
+
 ## 0.9.0-beta — 2026-08-29
 
 ### Added

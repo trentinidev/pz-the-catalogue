@@ -463,6 +463,16 @@ end
      The tries counter is cleared on the way through. Getting in is getting in, however you
      did it, and leaving a card two wrong guesses from a lockout after you have opened it
      would be a state nobody could explain. ]]
+--[[ May notes be paid in here?
+
+     Always at a cash machine. At a computer only when the note gear has been salvaged from
+     a wrecked ATM and fitted to THIS machine -- `self.atm` is the desktop in a remote
+     session, which is what lets one question answer for both kinds of place. ]]
+function TC_ATMWindow:canDeposit()
+    if not self.remote then return true end
+    return TC.cassetteInstalled(self.atm)
+end
+
 function TC_ATMWindow:afterCard()
     if TC.atmBypassed(self.atm) then
         TC.clearPinTries(TC.account(self.player, self.accountNumber))
@@ -689,11 +699,15 @@ function TC_ATMWindow:applyScreen()
 
     self.list:setVisible(s == ACCOUNT)
 
-    --[[ A computer has no cash drawer. Deposit and Withdraw are the only two things on
-         this window that move physical notes, so they are the only two that a desk cannot
-         offer -- hidden rather than greyed out, because there is no circumstance in a
-         remote session under which they would come back. ]]
-    self.depositBtn:setVisible(s == ACCOUNT and not self.remote)
+    --[[ Deposit and Withdraw are the only two things on this window that move physical
+         notes, and a desk has no cash drawer -- unless somebody bolted one on.
+
+         A machine with an ATM's note gear installed CAN take notes in, so Deposit comes
+         back on it. Withdraw does not, on any machine, ever: a deposit cassette is a box
+         that swallows notes and counts them, not one that hands them back, and taking
+         money out still means walking to a real machine. That asymmetry is the feature
+         rather than a limitation. ]]
+    self.depositBtn:setVisible(s == ACCOUNT and self:canDeposit())
     self.withdrawBtn:setVisible(s == ACCOUNT and not self.remote)
     self.transferBtn:setVisible(s == ACCOUNT)
     self.doneBtn:setVisible(s == ACCOUNT)
@@ -775,11 +789,20 @@ function TC_ATMWindow:layoutWidgets()
         --[[ Two buttons remotely, four at a machine. Laid out from the list that is
              actually shown, so the row fills the width either way instead of leaving two
              gaps where the cash buttons used to be. ]]
-        if self.remote then
+        if self.remote and self:canDeposit() then
+            local slots = TC.buttonRow(L.x, L.w, { getText("IGUI_TC_BankDeposit"),
+                                                   getText("IGUI_TC_BankTransfer"),
+                                                   getText("IGUI_TC_BankDone") }, UIFont.Medium)
+            self:place(self.depositBtn,  slots[1], L.buttonY)
+            self:place(self.transferBtn, slots[2], L.buttonY)
+            self:place(self.doneBtn,     slots[3], L.buttonY)
+
+        elseif self.remote then
             local slots = TC.buttonRow(L.x, L.w, { getText("IGUI_TC_BankTransfer"),
                                                    getText("IGUI_TC_BankDone") }, UIFont.Medium)
             self:place(self.transferBtn, slots[1], L.buttonY)
             self:place(self.doneBtn,     slots[2], L.buttonY)
+
         else
             local slots = TC.buttonRow(L.x, L.w, { getText("IGUI_TC_BankDeposit"),
                                                    getText("IGUI_TC_BankWithdraw"),

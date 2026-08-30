@@ -306,12 +306,13 @@ end
      It also gives a forced machine a second life. Until now a wrecked ATM was a dead end
      with a tooltip on it; it is now the only place in the game this disc can be made.
 
-     ELECTRICITY 5, a step above the 3 that wires a reader or builds a card reader. Pulling
-     the software out of a bank's own board should be the most advanced thing this mod asks
-     for, and the skill is what separates a player who invested from one who found the
-     parts.
+     ELECTRICITY 3, the same floor as wiring a reader or building a card reader. It was 5,
+     on the reasoning that copying a bank should be the most advanced thing here -- and
+     then the note gear arrived above it at 6, which is where that reasoning belongs. Three
+     steps of one system all sitting on the same rung is what a floor IS; the ladder is
+     3 for software and 6 for the hardware that handles cash.
 ]]
-TC.CLONE_ELEC_MIN = 5
+TC.CLONE_ELEC_MIN = 3
 
 local CLONE_SECONDS = 210
 
@@ -380,6 +381,106 @@ function TC.findBlankDisc(player)
     if not inv then return nil end
 
     for _, t in ipairs({ "BlankCD", "Catalogue.BlankCD" }) do
+        local item = inv:getFirstTypeRecurse(t)
+        if item then return item end
+    end
+    return nil
+end
+
+-- ---------------------------------------------------------------------------
+-- Salvaging the note gear
+-- ---------------------------------------------------------------------------
+
+--[[ Taking the cassette, the stacker and the feed mechanism out of a wrecked machine.
+
+     SOFTWARE IS COPIED; HARDWARE IS TAKEN. The banking disc can be burned as many times as
+     there are blank discs, because it is a copy and copying costs the original nothing.
+     This is a steel box of rollers bolted inside one particular ATM, so there is exactly
+     ONE of it per machine in the county, and once it is out it is out.
+
+     ELECTRICITY 6, the highest thing this mod asks for and a full step above the 3 that
+     copies the software. Reading a board is one job; getting the note path out of a bank
+     intact enough to work again afterwards is another.
+
+     The machine still has to have been forced open first, the same as cloning -- and both
+     can be taken from the same wreck, which is right: the cabinet is open, everything
+     inside it is reachable, and stripping it properly is what a player who came prepared
+     would do.
+]]
+TC.CASSETTE_ELEC_MIN = 6
+
+local SALVAGE_SECONDS = 300
+
+--[[ Has this machine already given up its note gear? One per ATM, forever. ]]
+function TC.cassetteTaken(atm)
+    local rec = record(atm)
+    return rec ~= nil and rec.cassetteTaken == true
+end
+
+TC_SalvageCassetteAction = ISBaseTimedAction:derive("TC_SalvageCassetteAction")
+
+function TC_SalvageCassetteAction:isValid()
+    return self.atm ~= nil
+       and self.atm:getSquare() ~= nil
+       and TC.atmBroken(self.atm)
+       and not TC.cassetteTaken(self.atm)
+end
+
+function TC_SalvageCassetteAction:waitToStart()
+    self.character:faceThisObject(self.atm)
+    return self.character:isTurning() or self.character:shouldBeTurning()
+end
+
+function TC_SalvageCassetteAction:start()
+    self:setActionAnim(CharacterActionAnims.Craft)
+end
+
+function TC_SalvageCassetteAction:update()
+    self.character:setMetabolicTarget(Metabolics.HeavyWork)
+end
+
+function TC_SalvageCassetteAction:perform()
+    local rec = record(self.atm)
+
+    if rec and not rec.cassetteTaken then
+        local part = self.character:getInventory():AddItem("Catalogue.DepositCassette")
+
+        --[[ The machine is marked ONLY once the part is really in the player's hands.
+
+             Marking first and adding second would lose the assembly for good on the one
+             failure that matters -- an inventory that would not take it -- and there is no
+             second ATM that can give this particular one back. ]]
+        if part then
+            rec.cassetteTaken = true
+            HaloTextHelper.addGoodText(self.character, getText("IGUI_TC_CassetteTaken"))
+            self.character:getXp():AddXP(Perks.Electricity, 35)
+        else
+            TC.warn("could not create Catalogue.DepositCassette -- machine left intact")
+        end
+    end
+
+    ISBaseTimedAction.perform(self)
+end
+
+function TC_SalvageCassetteAction:new(character, atm)
+    local o = ISBaseTimedAction.new(self, character)
+    o.atm = atm
+    o.stopOnWalk = true
+    o.stopOnRun  = true
+
+    local level = character:getPerkLevel(Perks.Electricity)
+    local scale = 1 - math.min(0.4, (level - TC.CASSETTE_ELEC_MIN) * 0.1)
+    o.maxTime = math.floor(SALVAGE_SECONDS * 60 * scale)
+    return o
+end
+
+--[[ A salvaged cassette on the player, either spelling. See TC.cardItemsOn for why both. ]]
+function TC.findCassette(player)
+    if not player then return nil end
+    local inv = player:getInventory()
+    if not inv then return nil end
+
+    for _, t in ipairs({ "DepositCassette", "Catalogue.DepositCassette" }) do
         local item = inv:getFirstTypeRecurse(t)
         if item then return item end
     end

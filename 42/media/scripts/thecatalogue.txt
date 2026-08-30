@@ -206,6 +206,26 @@ module Catalogue
         Tags = base:electronic,
     }
 
+    /* The note handling gear out of a cash machine.
+
+       The cassette, the stacker and the feed mechanism -- the part of an ATM that takes a
+       note, checks it and puts it somewhere. Salvaged from a machine that has already been
+       forced open, and only once per machine: it is a physical assembly, not a copy.
+
+       Where the banking disc is SOFTWARE and can be burned as many times as there are
+       blank discs, this is HARDWARE and there is one of it per ATM in the county. That is
+       what makes putting it into a computer a decision rather than a step.
+
+       Heavier than everything else this mod adds, because it is a steel box of rollers. */
+    item DepositCassette
+    {
+        DisplayCategory = Electronics,
+        ItemType = base:normal,
+        Weight = 3.0,
+        Icon = ATMDepositCassette,
+        Tags = base:electronic,
+    }
+
     /* Burning the disc.
 
        NO CARD IN THE RECIPE ANY MORE. It used to want one, because the disc used to be

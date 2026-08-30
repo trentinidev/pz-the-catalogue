@@ -74,6 +74,16 @@ local function onClone(worldobjects, playerNum, atm)
     end
 end
 
+local function onSalvage(worldobjects, playerNum, atm)
+    local player = getSpecificPlayer(playerNum)
+    if not player or not atm then return end
+
+    local square = atm:getSquare()
+    if square and luautils.walkAdj(player, square, true) then
+        ISTimedActionQueue.add(TC_SalvageCassetteAction:new(player, atm))
+    end
+end
+
 local function onForce(worldobjects, playerNum, atm)
     local player = getSpecificPlayer(playerNum)
     if not player or not atm then return end
@@ -155,6 +165,33 @@ local function addOptions(playerNum, context, worldobjects, test)
         else
             clone.toolTip = tooltip(getText("ContextMenu_TC_CloneATM"),
                                     getText("IGUI_TC_CloneWhat"))
+        end
+
+        --[[ And the note gear, which is the other thing an open cabinet puts in reach.
+
+             Offered on the same wreck as the clone on purpose: everything inside a forced
+             machine is reachable, and stripping it properly is what somebody who came
+             prepared would do. The difference is that the disc is a copy and this is the
+             assembly itself -- once per ATM, and the entry disappears afterwards rather
+             than greying out, because there is nothing left to take. ]]
+        if not TC.cassetteTaken(atm) then
+            local grab = TC.addOption(context, getText("ContextMenu_TC_SalvageCassette"),
+                                      worldobjects, onSalvage, playerNum, atm)
+
+            local reason = nil
+            if not TC.findScrewdriver(player) then
+                reason = getText("IGUI_TC_CloneNeedsTool")
+            elseif level < TC.CASSETTE_ELEC_MIN then
+                reason = getText("IGUI_TC_CloneNeedsSkill", TC.CASSETTE_ELEC_MIN)
+            end
+
+            if reason then
+                grab.notAvailable = true
+                grab.toolTip = tooltip(getText("ContextMenu_TC_SalvageCassette"), reason)
+            else
+                grab.toolTip = tooltip(getText("ContextMenu_TC_SalvageCassette"),
+                                       getText("IGUI_TC_CassetteWhat"))
+            end
         end
         return
     end

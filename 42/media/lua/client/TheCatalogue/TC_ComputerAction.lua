@@ -232,3 +232,62 @@ function TC_UseBankingAction:new(character, computer, account)
     o.maxTime = 90
     return o
 end
+
+-- ---------------------------------------------------------------------------
+
+TC_InstallCassetteAction = ISBaseTimedAction:derive("TC_InstallCassetteAction")
+
+function TC_InstallCassetteAction:isValid()
+    local TC = TheCatalogue
+    return self.computer ~= nil
+       and self.computer:getSquare() ~= nil
+       and TC.bankingInstalled(self.computer)
+       and not TC.cassetteInstalled(self.computer)
+       and TC.findCassette(self.character) ~= nil
+end
+
+function TC_InstallCassetteAction:waitToStart()
+    self.character:faceThisObject(self.computer)
+    return self.character:isTurning() or self.character:shouldBeTurning()
+end
+
+function TC_InstallCassetteAction:start()
+    self:setActionAnim(CharacterActionAnims.Craft)
+end
+
+function TC_InstallCassetteAction:update()
+    self.character:setMetabolicTarget(Metabolics.HeavyWork)
+end
+
+--[[ Bolting a bank's note path onto a desk.
+
+     The assembly is consumed, and there is only one of it per ATM in the county -- so this
+     is the most expensive single decision in the mod: a machine forced open, a part
+     salvaged at Electricity 6, and then given up for good to one particular computer.
+
+     What it buys is the one thing internet banking could not do: notes going INTO an
+     account somewhere other than a cash machine. Taking them out still needs a real
+     machine, and that asymmetry is deliberate -- a cassette is a box that swallows notes
+     and counts them, not one that hands them back. ]]
+function TC_InstallCassetteAction:perform()
+    local TC = TheCatalogue
+
+    local part = TC.findCassette(self.character)
+    if part and TC.installCassette(self.computer) then
+        TC.removeItem(part)
+        HaloTextHelper.addGoodText(self.character, getText("IGUI_TC_CassetteInstalled"))
+        self.character:getXp():AddXP(Perks.Electricity, 30)
+    end
+
+    ISBaseTimedAction.perform(self)
+end
+
+function TC_InstallCassetteAction:new(character, computer)
+    local o = ISBaseTimedAction.new(self, character)
+    o.computer = computer
+    o.stopOnWalk = true
+    o.stopOnRun  = true
+    -- The longest install in the mod: this is a steel assembly being fitted, not a disc.
+    o.maxTime = 480
+    return o
+end
