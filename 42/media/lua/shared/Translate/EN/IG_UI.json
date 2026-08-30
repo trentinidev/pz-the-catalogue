@@ -135,7 +135,13 @@
     "IGUI_TC_ATMPitch3": "No limit, no fee and no interest - only what you put in.",
     "IGUI_TC_ATMPitch4": "You are given a card, and you choose a four-digit PIN.",
 
-    "IGUI_TC_CardName": "Credit Card - %1",
+    "IGUI_TC_ATMChoose": "Which card?",
+    "IGUI_TC_ATMLostTitle": "No card on you",
+    "IGUI_TC_ATMLost1": "An account is reached with its card, and you are not carrying one.",
+    "IGUI_TC_ATMLost2": "Nothing is lost. That account keeps its number, its balance and its statement, and opens again the day the card turns up.",
+    "IGUI_TC_ATMLost3": "The machine can open you a second account instead, with a card and a PIN of its own.",
+
+    "IGUI_TC_CardName": "Credit Card - %1 (%2)",
     "IGUI_TC_BankGreeting": "Good day, %1",
     "IGUI_TC_BankHolderUnknown": "Account Holder",
 
@@ -152,8 +158,12 @@
 
     "IGUI_TC_BankOpenAccount": "Open an account",
     "IGUI_TC_BankOpenFailed": "The machine could not open an account",
+    "IGUI_TC_BankLostCard": "Lost card - open a new account",
+    "IGUI_TC_BankInsertCard": "Insert card",
+    "IGUI_TC_BankSelectCard": "Choose a card first",
+    "IGUI_TC_BankColOpened": "Opened",
+    "IGUI_TC_BankCardGone": "Your card is no longer on you - the machine ended the session",
     "IGUI_TC_BankOpened": "Account opened - your card has been printed",
-    "IGUI_TC_BankCardReissued": "Card not found - a replacement has been printed",
 
     "IGUI_TC_BankAccountNo": "Account",
     "IGUI_TC_BankHolder": "Card holder",

@@ -5,7 +5,7 @@ What is deliberately not built yet, and why. Everything here was considered and
 parked on purpose -- none of it is rejected. Landed work lives in CHANGELOG.md;
 this file is the other half of that story.
 
-Current version: 0.1.1-beta. 1.0.0 is reserved for the first build that has been
+Current version: 0.2.0-beta. 1.0.0 is reserved for the first build that has been
 played end to end. It does NOT promise a dedicated server: server authority is
 deferred past 1.0 rather than half-done before it, and the README says the same.
 
@@ -88,10 +88,13 @@ CONTENT AND ECONOMY
    It is parked rather than done because it is a design question and not a wiring
    one. If the catalogue can charge the account from anywhere, cash stops mattering
    and the walk to the machine was for nothing; if it can only charge it while you
-   are standing at a machine, the catalogue becomes a thing you use at ATMs. The
-   third reading -- the card is what the catalogue bills, and having it on you is
-   the requirement -- is the one worth trying first, and it wants the card to be
-   losable in a way that costs something.
+   are standing at a machine, the catalogue becomes a thing you use at ATMs.
+
+   The third reading -- the card is what the catalogue bills, and having it on you
+   is the requirement -- is the one worth trying first, and 0.2.0-beta has already
+   built the half it needs: the card is the account, it has to be on your person,
+   and losing it costs the balance. What is left is deciding whether the catalogue
+   may read it at all, and TC.cardsOnPlayer is the function that would answer.
 
 7. Catalogue inserts
 
@@ -129,5 +132,5 @@ Kept here so nothing on the list gets proposed twice:
   - Requiring the catalogue in hand while the window is open
   - Mod-item integration: other mods' items priced by the same rules and
     filterable by source mod
-  - Cash machines: a bank account on the character, a credit card bound to it
-    with a PIN, and deposits and withdrawals in real notes at any vanilla ATM
+  - Cash machines: one account per credit card, a PIN, and deposits and
+    withdrawals in real notes at any vanilla ATM. The card must be on you.

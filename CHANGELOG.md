@@ -12,6 +12,64 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.2.0-beta — 2026-08-29
+
+**The card is the account.** This replaces the rule 0.1.0-beta shipped with, and it is a
+save-format change with a migration behind it.
+
+### The rule that was wrong
+0.1.0-beta kept ONE account per character and treated the card as a credential: enter the
+PIN and the machine printed you another. Played, it did the thing it should not have — it
+let a player bank while the card sat in a crate on the other side of the map. The card was
+set dressing, and an account you can reach from anywhere with a number you memorised is
+not an account, it is a second inventory that weighs nothing.
+
+### The rule now
+- **One account per CARD.** The number lives on the plastic. A card that is not on your
+  person — hand, pockets, a bag, a wallet inside a bag; `getAllTypeRecurse` walks all of
+  it — is an account you cannot reach, PIN or no PIN.
+- **No card at the machine, and it offers you a NEW account**, at zero, with its own card
+  and its own PIN. The old one is not recovered and not lost: it keeps its number, its
+  balance and its statement, and opens again the day the card turns up. Opening a first
+  account and replacing a lost one are deliberately the same button, because they do the
+  same thing.
+- **More than one card on you, and the machine asks which.** A new `choose` screen lists
+  them by account number and the date each was opened. **It shows no balances** — it is
+  drawn before a PIN has been entered, and a machine that shows you what is in an account
+  before establishing you may look is a display case.
+- **The card leaving mid-session ends the session.** Checked on the same timer that
+  notices you walking away, because a rule enforced only at the moment the window opened
+  would be a rule about opening windows. The inventory is fully usable underneath this
+  window; putting the card down in front of the ATM is an ordinary thing to do.
+- **The PIN proves you may use the card you are holding.** It proves nothing about a card
+  you are not, so nothing is reissued at the keypad any more.
+
+**What this costs, and it is the point.** A card that burns with the house it was in takes
+its balance out of reach for good. The money is now safe from weight and from your own
+death-drop, and exactly as safe as one small item you have to keep track of.
+
+### Fixed
+- **Cards sorted by date could not actually be sorted by date.** `opened` is the game
+  clock and the game clock ticks in HOURS, so two accounts opened in the same in-game hour
+  carry the same stamp — and losing a card and walking to the next machine is minutes of
+  game time. The tie fell through to the account number, which is random, so "oldest
+  first" was silently "in whatever order the dice came up". Each account is stamped with a
+  counter when it is opened and the chooser sorts on that.
+
+### Migration
+The single 0.1.0-beta account is folded into the new table on the first right-click of a
+cash machine, keeping its number, balance, PIN and statement, and the old modData key is
+cleared so it runs once and never again. It sorts ahead of anything opened since, which is
+right — there was only ever one of it.
+
+### Also
+- A card's name carries the last four digits: *Credit Card - Bob Smith (9025)*. With two
+  cards in a bag, the same name twice over is not a label, it is a coin toss.
+- An account whose card could not be created is rolled back rather than left as an orphan
+  the player can see in no window and spend from nowhere.
+
+---
+
 ## 0.1.1-beta — 2026-08-29
 
 The first play of the cash machine. Everything below is a layout fault or a wording one:

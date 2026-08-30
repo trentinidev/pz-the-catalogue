@@ -1,15 +1,25 @@
 --[[ The Catalogue -- the cash machine.
 
-     ONE WINDOW, FOUR SCREENS, because that is what the machine in the wall is. A real
-     ATM does not open four windows; it swaps what is on the one screen it has, and every
+     ONE WINDOW, FIVE SCREENS, because that is what the machine in the wall is. A real
+     ATM does not open five windows; it swaps what is on the one screen it has, and every
      step is answered before the next one appears. So this is a single ISCollapsableWindow
      with a `screen` field, all of its widgets built once in createChildren and shown or
      hidden by applyScreen.
 
-         welcome   there is no account yet: what one is, and the button that opens it
+         welcome   no card on the player: what an account is, or -- if they have accounts
+                   and no card to any of them -- what has become of the old one, and the
+                   button that opens a new one either way
+         choose    more than one card on the player: which of them are we talking about
          pin       the keypad -- entering a PIN, choosing one, confirming a new one
          account   the balance, the statement, and the two things you can do
          amount    how much, in quick steps or typed, for a deposit or a withdrawal
+
+     THE CARD IS THE ACCOUNT, and everything on this screen follows from it. openingScreen
+     asks TC.cardsOnPlayer and nothing else: no card on the person means no account is
+     reachable, whatever the save data says and whatever PIN can be typed. 0.1.0-beta got
+     this wrong -- it kept one account per character, treated the card as a credential, and
+     happily let a player bank while the card sat in a crate on the other side of the map.
+     TC_Bank.lua's header has the full version of the rule and what it costs.
 
      WHY NOT ON THE RAIL. Buy, Sell and Ledger are three faces of one catalogue and the
      rail down their right edge is what makes that true (see TC_UI.lua). The cash machine
@@ -23,11 +33,8 @@
      remember, and it would have made the PIN a formality typed at account opening and
      never again. Three wrong tries ends the session and the player walks back; the card
      is not eaten, because a mod that permanently destroys the way into your own savings
-     over a typo is a mod that gets uninstalled.
-
-     LOSING THE CARD IS NOT LOSING THE MONEY. With the PIN entered and no card on the
-     player, the machine prints another one. See TC_Bank.lua: the card is a credential,
-     the account is the money, and they are deliberately not the same object.
+     over a typo is a mod that gets uninstalled. The PIN proves you may use the card you
+     are holding -- it proves nothing about a card you are not.
 ]]
 
 TheCatalogue = TheCatalogue or {}
@@ -62,8 +69,9 @@ local INSET = TC.UI.SCROLL_GUTTER
      "all" is nearly always what is meant, and the typed field is there for the rest. ]]
 local QUICK = { 1, 5, 10, 20, 50, 100 }
 
--- The four screens, named once so a typo is a nil rather than a silently dead branch.
+-- The five screens, named once so a typo is a nil rather than a silently dead branch.
 local WELCOME = "welcome"
+local CHOOSE  = "choose"
 local PIN     = "pin"
 local ACCOUNT = "account"
 local AMOUNT  = "amount"
@@ -201,6 +209,54 @@ function TC_StatementList:doDrawItem(y, item, alt)
 end
 
 -- ---------------------------------------------------------------------------
+-- The card chooser
+-- ---------------------------------------------------------------------------
+
+--[[ The cards on the player, one to a row, for the screen that asks which one.
+
+     NO BALANCES ON THIS LIST. It is drawn before a PIN has been entered, and a machine
+     that shows you what is in an account before it has established you may look is not a
+     machine, it is a display case. The number and the date it was opened are enough to
+     tell one card from another, which is the only question this screen asks. ]]
+TC_CardList = ISScrollingListBox:derive("TC_CardList")
+
+--[[ Where the rule between the two columns sits.
+
+     The date is a fixed-width string, so the column it lives in is measured off it -- and
+     off its own heading, which may be wider in some language -- and the account numbers
+     take everything left over. One definition, used by the row and by the header strip the
+     window draws above the list, so a heading cannot drift off the values under it. ]]
+local function cardRule(listW)
+    local tm = getTextManager()
+    local w  = math.max(tm:MeasureStringX(UIFont.Small, "1993-07-09 13:00"),
+                        tm:MeasureStringX(UIFont.Small, getText("IGUI_TC_BankColOpened")))
+    return listW - INSET - w - TC.UI.CELL_PAD
+end
+
+function TC_CardList:doDrawItem(y, item, alt)
+    local card = item.item
+    local w    = self:getWidth()
+    local F    = UIFont.Small
+
+    if self.selected == item.index then
+        self:drawRect(0, y, w, ROW_HGT - 1, 0.55, 0.24, 0.34, 0.45)
+    end
+    self:drawRect(0, y + ROW_HGT - 1, w, 1, 0.25, 1, 1, 1)
+
+    local ruleX = cardRule(w)
+    self:drawRect(ruleX, y, 1, ROW_HGT - 1, 0.22, 1, 1, 1)
+
+    local ty = y + (ROW_HGT - FONT_HGT_SMALL) / 2
+
+    self:drawText(TC.truncate(F, card.account.number or "?", ruleX - INSET - TC.UI.CELL_PAD),
+                  INSET, ty, 0.92, 0.92, 0.95, 1, F)
+    TC.drawRight(self, tostring(card.account.opened or "?"), w - INSET, ty,
+                 F, 0.62, 0.62, 0.66)
+
+    return y + ROW_HGT
+end
+
+-- ---------------------------------------------------------------------------
 -- The window
 -- ---------------------------------------------------------------------------
 
@@ -228,15 +284,23 @@ local function keypadWidth()
     return keyWidth() * 3 + KEY_GAP * 2
 end
 
--- The four lines of sales patter on the welcome screen, in order.
+--[[ The welcome screen's body text, and there are two of them.
+
+     PITCH is the first-account version: what an account is, for somebody who has never
+     had one. LOST is what the same screen says to somebody who HAS accounts and is
+     standing there without the card to any of them -- a different situation that wants
+     different words, because the thing they most need told is that the old balance has
+     not gone anywhere. ]]
 local PITCH = { "IGUI_TC_ATMPitch1", "IGUI_TC_ATMPitch2",
                 "IGUI_TC_ATMPitch3", "IGUI_TC_ATMPitch4" }
 
+local LOST  = { "IGUI_TC_ATMLost1", "IGUI_TC_ATMLost2", "IGUI_TC_ATMLost3" }
+
 --[[ The narrowest this window may be dragged: whatever the widest thing on any of the
-     four screens actually needs.
+     five screens actually needs.
 
      Every screen is measured, not just the one that happens to be open, because a resize
-     made on the account screen has to survive switching to the keypad. Three button rows,
+     made on the account screen has to survive switching to the keypad. Four button rows,
      the keypad grid and the longest line of welcome text, and the largest of them wins. ]]
 local function minimumWidth()
     local quick = {}
@@ -266,6 +330,12 @@ local function minimumWidth()
         TC.buttonRowWidth({ getText("IGUI_TC_BankConfirm"),
                             getText("IGUI_TC_BankBack") }, UIFont.Medium),
         TC.buttonRowWidth({ getText("IGUI_TC_BankOpenAccount"),
+                            getText("IGUI_TC_BankCancel") }, UIFont.Medium),
+        -- The welcome screen's other face: its button says "Lost card - open a new one",
+        -- which is the longest label the mod has.
+        TC.buttonRowWidth({ getText("IGUI_TC_BankLostCard"),
+                            getText("IGUI_TC_BankCancel") }, UIFont.Medium),
+        TC.buttonRowWidth({ getText("IGUI_TC_BankInsertCard"),
                             getText("IGUI_TC_BankCancel") }, UIFont.Medium)
     )
 
@@ -273,7 +343,7 @@ local function minimumWidth()
 end
 
 --[[ And the shortest it may be dragged, which is whatever the KEYPAD screen needs -- the
-     tallest of the four, and the only one with nothing elastic on it to give up.
+     tallest of the five, and the only one with nothing elastic on it to give up.
 
      Counted as the real stack: headline, prompt, the row of PIN boxes, four rows of keys,
      the status line, and the button row at the bottom. The title bar cannot be asked
@@ -302,7 +372,6 @@ function TC_ATMWindow:new(x, y, w, h, playerNum, atm)
     o.player    = getSpecificPlayer(playerNum)
     o.atm       = atm
 
-    o.screen     = TC.hasAccount(o.player) and PIN or WELCOME
     o.pinMode    = "enter"          -- enter | new | confirm
     o.pinBuffer  = ""
     o.pinFirst   = ""
@@ -310,10 +379,45 @@ function TC_ATMWindow:new(x, y, w, h, playerNum, atm)
     o.amountMode = "deposit"
     o.amount     = 0
 
+    --[[ WHICH ACCOUNT THIS SESSION IS ABOUT, set the moment a card is chosen and nil until
+         then. Everything downstream -- the balance, the statement, the deposit, the
+         withdrawal -- is addressed by this number rather than by "the player's account",
+         because a player may hold several cards and the machine has to be talking about
+         exactly one of them. ]]
+    o.accountNumber = nil
+
+    o.screen = o:openingScreen()
+
     o:setResizable(true)
     o.minimumWidth  = minimumWidth()
     o.minimumHeight = minimumHeight()
     return o
+end
+
+--[[ Which screen the machine wakes up on, decided by WHAT IS IN THE PLAYER'S POCKETS.
+
+     This is the access rule and it is deliberately the first thing that happens. No card
+     on the person means no account is reachable, whatever the character's save data says
+     and whatever PIN they can type -- 0.1.0-beta got this wrong, let a player bank with
+     the card in a crate across the map, and made the card set dressing.
+
+         no cards    the welcome screen, which offers to open one. It says different words
+                     depending on whether this is a first account or a lost card, but the
+                     button does the same thing either way: a NEW account, at zero.
+         one card    straight to its PIN. Asking "which card?" of somebody holding one is
+                     a question with one answer and a click to give it.
+         several     the chooser, because the machine cannot know which one they meant. ]]
+function TC_ATMWindow:openingScreen()
+    local cards = TC.cardsOnPlayer(self.player)
+
+    if #cards == 0 then return WELCOME end
+
+    if #cards == 1 then
+        self.accountNumber = cards[1].account.number
+        return PIN
+    end
+
+    return CHOOSE
 end
 
 --[[ The vertical stack every screen shares, walked down in one place.
@@ -398,6 +502,17 @@ function TC_ATMWindow:createChildren()
     end
     self.pinCancelBtn = self:mkButton(getText("IGUI_TC_BankCancel"), TC_ATMWindow.onDone)
 
+    -- choose
+    self.cardList = TC_CardList:new(PAD, 0, self.width - PAD * 2, 10)
+    self.cardList:initialise(); self.cardList:instantiate()
+    self.cardList.itemheight = ROW_HGT
+    self.cardList.drawBorder = true
+    self.cardList.target = self
+    self:addChild(self.cardList)
+
+    self.insertBtn      = self:mkButton(getText("IGUI_TC_BankInsertCard"), TC_ATMWindow.onInsertCard)
+    self.chooseCancelBtn = self:mkButton(getText("IGUI_TC_BankCancel"),    TC_ATMWindow.onDone)
+
     -- account
     self.list = TC_StatementList:new(PAD, 0, self.width - PAD * 2, 10)
     self.list:initialise(); self.list:instantiate()
@@ -441,6 +556,7 @@ end
 function TC_ATMWindow:setScreen(screen)
     self.screen = screen
     if screen == ACCOUNT then self:refreshStatement() end
+    if screen == CHOOSE  then self:refreshCards() end
     self:applyScreen()
 end
 
@@ -458,6 +574,10 @@ function TC_ATMWindow:applyScreen()
 
     for _, b in ipairs(self.keys) do b:setVisible(s == PIN) end
     self.pinCancelBtn:setVisible(s == PIN)
+
+    self.cardList:setVisible(s == CHOOSE)
+    self.insertBtn:setVisible(s == CHOOSE)
+    self.chooseCancelBtn:setVisible(s == CHOOSE)
 
     self.list:setVisible(s == ACCOUNT)
     self.depositBtn:setVisible(s == ACCOUNT)
@@ -484,10 +604,24 @@ function TC_ATMWindow:layoutWidgets()
     local s = self.screen
 
     if s == WELCOME then
-        local slots = TC.buttonRow(L.x, L.w, { getText("IGUI_TC_BankOpenAccount"),
+        local slots = TC.buttonRow(L.x, L.w, { self:openLabel(),
                                                getText("IGUI_TC_BankCancel") }, UIFont.Medium)
         self:place(self.openBtn,  slots[1], L.buttonY)
         self:place(self.leaveBtn, slots[2], L.buttonY)
+
+    elseif s == CHOOSE then
+        -- Below its own header strip, which the window draws rather than the list -- the
+        -- same arrangement the statement, the ledger and the catalogue all use.
+        local listY = L.bodyY + HEADER_HGT
+        self.cardList:setX(L.x)
+        self.cardList:setY(listY)
+        self.cardList:setWidth(L.w)
+        self.cardList:setHeight(math.max(ROW_HGT, L.bodyY + L.bodyH - listY))
+
+        local slots = TC.buttonRow(L.x, L.w, { getText("IGUI_TC_BankInsertCard"),
+                                               getText("IGUI_TC_BankCancel") }, UIFont.Medium)
+        self:place(self.insertBtn,       slots[1], L.buttonY)
+        self:place(self.chooseCancelBtn, slots[2], L.buttonY)
 
     elseif s == PIN then
         local kw  = keyWidth()
@@ -574,9 +708,57 @@ end
 
 function TC_ATMWindow:refreshStatement()
     self.list:clear()
-    for _, entry in ipairs(TC.statement(self.player)) do
+    for _, entry in ipairs(TC.statement(self.player, self.accountNumber)) do
         self.list:addItem(entry.when or "", entry)
     end
+end
+
+--[[ Fill the chooser from what is actually in the player's pockets right now.
+
+     Re-read rather than remembered from when the window opened, because this is the same
+     question the access rule asks and there is no reason for two answers to it to exist.
+     The selection is left on the first row so that Insert card always has something to
+     act on. ]]
+function TC_ATMWindow:refreshCards()
+    self.cardList:clear()
+    for _, card in ipairs(TC.cardsOnPlayer(self.player)) do
+        self.cardList:addItem(card.account.number or "", card)
+    end
+    self.cardList.selected = 1
+end
+
+--[[ What the welcome screen's big button says, which depends on why the player is looking
+     at it. Opening a first account and replacing a lost card do exactly the same thing --
+     a new account at zero -- and the label is the only place the difference is visible, so
+     it has to be right. ]]
+function TC_ATMWindow:openLabel()
+    if TC.hasAnyAccount(self.player) then return getText("IGUI_TC_BankLostCard") end
+    return getText("IGUI_TC_BankOpenAccount")
+end
+
+function TC_ATMWindow:onInsertCard()
+    local sel = self.cardList.items[self.cardList.selected]
+    if not sel then
+        self:setMessage(getText("IGUI_TC_BankSelectCard"), true)
+        return
+    end
+
+    --[[ Re-asked, because the list was built when the screen opened and the inventory is
+         fully usable underneath this window. A card put down between the chooser being
+         drawn and the button being pressed must not reach a keypad -- the session would
+         only be killed on the next range tick anyway, and being refused here says why. ]]
+    local number = sel.item.account.number
+    if not TC.holdsCardFor(self.player, number) then
+        self:setScreen(CHOOSE)
+        self:setMessage(getText("IGUI_TC_BankCardGone"), true)
+        return
+    end
+
+    self.accountNumber = number
+    self.pinMode   = "enter"
+    self.pinBuffer = ""
+    self.pinTries  = 0
+    self:setScreen(PIN)
 end
 
 -- ---------------------------------------------------------------------------
@@ -645,14 +827,18 @@ function TC_ATMWindow:submitPin()
             return
         end
 
+        -- The session is now about the account that was just opened. Without this the
+        -- next screen would be addressed at nil and show an empty account that exists.
+        self.accountNumber = acct.number
+
         TC.playSound(self.player, "cash")
         self:setScreen(ACCOUNT)
         self:setMessage(getText("IGUI_TC_BankOpened"), false)
         return
     end
 
-    -- "enter": the ordinary case, unlocking an account that already exists.
-    if not TC.checkPin(self.player, self.pinBuffer) then
+    -- "enter": the ordinary case, unlocking the account whose card was inserted.
+    if not TC.checkPin(self.player, self.accountNumber, self.pinBuffer) then
         self.pinBuffer = ""
         self.pinTries  = self.pinTries + 1
 
@@ -671,20 +857,13 @@ function TC_ATMWindow:submitPin()
     self.pinBuffer = ""
     self.pinTries  = 0
 
-    --[[ Right PIN, no card on the player: print one on the way through.
+    --[[ NO CARD IS PRINTED HERE, and the absence is the design.
 
-         This is the whole reason the balance does not live on the card. The account was
-         reached with the credential that identifies its holder, so the plastic is a
-         convenience being replaced, not a key being forged. ]]
-    local reissued = false
-    if not TC.findCard(self.player) then
-        reissued = TC.issueCard(self.player) ~= nil
-    end
-
+         0.1.0-beta reissued one at this point, on the reasoning that the PIN identified
+         the holder and the plastic was a replaceable convenience. That is exactly what
+         made the card meaningless. The PIN now proves you may use the card you are
+         holding; it proves nothing about a card you are not. ]]
     self:setScreen(ACCOUNT)
-    if reissued then
-        self:setMessage(getText("IGUI_TC_BankCardReissued"), false)
-    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -723,7 +902,7 @@ function TC_ATMWindow:available()
     if self.amountMode == "deposit" then
         return TC.getBalance(self.player)
     end
-    return TC.bankBalance(self.player)
+    return TC.bankBalance(self.player, self.accountNumber)
 end
 
 function TC_ATMWindow:setAmount(n)
@@ -762,9 +941,9 @@ function TC_ATMWindow:onConfirmAmount()
 
     local ok, why
     if self.amountMode == "deposit" then
-        ok, why = TC.bankDeposit(self.player, amount)
+        ok, why = TC.bankDeposit(self.player, self.accountNumber, amount)
     else
-        ok, why = TC.bankWithdraw(self.player, amount)
+        ok, why = TC.bankWithdraw(self.player, self.accountNumber, amount)
     end
 
     if not ok then
@@ -804,7 +983,19 @@ function TC_ATMWindow:statLine(left, right, y, label, value, font, r, g, b)
 end
 
 function TC_ATMWindow:headline()
-    if self.screen == WELCOME then return getText("IGUI_TC_ATMWelcome") end
+    --[[ The welcome screen has two faces and they are NOT the same news.
+
+         Somebody who has never banked is being offered something. Somebody with accounts
+         and no card is being told that the way into them is not on them -- which is the
+         single most important thing the machine can say at that moment, and saying "Open
+         a Catalogue account" instead would read as if the old balance had been forgotten
+         about. ]]
+    if self.screen == WELCOME then
+        if TC.hasAnyAccount(self.player) then return getText("IGUI_TC_ATMLostTitle") end
+        return getText("IGUI_TC_ATMWelcome")
+    end
+
+    if self.screen == CHOOSE then return getText("IGUI_TC_ATMChoose") end
 
     if self.screen == PIN then
         if self.pinMode == "new"     then return getText("IGUI_TC_PinChoose") end
@@ -817,19 +1008,35 @@ function TC_ATMWindow:headline()
         return getText("IGUI_TC_BankWithdraw")
     end
 
-    local acct = TC.account(self.player)
+    local acct = TC.account(self.player, self.accountNumber)
     return getText("IGUI_TC_BankGreeting", (acct and acct.holder) or "")
 end
 
 function TC_ATMWindow:prerender()
     ISCollapsableWindow.prerender(self)
 
-    -- Walking away ends the session. Checked on a timer rather than every frame, the same
-    -- way the buy window checks that the catalogue is still in the bag.
+    --[[ Two things end a session, both checked on the same timer rather than every frame:
+         walking away from the machine, and the card leaving the player.
+
+         The second is not paranoia about a case that cannot happen. A session lasts as
+         long as the player wants it to, the inventory is fully usable underneath it, and
+         dropping the card into the crate beside the ATM mid-transaction is a perfectly
+         ordinary thing to do. The access rule is that the card is on you -- and a rule
+         that were only enforced at the moment the window opened would be a rule about
+         opening windows. ]]
     local now = getTimestampMs()
     if not self.lastRangeCheck or (now - self.lastRangeCheck) >= RANGE_CHECK_MS then
         self.lastRangeCheck = now
+
         if not self:stillAtMachine() then
+            self:close()
+            return
+        end
+
+        -- Only once a card has actually been inserted. Before that there is no account to
+        -- lose hold of, and the welcome screen exists precisely for the player with none.
+        if self.accountNumber and not TC.holdsCardFor(self.player, self.accountNumber) then
+            HaloTextHelper.addBadText(self.player, getText("IGUI_TC_BankCardGone"))
             self:close()
             return
         end
@@ -841,6 +1048,7 @@ function TC_ATMWindow:prerender()
                    L.x, L.w, L.headlineY, UIFont.Large, 0.85, 1, 0.85)
 
     if     self.screen == WELCOME then self:drawWelcome(L)
+    elseif self.screen == CHOOSE  then self:drawChoose(L)
     elseif self.screen == PIN     then self:drawPin(L)
     elseif self.screen == ACCOUNT then self:drawAccount(L)
     elseif self.screen == AMOUNT  then self:drawAmount(L)
@@ -892,16 +1100,19 @@ function TC_ATMWindow:drawWelcome(L)
 
     local textW = L.w - PAD * 4
 
+    -- Which of the two things this screen is here to say. See :headline.
+    local body = TC.hasAnyAccount(self.player) and LOST or PITCH
+
     -- Laid out once into a flat list of { text, gapAfter }, so the height of the block is
     -- known before a single line is drawn and the whole thing can be centred in the panel.
     local rows, blockH = {}, 0
-    for p, key in ipairs(PITCH) do
+    for p, key in ipairs(body) do
         local lines = TC.wrapText(UIFont.Small, getText(key), textW)
         for i, line in ipairs(lines) do
             local last = (i == #lines)
             local gap  = 0
             if not last then gap = MSG_LEADING
-            elseif p < #PITCH then gap = LINE_GAP end
+            elseif p < #body then gap = LINE_GAP end
 
             table.insert(rows, { text = line, gap = gap })
             blockH = blockH + FONT_HGT_SMALL + gap
@@ -919,6 +1130,23 @@ function TC_ATMWindow:drawWelcome(L)
         TC.drawCentred(self, row.text, L.x, L.w, y, UIFont.Small, 0.78, 0.78, 0.82)
         y = y + FONT_HGT_SMALL + row.gap
     end
+end
+
+--[[ The chooser's header strip, drawn on the window rather than inside the list box --
+     the arrangement every other table in this mod uses, because ISScrollingListBox has no
+     header of its own worth fighting. ]]
+function TC_ATMWindow:drawChoose(L)
+    local F     = UIFont.Small
+    local ruleX = cardRule(L.w)
+
+    self:drawRect(L.x, L.bodyY, L.w, HEADER_HGT, 0.75, 0.13, 0.13, 0.15)
+    self:drawRectBorder(L.x, L.bodyY, L.w, HEADER_HGT, 0.5, 0.4, 0.4, 0.4)
+    self:drawRect(L.x + ruleX, L.bodyY, 1, HEADER_HGT, 0.4, 1, 1, 1)
+
+    local hy = L.bodyY + (HEADER_HGT - FONT_HGT_SMALL) / 2
+    self:drawText(getText("IGUI_TC_BankAccountNo"), L.x + INSET, hy, 0.72, 0.72, 0.76, 1, F)
+    TC.drawRight(self, getText("IGUI_TC_BankColOpened"), L.x + L.w - INSET, hy,
+                 F, 0.72, 0.72, 0.76)
 end
 
 --[[ The four PIN boxes.
@@ -957,7 +1185,7 @@ function TC_ATMWindow:drawPin(L)
 end
 
 function TC_ATMWindow:drawAccount(L)
-    local acct = TC.account(self.player)
+    local acct = TC.account(self.player, self.accountNumber)
     if not acct then return end
 
     local panelH = summaryHeight()
@@ -978,7 +1206,7 @@ function TC_ATMWindow:drawAccount(L)
     y = y + LINE_GAP
 
     y = self:statLine(left, right, y, getText("IGUI_TC_BankBalance"),
-                      "$" .. TC.bankBalance(self.player), UIFont.Large, 0.78, 0.98, 0.78)
+                      "$" .. TC.bankBalance(self.player, self.accountNumber), UIFont.Large, 0.78, 0.98, 0.78)
     self:statLine(left, right, y, getText("IGUI_TC_BankOnHand"),
                   "$" .. TC.getBalance(self.player), UIFont.Small, 0.72, 0.72, 0.76)
 
@@ -1046,7 +1274,7 @@ function TC_ATMWindow:drawAmount(L)
                       UIFont.Small, 0.72, 0.72, 0.76)
     else
         self:statLine(left, right, y, getText("IGUI_TC_BankBalanceAfter"),
-                      "$" .. (TC.bankBalance(self.player) + self.amount),
+                      "$" .. (TC.bankBalance(self.player, self.accountNumber) + self.amount),
                       UIFont.Small, 0.72, 0.72, 0.76)
     end
 

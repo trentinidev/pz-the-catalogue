@@ -139,11 +139,11 @@ magazine racks and living rooms, so the mail-order company existed before you st
 writing your own. `CatalogueLootMultiplier` tunes how common, and 0 turns it off.
 
 **Banking** — right-click any vanilla cash machine, the green free-standing one or the
-one set into a wall, and the menu carries **Use cash machine**. Your character walks over
-and the machine opens: no account yet and it offers to start one, printing a
-`Credit Card - Your Name` and asking you to choose a four-digit PIN. After that it is a
-balance, a statement of the last fifty movements, and two buttons — pay money in, take
-money out, in $1 / $5 / $10 / $20 / $50 / $100 / All or any figure you type.
+one set into a wall, and the menu carries **Use ATM**. Your character walks over and the
+machine opens: no account yet and it offers to start one, printing a
+`Credit Card - Your Name (9025)` and asking you to choose a four-digit PIN. After that it
+is a balance, a statement of the last fifty movements, and two buttons — pay money in,
+take money out, in $1 / $5 / $10 / $20 / $50 / $100 / All or any figure you type.
 
 Nothing is created: a deposit takes real notes and bundles off you, a withdrawal hands
 real ones back, and there is no interest, no overdraft and no fee. What it buys you is
@@ -151,10 +151,16 @@ real ones back, and there is no interest, no overdraft and no fee. What it buys 
 it was in; the same money in your pockets is a hundred bundles and fifty kilos, and the
 withdrawal screen tells you so before you press Confirm.
 
-The card is a credential and not the money. Lose it and the machine prints another once
-you have entered the PIN — the balance never moved. Three wrong PINs end the session and
-you walk back; the machine does not keep your card. And the catalogue will not buy a card
-that is tied to an account, whosever it is.
+**The card *is* the account.** The number lives on the plastic, so a card that is not on
+you — hand, pockets, a bag, a wallet inside a bag all count — is an account you cannot
+reach, PIN or no PIN. Put the card down mid-session and the machine ends the session.
+
+Turn up without one and it will open you a **new** account, at zero, with a card and a PIN
+of its own. The old one is not recovered and not lost: it keeps its number, its balance
+and its statement, and opens again the day the card turns up. Carry both and the machine
+asks which one you mean. Three wrong PINs end the session and you walk back; the machine
+does not keep your card. And the catalogue will not buy a card that is tied to an account,
+whosever it is.
 
 *The account does not pay for orders yet* — that is [ROADMAP.txt](ROADMAP.txt) item 6a,
 and it is a design question rather than a wiring one.
@@ -192,9 +198,10 @@ which skips the wait entirely for a surcharge.
 mods, while every modded item is priced properly instead of guessed at. Every open after
 that is instant, and vanilla-only games never pay it at all.
 
-**Banking is per character, and it is not a vault.** The account rides on the character's
-own save data, so it is one account per survivor and it dies with them. It is safe from
-fire, from weight and from a bag left behind — it is not a second life.
+**A lost card is a lost balance.** The card is the only way to its account, by design —
+without that rule the account is a second inventory that weighs nothing and can be reached
+from anywhere. Burn the card with the house it was in and the money is out of reach for
+good. Accounts also ride on the character's own save data, so they die with them.
 
 **It is a beta.** 0.9.2 has been played, but not every path has. Opening an account has
 been played and the layout faults it turned up are fixed in 0.1.1-beta; paying money in
