@@ -1619,12 +1619,30 @@ function TC.openATMWindow(playerNum, atm, remoteAccount)
     local player = getSpecificPlayer(playerNum)
     if not player then return nil end
 
+    --[[ An open window is reused, and REUSING IT MEANS RE-ANSWERING WHAT IT IS.
+
+         It used to carry only the new object across, which left `remote` and the account
+         set to whatever the last session had decided. That is reachable and not rare: a
+         bank branch has an ATM and a desktop within a couple of tiles of each other, which
+         is inside the range at which the window stays open. Bank on the computer, then
+         click the machine beside it, and the cash machine came up with no Deposit and no
+         Withdraw because it still believed it was a desk.
+
+         Cheaper to close and rebuild than to reset six fields and hope the list is
+         complete: everything the window derives from those two facts -- the title, the
+         opening screen, the button row -- is decided in the constructor. ]]
     local existing = TC_ATMWindow.instances[playerNum]
     if existing then
-        existing.atm = atm or existing.atm
-        existing:setVisible(true)
-        existing:bringToTop()
-        return existing
+        local sameKind = (existing.remote == (remoteAccount ~= nil))
+                     and (existing.atm == atm)
+
+        if sameKind then
+            existing:setVisible(true)
+            existing:bringToTop()
+            return existing
+        end
+
+        existing:close()
     end
 
     local sw, sh = getCore():getScreenWidth(), getCore():getScreenHeight()

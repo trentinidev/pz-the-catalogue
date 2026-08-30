@@ -86,14 +86,3 @@ function TC.purseLabel(account)
     if account then return getText("IGUI_TC_BankBalance") end
     return getText("IGUI_TC_YourCash")
 end
-
---[[ Does a payout out of this purse weigh anything?
-
-     Cash does -- $10,000 is a hundred bundles and fifty kilos, and the sell window warns
-     about it. An account does not, which is the entire point of having one, so the online
-     catalogue has no weight warning to give and should not print a zero where a warning
-     used to be. ]]
-function TC.purseWeight(account, amount)
-    if account then return 0 end
-    return TC.cashWeight(amount)
-end
