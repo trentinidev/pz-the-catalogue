@@ -12,6 +12,54 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.4.0-beta — 2026-08-29
+
+### Added
+- **Every credit card in Knox County belongs to somebody.** The cards vanilla already
+  scatters — wallets, office desks, bedroom closets, bins, and the `Outfit_Gaudy` zombies
+  wear — now carry an owner's name, an account number and a balance. The one you pull out
+  of a dead man's wallet reads *Credit Card - Rose Miller (8471)* and is a real account
+  with real money in it that you cannot get at.
+
+  **No new distribution.** Vanilla's list of where a credit card would plausibly be is
+  better than one a mod would write, and it was never the missing part. What was missing
+  was cards *meaning* anything.
+
+- **Balances are rolled in weighted bands, not flat.** A flat $1–$10,000 makes the average
+  wallet worth five thousand dollars and every card the same size. Half of all cards are
+  petty cash, a third are an ordinary current account, and one in twenty is worth the walk
+  to a machine. Measured over 20,000 rolls: mean $1,141, and 4.6% above $5,000.
+
+- **Strangers' accounts live in the world, not on the character.** `ModData.getOrCreate`
+  is the game's per-save global store, which is where an account that is not yours belongs.
+  `TC.account` searches the character first and the world second, which is what lets one
+  machine screen deal in either.
+
+- **Naming is lazy, and that is what makes four digits work at all.** There are only 9,999
+  possible tails and vanilla scatters credit cards across thousands of containers, so a
+  world that named a card the moment one spawned would exhaust the space. A card gets its
+  identity the first time the mod actually looks at one — as loot is generated into a
+  container it can see, or on a throttled sweep of the player's own inventory, which is the
+  backstop that catches a card off a corpse, a trade, or a debug spawn. Only cards a player
+  has picked up ever cost a number; a long save might use a few dozen.
+
+- **One tail register for the whole world.** The character's own accounts come through it
+  too. A tail two accounts can answer to is not an address, and the transfer field is
+  addressed by tail alone.
+
+### Changed
+- **A transfer can be addressed to your own accounts and to any card on you — and nothing
+  else.** The world register knows every account in the county; letting a transfer name one
+  would turn the destination field into a probe, where four digits and a look at the
+  machine's reaction leak a stranger's account number without ever finding their card.
+
+### Not done yet
+A stranger's card asks for a PIN that nobody wrote down, so as of this version it is a
+locked box with no key. The mechanic for getting into one is the next decision and it is
+Vitor's to make.
+
+---
+
 ## 0.3.0-beta — 2026-08-29
 
 ### Added

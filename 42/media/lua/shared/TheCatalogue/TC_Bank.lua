@@ -91,11 +91,23 @@ function TC.accounts(player)
     return md[ACCOUNTS_KEY]
 end
 
---[[ One account by its number, or nil. The number comes off a card, so a card belonging
-     to some other character answers nil here -- which is the whole access rule. ]]
+--[[ One account by its number, or nil.
+
+     TWO PLACES ARE SEARCHED and the order is the meaningful part. An account this
+     character opened lives on the character; an account that belonged to somebody in Knox
+     County before all this lives in the world's own register (TC_WorldCards). Both are
+     reached by number, because the number comes off a card and a card does not care whose
+     it was -- which is exactly what lets one machine screen deal in either.
+
+     A card belonging to another CHARACTER of yours still answers nil, because their
+     accounts are on their save data and this one is not looking there. ]]
 function TC.account(player, number)
     if not number then return nil end
-    return TC.accounts(player)[number]
+
+    local mine = TC.accounts(player)[number]
+    if mine then return mine end
+
+    return TC.worldAccount(number)
 end
 
 --[[ Has this character ever opened one? Not the same question as "can they bank right
@@ -149,38 +161,21 @@ end
 --[[ A sixteen-digit number in the four groups a card is printed in.
 
      Not cosmetic. It is the KEY: it ties one card to one account, it is what the machine
-     reads off the plastic, and it is why a card from another character does nothing here.
-     Sixteen random digits collide often enough to worry about only in a save with some
-     millions of accounts in it, and the loop below re-rolls anyway rather than reason
-     about it.
+     reads off the plastic, and it is why a card belonging to somebody else's save does
+     nothing here.
 
-     ZombRand rather than math.random: it is the game's own generator, and it behaves
-     identically on both sides of the client/server split.
+     THE LAST FOUR DIGITS ARE THE PART THAT HAS TO BE UNIQUE, because a transfer is
+     addressed by tail alone -- four digits typed at a keypad, since sixteen would be an
+     errand -- and an address two accounts can answer to is not an address.
 
-     THE LAST FOUR DIGITS ARE MADE UNIQUE TOO, and that is the interesting half. A transfer
-     is addressed by tail alone -- four digits typed into a keypad, because sixteen would be
-     an errand -- so two of the character's accounts ending in the same four would make the
-     destination ambiguous at the worst possible moment. Rejecting the collision at the
-     point the number is minted means the identifier the player actually uses is unique by
-     construction, and no screen downstream has to ask "which 8000 did you mean". ]]
-local function newAccountNumber(accounts)
-    local tails = {}
-    for number in pairs(accounts) do
-        tails[TC.cardTail(number)] = true
-    end
-
-    for _ = 1, 64 do
-        local groups = {}
-        for i = 1, 4 do
-            groups[i] = string.format("%04d", ZombRand(10000))
-        end
-
-        local number = table.concat(groups, " ")
-        if not accounts[number] and not tails[TC.cardTail(number)] then
-            return number
-        end
-    end
-    return nil
+     ONE REGISTER FOR THE WHOLE WORLD, and this used to be narrower than that. It rolled
+     its own number and checked it against the character's other accounts, which was enough
+     while the character's accounts were the only ones in existence. They are not:
+     TC_WorldCards gives every card the world spawned an account of its own, and a tail
+     those two could both answer to would be an address with two destinations. TC.reserveTail
+     is the single place a tail is claimed now, and both openers come through it. ]]
+local function newAccountNumber()
+    return TC.reserveTail()
 end
 
 --[[ Four characters, all of them digits.
@@ -234,7 +229,7 @@ function TC.openAccount(player, pin)
     if not TC.isValidPin(pin) then return nil end
 
     local accounts = TC.accounts(player)
-    local number   = newAccountNumber(accounts)
+    local number   = newAccountNumber()
     if not number then
         TC.warn("could not find a free account number -- no account opened")
         return nil
@@ -366,8 +361,29 @@ end
 function TC.accountByTail(player, tail)
     if type(tail) ~= "string" then return nil, false end
 
-    local found, many = nil, false
+    --[[ WHAT MAY BE ADDRESSED, and it is not "everything in the world".
+
+         Your own accounts, whether or not you are carrying the card -- paying into one
+         whose card you have lost is the point, and it does not break the access rule since
+         the money still needs that card to come out again.
+
+         Plus the accounts of any cards ON you, which is what lets a stranger's card be
+         both a source and a destination once you are holding it.
+
+         And nothing else. The world register knows every account in Knox County, and
+         letting a transfer address one of them would turn this field into a probe: type
+         four digits, see whether the machine recognises them, and learn a stranger's
+         account number without ever finding their card. ]]
+    local candidates = {}
     for number, acct in pairs(TC.accounts(player)) do
+        candidates[number] = acct
+    end
+    for _, card in ipairs(TC.cardsOnPlayer(player)) do
+        candidates[card.account.number] = card.account
+    end
+
+    local found, many = nil, false
+    for number, acct in pairs(candidates) do
         if TC.cardTail(number) == tail then
             if found then many = true else found = acct end
         end
@@ -499,13 +515,17 @@ function TC.cardsOnPlayer(player)
     end
     if not list then return out end
 
-    local accounts, seen = TC.accounts(player), {}
+    local seen = {}
 
     for i = 0, list:size() - 1 do
         local item = list:get(i)
         local md   = item:getModData()
         local num  = md and md.TC_account
-        local acct = num and accounts[num]
+
+        -- Through TC.account, not the character's own table, so a card taken off a corpse
+        -- resolves against the world register and reaches the machine like any other. It
+        -- will be asked for a PIN nobody told the player, which is the feature.
+        local acct = num and TC.account(player, num)
 
         -- Two cards to one account should not exist, and a debug spawn or a duplicated
         -- save can produce one anyway. The first is kept so the machine never offers the
