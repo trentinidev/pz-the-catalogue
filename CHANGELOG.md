@@ -12,6 +12,42 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.10.3-beta — 2026-08-30
+
+### Fixed
+- **The catalogue on the ground was the size of a swimming pool.** `scale` is `0.0041`, not
+  the `0.125` inherited from vanilla.
+
+  **The bounding box was not the whole answer, and it misled me.** 0.10.2-beta measured both
+  meshes, found them the same book to within a fifth of a millimetre, kept vanilla's scale
+  on that evidence, and shipped something four tiles wide. An FBX also carries a
+  **`UnitScaleFactor`**, and PZ applies it:
+
+  | mesh | box | UnitScaleFactor |
+  |---|---|---|
+  | vanilla `Catalogue` | 14.74 × 21.43 × 0.80 | **30.48** |
+  | vanilla `BookFancy_Closed` | 16.32 × 12.31 × 3.55 | **30.48** |
+  | ours `ShopCatalogue` | 14.72 × 21.42 × 0.84 | **1.00** |
+
+  30.48 is the number of centimetres in a foot, and every vanilla mesh carries it. A default
+  Blender export carries 1.0. Same vertices, thirty times the size — so
+  `0.125 / 30.48 = 0.0041`.
+
+- **`tools/fbx_bbox.ps1` reports `UnitScaleFactor` too**, and says what the ratio means when
+  it is not 30.48. The box alone is exactly what got this wrong, so a tool that reports only
+  the box is a tool that would get it wrong again. Two meshes are the same size in game when
+  the box **and** this number match.
+
+### The cleaner fix, when you want it
+Re-export with the unit scale set so the file says **30.48** like every vanilla mesh, and
+this line goes back to `0.125` and agrees with the rest of the game. The arithmetic lives in
+the script until then.
+
+The orientation turned out to be fine — the book lies flat, cover up. The axis-order warning
+in 0.10.2-beta was a false alarm.
+
+---
+
 ## 0.10.2-beta — 2026-08-30
 
 ### Changed
