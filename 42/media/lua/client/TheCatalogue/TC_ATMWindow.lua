@@ -76,8 +76,6 @@ local PIN     = "pin"
 local ACCOUNT = "account"
 local AMOUNT  = "amount"
 
--- How wrong you may be before the machine gives up on you.
-local MAX_TRIES = 3
 
 --[[ How much room the status line gets, in lines and in the gap between them.
 
@@ -389,7 +387,6 @@ function TC_ATMWindow:new(x, y, w, h, playerNum, atm)
     o.pinMode    = "enter"          -- enter | new | confirm
     o.pinBuffer  = ""
     o.pinFirst   = ""
-    o.pinTries   = 0
     o.amountMode = "deposit"
     o.amount     = 0
 
@@ -428,10 +425,27 @@ function TC_ATMWindow:openingScreen()
 
     if #cards == 1 then
         self.accountNumber = cards[1].account.number
-        return PIN
+        return self:afterCard()
     end
 
     return CHOOSE
+end
+
+--[[ Where a card goes once it has been inserted: the keypad, or straight past it.
+
+     A machine whose reader has been wired (TC_ATMTamper) has stopped asking, so it would
+     be a lie to draw a PIN screen and then accept anything. Skipping it is also the only
+     way the player SEES that the wiring worked.
+
+     The tries counter is cleared on the way through. Getting in is getting in, however you
+     did it, and leaving a card two wrong guesses from a lockout after you have opened it
+     would be a state nobody could explain. ]]
+function TC_ATMWindow:afterCard()
+    if TC.atmBypassed(self.atm) then
+        TC.clearPinTries(TC.account(self.player, self.accountNumber))
+        return ACCOUNT
+    end
+    return PIN
 end
 
 --[[ The vertical stack every screen shares, walked down in one place.
@@ -807,8 +821,7 @@ function TC_ATMWindow:onInsertCard()
     self.accountNumber = number
     self.pinMode   = "enter"
     self.pinBuffer = ""
-    self.pinTries  = 0
-    self:setScreen(PIN)
+    self:setScreen(self:afterCard())
 end
 
 -- ---------------------------------------------------------------------------
@@ -888,24 +901,47 @@ function TC_ATMWindow:submitPin()
     end
 
     -- "enter": the ordinary case, unlocking the account whose card was inserted.
+    local acct = TC.account(self.player, self.accountNumber)
+
+    --[[ A card that has already been shut out does not get to be guessed at.
+
+         Checked before the PIN is compared, so a locked card cannot be brute-forced by
+         somebody who is willing to click through the refusal -- and so that a player who
+         locked it and then FOUND the note still has to wait, which is the lockout meaning
+         anything. ]]
+    if TC.isCardLocked(acct) then
+        self.pinBuffer = ""
+        self:setMessage(getText("IGUI_TC_PinCardLocked",
+                                math.ceil(TC.lockedHours(acct))), true)
+        return
+    end
+
     if not TC.checkPin(self.player, self.accountNumber, self.pinBuffer) then
         self.pinBuffer = ""
-        self.pinTries  = self.pinTries + 1
 
-        if self.pinTries >= MAX_TRIES then
-            -- The card is NOT retained. See the header: a mod that eats the only way into
-            -- your savings over three typos is a mod nobody keeps installed.
-            HaloTextHelper.addBadText(self.player, getText("IGUI_TC_PinLockedOut"))
+        --[[ THE COUNTER IS ON THE ACCOUNT, NOT ON THIS WINDOW.
+
+             It used to be `self.pinTries`, which meant closing the machine and reopening
+             it handed the player a fresh three, and walking to an ATM in the next town
+             handed them another. It is the same card and the same bank. TC.wrongPin also
+             knows about the Burglar trait, which is worth two extra guesses a day. ]]
+        local left, locked = TC.wrongPin(acct, self.player)
+
+        if locked then
+            -- The card is NOT retained. A mod that destroys the way into an account over
+            -- three typos is a mod nobody keeps installed; it goes quiet until tomorrow.
+            HaloTextHelper.addBadText(self.player,
+                getText("IGUI_TC_PinLockedOut", TC.PIN_LOCKOUT_HOURS))
             self:close()
             return
         end
 
-        self:setMessage(getText("IGUI_TC_PinWrong", MAX_TRIES - self.pinTries), true)
+        self:setMessage(getText("IGUI_TC_PinWrong", left), true)
         return
     end
 
     self.pinBuffer = ""
-    self.pinTries  = 0
+    TC.clearPinTries(acct)
 
     --[[ NO CARD IS PRINTED HERE, and the absence is the design.
 
@@ -1246,7 +1282,31 @@ function TC_ATMWindow:drawPin(L)
     local gap  = KEY_GAP
     local total = boxW * TC.PIN_LENGTH + gap * (TC.PIN_LENGTH - 1)
 
+    --[[ What is known about this card, kept where the digits are being typed.
+
+         The examine action says it once in halo text and then it is gone, and the player
+         who learned "1 2 4 7" three days and two towns ago is not going to remember it. So
+         the machine repeats it at the moment it is useful, which is the only moment it
+         matters. Nothing is shown for a card nobody has looked at, and nothing at all is
+         shown while a new PIN is being chosen -- there is no secret to know about a card
+         that does not exist yet. ]]
     local promptY = L.bodyY
+
+    if self.pinMode == "enter" then
+        local acct = TC.account(self.player, self.accountNumber)
+
+        if acct and TC.knowsPin(acct) then
+            TC.drawCentred(self, getText("IGUI_TC_PinKnown", acct.pin),
+                           L.x, L.w, promptY, UIFont.Small, 0.66, 0.94, 0.66)
+            promptY = promptY + FONT_HGT_SMALL + MSG_LEADING
+
+        elseif acct and TC.knowsDigits(acct) then
+            TC.drawCentred(self, getText("IGUI_TC_PinDigitsKnown", TC.pinDigits(acct)),
+                           L.x, L.w, promptY, UIFont.Small, 0.94, 0.88, 0.62)
+            promptY = promptY + FONT_HGT_SMALL + MSG_LEADING
+        end
+    end
+
     TC.drawCentred(self, TC.truncate(UIFont.Small, getText("IGUI_TC_PinPrompt"), L.w),
                    L.x, L.w, promptY, UIFont.Small, 0.68, 0.68, 0.72)
 

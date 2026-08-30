@@ -60,6 +60,38 @@ end
      of clearing whatever the player was already doing.
 
      TC_ATMAction is what turns "the walk was queued" into "the character has arrived". ]]
+--[[ A tooltip saying why an entry is greyed out.
+
+     ISContextMenu draws option.toolTip when the option carries one, and a disabled entry
+     with no explanation is worse than no entry at all -- the player is left guessing which
+     of three requirements they are missing. ]]
+local function tooltip(title, description)
+    local tip = ISToolTip:new()
+    tip:setName(title)
+    tip.description = description
+    return tip
+end
+
+local function onWire(worldobjects, playerNum, atm)
+    local player = getSpecificPlayer(playerNum)
+    if not player or not atm then return end
+
+    local square = atm:getSquare()
+    if square and luautils.walkAdj(player, square, true) then
+        ISTimedActionQueue.add(TC_WireATMAction:new(player, atm))
+    end
+end
+
+local function onForce(worldobjects, playerNum, atm)
+    local player = getSpecificPlayer(playerNum)
+    if not player or not atm then return end
+
+    local square = atm:getSquare()
+    if square and luautils.walkAdj(player, square, true) then
+        ISTimedActionQueue.add(TC_ForceATMAction:new(player, atm))
+    end
+end
+
 local function onUse(worldobjects, playerNum, atm)
     local player = getSpecificPlayer(playerNum)
     if not player or not atm then return end
@@ -102,6 +134,54 @@ local function addOptions(playerNum, context, worldobjects, test)
 
     local tex = catalogueIcon()
     if option and tex then option.iconTexture = tex end
+
+    --[[ A machine somebody has already forced open is a wrecked cabinet. It takes no
+         cards and there is nothing left in it, so the only honest thing the menu can do is
+         say so and offer nothing. ]]
+    if TC.atmBroken(atm) then
+        option.notAvailable = true
+        option.toolTip = tooltip(getText("ContextMenu_TC_UseATM"),
+                                 getText("IGUI_TC_ATMIsBroken"))
+        return
+    end
+
+    --[[ The two ways past a PIN you do not have. Both go in a submenu: they are the
+         uncommon answer, and a world menu in this game is twenty entries long before a mod
+         touches it -- putting three top-level entries on every cash machine in the county
+         would be the mod shouting. ]]
+    local sub = ISContextMenu:getNew(context)
+    context:addSubMenu(context:addOption(getText("ContextMenu_TC_ATMTamper"),
+                                         worldobjects, nil), sub)
+
+    local wire = sub:addOption(getText("ContextMenu_TC_WireATM"),
+                               worldobjects, onWire, playerNum, atm)
+
+    local level  = player:getPerkLevel(Perks.Electricity)
+    local driver = TC.findScrewdriver(player)
+
+    if TC.atmBypassed(atm) then
+        wire.notAvailable = true
+        wire.toolTip = tooltip(getText("ContextMenu_TC_WireATM"),
+                               getText("IGUI_TC_ATMAlreadyWired"))
+    elseif level < TC.ATM_ELEC_MIN or not driver then
+        wire.notAvailable = true
+        wire.toolTip = tooltip(getText("ContextMenu_TC_WireATM"),
+                               getText("IGUI_TC_ATMWireNeeds", TC.ATM_ELEC_MIN))
+    end
+
+    local force = sub:addOption(getText("ContextMenu_TC_ForceATM"),
+                                worldobjects, onForce, playerNum, atm)
+
+    if not TC.findPryBar(player) then
+        force.notAvailable = true
+        force.toolTip = tooltip(getText("ContextMenu_TC_ForceATM"),
+                                getText("IGUI_TC_ATMForceNeeds"))
+    else
+        -- Said before the swing, not after: this destroys the machine for good, and the
+        -- accounts you were going to use it for go with it.
+        force.toolTip = tooltip(getText("ContextMenu_TC_ForceATM"),
+                                getText("IGUI_TC_ATMForceWarn"))
+    end
 end
 
 Events.OnFillWorldObjectContextMenu.Add(addOptions)

@@ -12,6 +12,68 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.5.0-beta — 2026-08-29
+
+**Getting into an account that was not yours.** 0.4.0-beta put real accounts on the cards
+the world spawns and left them locked with no key. This is the key — nine of them.
+
+Ten thousand combinations against three tries a day is not a puzzle, it is a wall, so
+every route below exists to cut that number down to something a person can work through.
+
+### Finding the number
+- **The note in the wallet** (15% of cards). A scrap of paper in the same container. It is
+  vanilla's own `SheetPaper2`, renamed *Scrap of Paper (card 8471)* so nobody throws it out
+  of a full inventory — but the number is not in the name. Reading it is its own act.
+- **Written on the back** (10%). *Examine the card* and there it is.
+- **Left in a drawer somewhere else in the building** (15%). Loot is generated one
+  container at a time, so the note is queued against the square the card was found on and
+  dropped into the next container filled within a dozen tiles. **The queue is allowed to
+  fail**: loot the wallet, never open another drawer in that house, and you never find it,
+  which is what a real house would do.
+- **Lazy PINs** (one card in five). `1234`, `0000`, `2580`, a birth year. Costs nothing to
+  try on every card you find, and the day it works it feels like you knew something.
+
+### Working it out
+- **The pencil impression** — the default, on the 60% of cards with nothing else. The owner
+  wrote the number on the plastic and rubbed it out, and the pressure is still there.
+  *Examine the card* gives you the four **digits with no order**: at most 24 arrangements,
+  fewer when one repeats. `TC.pinDigits` sorts them, so there is no code path where they
+  can come out in PIN order by accident.
+- The machine repeats what you know at the keypad. Learning "1 2 4 7" three days and two
+  towns ago is no use if only the halo text ever said it.
+
+### The cost of guessing
+- **Three wrong PINs and the card is refused for 24 game hours.** The counter and the
+  lockout live **on the account**, not on the window — closing the machine and reopening
+  it used to hand out three fresh guesses, and walking to an ATM in the next town another
+  three. It is the same card and the same bank.
+- The card is never retained. A mod that destroys the way into an account over three typos
+  is a mod nobody keeps installed.
+- **Burglar gets five tries** instead of three, and examines a card in half the time. Not a
+  dice roll: a chance to fail that is re-rollable by clicking again only teaches the player
+  to click again.
+
+### Going round the PIN entirely
+- **Wire the card reader** — a screwdriver and Electrical 3. The machine stops asking and
+  takes any card for six hours. **Per-machine and it expires**, both load-bearing: what it
+  buys is a *place*. For the next six hours there is an ATM in Rosewood that will take
+  anything, and everything in your bag you cannot open is suddenly worth carrying there.
+  Pays Electricity XP, because a system that demands a skill and never feeds it punishes
+  using it.
+- **Force the cashbox** — a crowbar or a sledgehammer. Physical money, no cards involved.
+  Slow, and it makes noise *every second* rather than once at the end, so you hear it
+  building and get to decide whether to keep going. The machine is wrecked afterwards, for
+  good and for every account you were going to use it for. Once per machine, ever: the haul
+  is what an ATM had in it, not a balance, or this would be a money printer on a cooldown.
+
+Reading anything needs light and literacy, the same checks vanilla puts in front of a book.
+
+### Measured
+Over 4,000 rolls: 21.2% lazy PINs. Secrets land at 12.7% back / 15.2% note / 11.7% house /
+60.4% impression.
+
+---
+
 ## 0.4.0-beta — 2026-08-29
 
 ### Added
