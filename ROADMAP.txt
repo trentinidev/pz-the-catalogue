@@ -78,24 +78,6 @@ CONTENT AND ECONOMY
    climb, decoration falls. Cheap to fake with a multiplier over TC_PriceTable,
    expensive to make feel deliberate rather than random.
 
-6a. Paying for an order from the account
-
-   Banking landed in 0.1.0-beta and the two halves do not touch yet: an order is
-   still settled out of the notes in your pockets, and the account is only a place
-   to leave them. Named by Vitor as the point of the feature, so this is a WHEN and
-   not an IF.
-
-   It is parked rather than done because it is a design question and not a wiring
-   one. If the catalogue can charge the account from anywhere, cash stops mattering
-   and the walk to the machine was for nothing; if it can only charge it while you
-   are standing at a machine, the catalogue becomes a thing you use at ATMs.
-
-   The third reading -- the card is what the catalogue bills, and having it on you
-   is the requirement -- is the one worth trying first, and 0.2.0-beta has already
-   built the half it needs: the card is the account, it has to be on your person,
-   and losing it costs the balance. What is left is deciding whether the catalogue
-   may read it at all, and TC.cardsOnPlayer is the function that would answer.
-
 7. Catalogue inserts
 
    Flavour pages bound into the catalogue -- adverts, notices, a company voice.
@@ -135,3 +117,12 @@ Kept here so nothing on the list gets proposed twice:
   - Cash machines: one account per credit card, a PIN, deposits and
     withdrawals in real notes at any vanilla ATM, and transfers between
     accounts addressed by the last four digits. The card must be on you.
+  - Every credit card in the world owned by somebody, with a balance and a PIN,
+    and nine ways into one: notes, the number on the back, a pencil impression,
+    lazy PINs, a card reader, a wired machine, a crowbar, Burglar, and time
+  - Paying for an order from the ACCOUNT -- the answer turned out to be the online
+    catalogue rather than a rule about the paper one. Item 6a is struck off with it
+  - The online catalogue: a disc installed into a desktop, billed to whoever sits
+    at it, spending a bank balance and never touching a note
+  - Internet Banking: a wrecked ATM cloned onto a disc, installed with a card
+    reader, giving balance, statement and transfers at a computer
