@@ -12,6 +12,44 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.7.1-beta — 2026-08-29
+
+### Fixed
+- **Right-clicking anything with tile properties threw, and the computer menu never
+  appeared.** `props:Val(...)` is not a method on `PropertyContainer` — it is `has` and
+  `get`, which is what vanilla's own Lua uses everywhere.
+
+  The call was wrapped in a `pcall`, on the assumption that wrapping made a wrong guess
+  safe. **It did not, twice over**: the pcall caught the error while the engine still wrote
+  it to the log, so fourteen stack traces came out of a menu that silently added nothing.
+  That is precisely the lesson already written down in `CLAUDE.md` about pcall-ing a
+  getter, and I walked into it from a new direction. Asking `has` before `get` is both
+  correct and cheaper than an exception.
+
+- **The burned disc had no account on it.** The stamp hung off `OnCreate` on the
+  craftRecipe — how vanilla does it, through `luaCallOnCreate`, whose Lua-side argument
+  list this mod cannot confirm without shipping a build to find out. The disc came out
+  named *Online Catalogue* with no account and no error to say why.
+
+  It is stamped **lazily** now, the same way every other item this mod writes an identity
+  onto: on the inventory sweep, and again when the menu looks for a disc. A string compare
+  in front of the rename means seeing it again costs nothing — and unlike an `OnCreate`
+  hook, this also repairs the discs 0.7.0-beta already burned.
+
+  A disc burned while carrying no card stays blank and is stamped the next time the player
+  is carrying one, rather than being ruined.
+
+- **`TC.discItemsOn` asks for both spellings of the type**, like `TC.cardItemsOn`. This mod
+  has now guessed wrong about whether `getAllTypeRecurse` wants the module prefix twice;
+  asking for both is the end of that.
+
+### Changed
+- **The real disc sprite is in.** Vitor's 32×32 iridescent CD replaces the generated
+  placeholder for both `Item_BlankCD.png` and `Item_OnlineCatalogue.png`; the source is
+  kept in `art/blankcd_icon.png`.
+
+---
+
 ## 0.7.0-beta — 2026-08-29
 
 ### Added
