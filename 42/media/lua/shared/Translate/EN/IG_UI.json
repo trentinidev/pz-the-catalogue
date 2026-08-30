@@ -2,6 +2,13 @@
     "IGUI_TC_BuyTitle": "The Catalogue - Buy",
     "IGUI_TC_SellTitle": "The Catalogue - Sell",
 
+    "IGUI_TC_OnlineBuyTitle": "Online Catalogue - Buy",
+    "IGUI_TC_OnlineSellTitle": "Online Catalogue - Sell",
+    "IGUI_TC_OnlineCartTitle": "Online Catalogue - Cart",
+    "IGUI_TC_OnlineLedgerTitle": "Online Catalogue - Ledger",
+    "IGUI_TC_OnlineDiscName": "Online Catalogue (account %1)",
+    "IGUI_TC_OnlineNoAccount": "This disc is burned for an account you cannot reach. You need the card for it on you.",
+
     "IGUI_TC_RailBuy": "Buy",
     "IGUI_TC_RailSell": "Sell",
     "IGUI_TC_RailLedger": "Ledger",
@@ -215,6 +222,8 @@
     "IGUI_TC_BankKindCard": "Card issued",
     "IGUI_TC_BankKindDeposit": "Deposit",
     "IGUI_TC_BankKindWithdraw": "Withdrawal",
+    "IGUI_TC_BankKindSpent": "Online order",
+    "IGUI_TC_BankKindRefund": "Refund",
 
     "IGUI_TC_BankDeposit": "Deposit",
     "IGUI_TC_BankWithdraw": "Withdraw",

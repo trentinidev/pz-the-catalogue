@@ -111,6 +111,43 @@ function TC.truncate(font, text, maxW)
     return out .. ellipsis
 end
 
+--[[ The catalogue's own inventory icon, resolved once and remembered.
+
+     EVERY CONTEXT-MENU ENTRY THIS MOD ADDS GETS IT. A right-click menu in this game is
+     regularly twenty entries long before a mod touches it, and a player who has three mods
+     installed has no way to tell which of those lines came from which -- except by the
+     picture beside it. Two of ours carried the icon and nine did not, which is worse than
+     none of them carrying it: it read as two unrelated features.
+
+     Taken off the item SCRIPT rather than off an item instance, because most of these
+     menus are filled when the player is holding no catalogue at all -- over a tile, over a
+     stranger's credit card, over a scrap of paper. A failed lookup is stored as FALSE
+     rather than left nil, so it is asked once instead of once per right-click for the rest
+     of the session; the same trick TC.entryIcon uses. ]]
+local catIcon
+function TC.catalogueIcon()
+    if catIcon == nil then
+        local script = getScriptManager():FindItem(TC.ITEM_FULL)
+        catIcon = (script and script:getNormalTexture()) or false
+    end
+    if catIcon == false then return nil end
+    return catIcon
+end
+
+--[[ Add a context-menu option that is visibly this mod's.
+
+     One call instead of "addOption, then remember the icon", because remembering it is
+     exactly what did not happen nine times. Returns the option so a caller can still
+     disable it or hang a tooltip on it. ]]
+function TC.addOption(context, text, target, handler, ...)
+    local option = context:addOption(text, target, handler, ...)
+
+    local tex = TC.catalogueIcon()
+    if option and tex then option.iconTexture = tex end
+
+    return option
+end
+
 --[[ Break a sentence over as many lines as it needs, and return them.
 
      THE COUNTERPART TO TC.truncate, AND NOT A REPLACEMENT FOR IT. Truncating is right for
@@ -524,6 +561,8 @@ function TC.onRailClick(win, button)
     for _, p in ipairs(TC.RAIL_PANES) do
         if p.id == id then
             local playerNum = win.playerNum
+            -- Tells close() that this is a pane swap and not the end of a session.
+            win.switchingPane = true
             TC.saveFrame(win)
             win:close()
             TC[p.open](playerNum)

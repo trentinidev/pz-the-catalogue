@@ -60,14 +60,11 @@ local function addOptions(playerNum, context, items)
     local catalogue = firstCatalogue(items)
 
     if catalogue then
-        -- addOption returns the option table, and ISContextMenu draws option.iconTexture
-        -- to the left of the label when one is set. Using the catalogue's own inventory
-        -- texture ties the entry to the item it came from, which matters on a right-click
-        -- menu that may already be twenty entries long.
-        local tex = catalogue:getTex()
-
-        local open = context:addOption(getText("ContextMenu_TC_Open"), playerNum, onOpen, catalogue)
-        if open and tex then open.iconTexture = tex end
+        -- Through TC.addOption, which hangs the catalogue's icon off every entry. It used
+        -- to read the texture off THIS item -- correct here, and unavailable in the five
+        -- other menus this mod fills, where there is no catalogue in the player's hands to
+        -- read it from. One helper, one picture, eleven entries.
+        TC.addOption(context, getText("ContextMenu_TC_Open"), playerNum, onOpen, catalogue)
 
         --[[ Only while something is actually standing at the door. Closing the arrival
              window is not refusing the delivery, so there has to be a way back to it --
@@ -75,9 +72,8 @@ local function addOptions(playerNum, context, items)
              menu that is already long. ]]
         local waiting = TC.arrivedCount(getSpecificPlayer(playerNum))
         if waiting > 0 then
-            local collect = context:addOption(getText("ContextMenu_TC_Collect", waiting),
-                                              playerNum, onCollect, catalogue)
-            if collect and tex then collect.iconTexture = tex end
+            TC.addOption(context, getText("ContextMenu_TC_Collect", waiting),
+                         playerNum, onCollect, catalogue)
         end
     end
 
@@ -90,8 +86,8 @@ local function addOptions(playerNum, context, items)
         local real = allRealItems(items)
 
         if #real == 1 then
-            context:addOption(getText("ContextMenu_TC_AddToSell"),
-                              playerNum, onAddToSell, real)
+            TC.addOption(context, getText("ContextMenu_TC_AddToSell"),
+                         playerNum, onAddToSell, real)
 
         elseif #real > 1 then
             --[[ Dragging a stack always brings the whole stack, because that is what
@@ -99,10 +95,10 @@ local function addOptions(playerNum, context, items)
                  So the choice lives in this menu instead: one, or all of them. Without
                  it, selling a single ring out of a pile of nine means staging all nine
                  and then picking eight back out one at a time. ]]
-            context:addOption(getText("ContextMenu_TC_AddOneToSell"),
-                              playerNum, onAddToSell, { real[1] })
-            context:addOption(getText("ContextMenu_TC_AddToSellMany", #real),
-                              playerNum, onAddToSell, real)
+            TC.addOption(context, getText("ContextMenu_TC_AddOneToSell"),
+                         playerNum, onAddToSell, { real[1] })
+            TC.addOption(context, getText("ContextMenu_TC_AddToSellMany", #real),
+                         playerNum, onAddToSell, real)
         end
     end
 end

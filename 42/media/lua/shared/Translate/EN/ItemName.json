@@ -3,5 +3,7 @@
     "Catalogue.Parcel_XXL": "Parcel - 25",
     "Catalogue.Parcel_5XL": "Parcel - 50",
     "Catalogue.Parcel_10XL": "Parcel - 100",
-    "Catalogue.CardSkimmer": "Card Reader"
+    "Catalogue.CardSkimmer": "Card Reader",
+    "Catalogue.BlankCD": "Blank CD",
+    "Catalogue.OnlineCatalogue": "Online Catalogue"
 }

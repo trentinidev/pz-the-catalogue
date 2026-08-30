@@ -137,6 +137,16 @@ TC.EXCLUDED_ITEMS = {
          right as well -- a reader bought back at a fraction of nothing is not a trade
          anybody needs. ]]
     ["Catalogue.CardSkimmer"] = true,
+
+    --[[ The disc and what is burned onto it, for the same reason as the reader.
+
+         A blank disc is found, not bought: it is the one scarce thing standing between a
+         player and an online catalogue, and a shop that sells discs is that scarcity
+         deleted. The burned disc is worse still -- ordering an online catalogue FROM the
+         catalogue is a snake eating itself, and it would skip the account requirement that
+         is the whole point of the feature. ]]
+    ["Catalogue.BlankCD"]         = true,
+    ["Catalogue.OnlineCatalogue"] = true,
 }
 
 --[[ Delivery packaging.
@@ -227,7 +237,7 @@ end
      A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
      sandbox option and this line has to be there whether or not anyone turned it on.
      tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
-TC.VERSION = "0.6.2-beta"
+TC.VERSION = "0.7.0-beta"
 print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging

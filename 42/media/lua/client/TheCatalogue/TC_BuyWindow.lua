@@ -400,7 +400,7 @@ function TC_BuyWindow:refreshList()
     -- recursive walks.
     local owned, balance
     if quick == 3 or quick == 4 then owned = TC.ownedTypes(self.player) end
-    if quick == 2 then balance = TC.getBalance(self.player) end
+    if quick == 2 then balance = TC.purseBalance(self.player, TC.onlineAccount(self.playerNum)) end
     local wishes = (quick == 5) and TC.wishlist(self.player) or nil
 
     local filtering = (needle ~= "" or spec.kind ~= "all" or quick ~= 1)
@@ -552,7 +552,7 @@ function TC_BuyWindow:startPurchase(rush)
         self:setMessage(getText("IGUI_TC_ItemUnavailable"), true)
         return
     end
-    if TC.getBalance(self.player) < total then
+    if TC.purseBalance(self.player, TC.onlineAccount(self.playerNum)) < total then
         self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
         return
     end
@@ -596,12 +596,12 @@ function TC_BuyWindow:onOrderComplete(payload)
         return
     end
 
-    if TC.getBalance(player) < total then
+    if TC.purseBalance(player, TC.onlineAccount(self.playerNum)) < total then
         self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
         return
     end
 
-    if not TC.takeCash(player, total) then
+    if not TC.purseTake(player, TC.onlineAccount(self.playerNum), total) then
         -- takeCash re-checks and leaves the inventory untouched on failure, so a race
         -- between the balance check and here cannot half-charge the player.
         self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
@@ -618,7 +618,7 @@ function TC_BuyWindow:onOrderComplete(payload)
          the order safe to persist: the list holds a debt the catalogue owes, never a
          charge still to come. ]]
     if not rush then
-        local order = TC.placeOrder(player, lines, total)
+        local order = TC.placeOrder(player, lines, total, TC.onlineAccount(self.playerNum))
         self:setMessage(getText("IGUI_TC_OrderPlaced", qty, entry.name,
                                 TC.etaPhrase(TC.hoursLeft(order))), false)
         return
@@ -635,7 +635,7 @@ function TC_BuyWindow:onOrderComplete(payload)
 
     if delivered < qty then
         local refund = unit * (qty - delivered)
-        TC.giveCash(player, refund)
+        TC.purseGive(player, TC.onlineAccount(self.playerNum), refund)
         total = unit * delivered
         TC.warn("delivered %d of %d %s -- refunded $%d",
                 delivered, qty, tostring(entry.fullType), refund)
@@ -690,7 +690,7 @@ function TC_BuyWindow:prerender()
     local now = getTimestampMs()
     if not self.lastCatalogueCheck or (now - self.lastCatalogueCheck) >= CATALOGUE_CHECK_MS then
         self.lastCatalogueCheck = now
-        if not TC.hasCatalogue(self.player) then
+        if not TC.catalogueStillOpen(self.player) then
             self:close()
             return
         end
@@ -761,7 +761,7 @@ function TC_BuyWindow:prerender()
         local unit       = TC.getBuyPrice(entry.fullType) or 0
         local total      = unit * self.quantity
         local itemWeight = (entry.weight or 0) * self.quantity
-        local balance    = TC.getBalance(self.player)
+        local balance    = TC.purseBalance(self.player, TC.onlineAccount(self.playerNum))
         local after      = balance - total
 
         -- The detail block flows downward while the cash block below it is pinned to
@@ -828,9 +828,9 @@ function TC_BuyWindow:prerender()
     -- move as the detail above them grows or shrinks.
     local blockY = self:cashBlockY()
 
-    self:drawText(getText("IGUI_TC_YourCash"), innerLeft, blockY + 4,
+    self:drawText(TC.purseLabel(TC.onlineAccount(self.playerNum)), innerLeft, blockY + 4,
                   0.68, 0.68, 0.72, 1, UIFont.Small)
-    local balance = TC.getBalance(self.player)
+    local balance = TC.purseBalance(self.player, TC.onlineAccount(self.playerNum))
     local bText = "$" .. balance
     local bw = getTextManager():MeasureStringX(UIFont.Large, bText)
     self:drawText(bText, innerRight - bw, blockY, 0.85, 1, 0.85, 1, UIFont.Large)
@@ -883,7 +883,14 @@ function TC_BuyWindow:onResize()
     TC.layoutRail(self)
 end
 
+--[[ Closing the buy window ends an online session.
+
+     The buy window is the one the disc opens and the one the rail always comes back to, so
+     it is the honest place to hang this. A session that outlived its window would leave
+     the next paper catalogue quietly spending a bank balance, which is the worst possible
+     way for this feature to fail: silently, and with the player's money. ]]
 function TC_BuyWindow:close()
+    TC.endOnlineIfLast(self.playerNum, self)
     TC.saveFrame(self)
     ISCollapsableWindow.close(self)
     self:removeFromUIManager()
@@ -908,7 +915,7 @@ function TC.openBuyWindow(playerNum, catalogueItem)
     local win = TC_BuyWindow:new(x, y, w, h, playerNum)
     win:initialise()
     win:instantiate()
-    win:setTitle(getText("IGUI_TC_BuyTitle"))
+    win:setTitle(TC.windowTitle(playerNum, "buy"))
     win:addToUIManager()
     TC_BuyWindow.instances[playerNum] = win
 
