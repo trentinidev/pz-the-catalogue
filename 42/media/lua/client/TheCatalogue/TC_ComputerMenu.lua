@@ -337,6 +337,8 @@ end
 local function addOptions(playerNum, context, worldobjects, test)
     if test and ISWorldObjectContextMenu.Test then return true end
 
+    if not TC.opt("BankingEnabled") then return false end
+
     local player = getSpecificPlayer(playerNum)
     if not player then return false end
     if player:getVehicle() then return false end

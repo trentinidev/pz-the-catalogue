@@ -63,6 +63,13 @@ local DEFAULTS = {
     DebugLogging               = false,
     DeliveryHoursMultiplier    = 1.0,
     RushFeePercent             = 20,
+
+    -- The banking half. See sandbox-options.txt for what each one turns off.
+    BankingEnabled             = true,
+    ForeignCards               = true,
+    ForeignBalanceMultiplier   = 1.0,
+    PinTries                   = 3,
+    PinLockoutHours            = 24,
 }
 
 function TC.opt(name)
@@ -239,7 +246,7 @@ end
      A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
      sandbox option and this line has to be there whether or not anyone turned it on.
      tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
-TC.VERSION = "0.10.4-beta"
+TC.VERSION = "0.11.0-beta"
 print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging

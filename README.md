@@ -162,8 +162,43 @@ asks which one you mean. Three wrong PINs end the session and you walk back; the
 does not keep your card. And the catalogue will not buy a card that is tied to an account,
 whosever it is.
 
-*The account does not pay for orders yet* — that is [ROADMAP.txt](ROADMAP.txt) item 6a,
-and it is a design question rather than a wiring one.
+**Somebody else's card** — every `CreditCard` the world spawns belongs to a person. Pull
+one out of a dead man's wallet and it reads *Credit Card - Rose Miller (8471)*: a real
+account, with a real balance, and four digits in the way. Balances are weighted rather than
+flat — half are petty cash, about one in twenty is worth the walk to a machine.
+
+Ten thousand combinations against three tries a day is a wall, not a puzzle, so there are
+nine ways to cut it down. **Examine the card** and roughly one in twelve has the number
+written on the back, one in five carries a pencil impression that gives you the four digits
+with **no order** — at most 24 arrangements — and most give nothing at all. About one card
+in five has a **note** with the PIN on it, in the same wallet or in a drawer elsewhere in
+the building. One in five uses a **lazy PIN**: `1234`, `0000`, a birth year. **Burglar**
+gets two extra tries a day and examines in half the time.
+
+**The card reader** — two electronics scrap, a battery, wire and a screwdriver at
+**Electrical 3**. Run a card through it and it hands back the number, no machine and no
+waiting. It is the only route that works the same on every card, and it is capped at ten
+reads before it comes apart.
+
+**The machine itself** — with a screwdriver and Electrical 3 you can **wire an ATM's card
+reader** so it stops asking for a PIN, for six hours, on that machine only. With a crowbar
+you can **force the cashbox**: physical money, no cards involved, very loud, and the
+machine is wrecked for good.
+
+**The Online Catalogue** — find a **Blank CD**, burn it with the catalogue in hand, and
+install it into a desktop computer. That machine then runs the catalogue for **anybody who
+sits at it**, billed to whatever card *they* are carrying, **spending a bank balance and
+never touching a note**. The disc is consumed; the install is permanent.
+
+**Internet Banking** — clone a **wrecked** cash machine's software onto a blank disc at
+Electrical 3, and install it into a computer along with a card reader. Both are consumed,
+and that machine reads cards forever: balance, statement and transfers, with the same PIN
+and the same lockout the ATM asks for. **No deposit and no withdrawal** — a desktop has no
+cash drawer.
+
+...unless you strip the **note gear** out of a wrecked ATM at **Electrical 6** and fit it.
+One per machine in the county, and then that computer takes notes **in**. Taking them out
+still means walking to a real machine.
 
 ---
 
@@ -203,10 +238,10 @@ without that rule the account is a second inventory that weighs nothing and can 
 from anywhere. Burn the card with the house it was in and the money is out of reach for
 good. Accounts also ride on the character's own save data, so they die with them.
 
-**It is a beta.** 0.9.2 has been played, but not every path has. Opening an account has
-been played and the layout faults it turned up are fixed in 0.1.1-beta; paying money in
-and taking it back out have not. 1.0.0 is reserved for the first build that has been
-played end to end.
+**It is a beta.** The catalogue, the bank, the cards, the computer and the note gear have
+all been played through and each round of it turned up faults that are fixed — but no
+single character has run the whole chain end to end, and the mod has not been tried
+alongside a large mod list. 1.0.0 is reserved for the first build that has.
 
 ---
 
@@ -246,6 +281,16 @@ Custom sandbox options in B42 are drawn by the **server settings** screen
 | `OrderSeconds` | 2.0 | Length of the interruptible action when ordering. |
 | `CatalogueLootMultiplier` | 1.0 | How common the catalogue is in world loot. |
 | `DebugLogging` | false | Timing and loot-table detail in the console. |
+| `BankingEnabled` | true | Accounts, cards, cash machines and the computer. Off returns the mod to buying with the notes in your pocket, and no credit card in the world is touched. |
+| `ForeignCards` | true | Cards the world spawns belong to somebody. Off leaves your own account working and stops the mod naming or stamping cards it finds. |
+| `ForeignBalanceMultiplier` | 1.0 | Scales what is in a found card. 0 makes every one empty. |
+| `PinTries` | 3 | Wrong PINs before a card is refused. Burglar always gets two more. |
+| `PinLockoutHours` | 24 | How long it stays refused. 0 removes the lockout. |
+
+`BankingEnabled` and `ForeignCards` are two switches because they answer two different
+objections. The first is *"I do not want a banking economy"*; the second is *"I do not want
+this mod touching `CreditCard`"*, which is the one that matters if another mod cares about
+that item.
 
 ---
 

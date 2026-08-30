@@ -34,14 +34,17 @@ local TC = TheCatalogue
 
 --[[ How many wrong PINs before the card stops being accepted, and for how long.
 
-     Three, because that is what a real machine gave you, and 24 game hours, because the
-     unit a player thinks in is "come back tomorrow". BURGLAR gets five: the trait is about
-     getting into things that are not yours, this is the most literal example of that in
-     the game, and two extra guesses a day is the difference between four days of work and
-     two and a half. ]]
-TC.PIN_TRIES        = 3
-TC.PIN_TRIES_BURGLAR = 5
-TC.PIN_LOCKOUT_HOURS = 24
+     Three tries and 24 game hours are the DEFAULTS, and both are sandbox options now --
+     three because that is what a real machine gave you, 24 because the unit a player
+     thinks in is "come back tomorrow".
+
+     BURGLAR is expressed as a BONUS rather than as its own number.
+     Two absolutes drift apart the moment somebody edits one of them, and the point of the
+     trait here is "two more than everybody else" -- which survives a player setting the
+     allowance to 1 or to 20. It is the most literal example of getting into things that
+     are not yours the game has, and two extra guesses a day is the difference between four
+     days of work and two and a half. ]]
+TC.PIN_TRIES_BURGLAR_BONUS = 2
 
 --[[ The PINs people actually chose.
 
@@ -184,10 +187,11 @@ end
 
 --[[ How many wrong tries this player gets before the card shuts. See PIN_TRIES_BURGLAR. ]]
 function TC.pinTriesFor(player)
+    local tries = TC.opt("PinTries") or 3
     if player and player:hasTrait(CharacterTrait.BURGLAR) then
-        return TC.PIN_TRIES_BURGLAR
+        return tries + TC.PIN_TRIES_BURGLAR_BONUS
     end
-    return TC.PIN_TRIES
+    return tries
 end
 
 --[[ Hours until this card will accept a PIN again, or 0 if it will now. ]]
@@ -217,7 +221,7 @@ function TC.wrongPin(acct, player)
     local allowance = TC.pinTriesFor(player)
 
     if acct.tries >= allowance then
-        acct.lockedUntil = worldHours() + TC.PIN_LOCKOUT_HOURS
+        acct.lockedUntil = worldHours() + (TC.opt("PinLockoutHours") or 24)
         acct.tries = 0
         return 0, true
     end

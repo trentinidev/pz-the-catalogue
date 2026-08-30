@@ -12,6 +12,64 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.11.0-beta — 2026-08-30
+
+An audit pass before compatibility testing. Nothing here changes how a working setup
+behaves; all of it is about what happens when something else is in the way.
+
+### Added
+- **Five sandbox options**, and **two switches rather than one** because they answer two
+  different objections:
+
+  | Option | Default | |
+  |---|---|---|
+  | `BankingEnabled` | true | Accounts, cards, machines, the computer. Off returns the mod to buying with the notes in your pocket. |
+  | `ForeignCards` | true | Cards the world spawns belong to somebody. Off leaves your own account working. |
+  | `ForeignBalanceMultiplier` | 1.0 | Scales a found card's balance. 0 makes every one empty. |
+  | `PinTries` | 3 | Wrong PINs before a card is refused. |
+  | `PinLockoutHours` | 24 | How long it stays refused. 0 removes the lockout. |
+
+  *"I do not want a banking economy"* and *"I do not want this mod touching `CreditCard`"*
+  are not the same complaint, and the second is the one that matters when another mod cares
+  about that item.
+
+  The multiplier scales the **result**, not the bands, so the shape of the distribution
+  survives it — half of all cards stay petty cash whatever the level. And **Burglar is now
+  a bonus of two rather than its own number**: two absolutes drift apart the moment somebody
+  edits one, and the point of the trait is "two more than everybody else", which survives a
+  player setting the allowance to 1 or to 20.
+
+### Changed
+- **A card that already carries somebody else's name keeps it.** This mod names every
+  credit card it sees, which is the most invasive thing in it: `CreditCard` is a vanilla
+  item that other mods, foraging and StoryClutter all put into the world. A card with a
+  custom name got it from something that cared enough to set one.
+
+  **The account is still stamped either way**, so the card works at a machine and the
+  feature is whole. Only the label is conceded. Ours are still renamed, tracked by a
+  `TC_named` flag so a future rename of our own is not mistaken for a stranger's.
+
+- **The inventory sweep throttles per player.** It was one shared clock, which on a split
+  screen meant two players took turns starving each other — whoever ran first reset it and
+  the other waited another two seconds for a sweep that had already happened to somebody
+  else.
+
+### Fixed
+- The `getSpecificPlayer(0)` in the loot hook is documented rather than removed: the player
+  is only used to resolve an account number, and a stranger's account lives in the world
+  register rather than on anybody, so any live player answers — and so does nil.
+
+### Documentation
+- **The README covers the last nine versions.** Foreign cards and the nine ways into one,
+  the card reader, wiring and forcing a machine, the online catalogue, internet banking and
+  the note gear, plus the five new sandbox options. The "it is a beta" note is honest about
+  what has and has not been played: every part separately, no single character end to end,
+  and never yet alongside a large mod list.
+- The in-game mod description says what the mod now is, including that all of it can be
+  switched off.
+
+---
+
 ## 0.10.4-beta — 2026-08-30
 
 ### Fixed
