@@ -80,17 +80,52 @@ local function installs()
     return world.pcs
 end
 
-function TC.catalogueInstalled(pc)
+--[[ Two different things can be installed on one machine and they are tracked separately.
+
+     `catalogue` is the shop; `banking` is a clone of a cash machine's software plus the
+     card reader wired into the case. A computer can have either, both, or neither, and
+     the menu says so per entry rather than lumping them into one "set up" flag -- a player
+     who has done one and not the other should be told which. ]]
+local function record(pc)
     local key = computerKey(pc)
-    if not key then return false end
-    return installs()[key] == true
+    if not key then return nil end
+
+    local all = installs()
+
+    --[[ Migrating the flag 0.8.0-beta wrote.
+
+         That version stored a bare `true` against the key, because the catalogue was the
+         only thing installable. Read as a table it would be neither installed nor
+         installable, and a player would find their machine had quietly forgotten. ]]
+    if all[key] == true then all[key] = { catalogue = true } end
+
+    if type(all[key]) ~= "table" then all[key] = {} end
+    return all[key]
+end
+
+function TC.catalogueInstalled(pc)
+    local rec = record(pc)
+    return rec ~= nil and rec.catalogue == true
 end
 
 function TC.installCatalogue(pc)
-    local key = computerKey(pc)
-    if not key then return false end
+    local rec = record(pc)
+    if not rec then return false end
 
-    installs()[key] = true
+    rec.catalogue = true
+    return true
+end
+
+function TC.bankingInstalled(pc)
+    local rec = record(pc)
+    return rec ~= nil and rec.banking == true
+end
+
+function TC.installBanking(pc)
+    local rec = record(pc)
+    if not rec then return false end
+
+    rec.banking = true
     return true
 end
 
@@ -200,6 +235,76 @@ local function addPaymentEntries(context, playerNum, player, pc)
     end
 end
 
+--[[ A banking disc on the player, either spelling. Same reason as everything else here. ]]
+function TC.findBankingDisc(player)
+    if not player then return nil end
+    local inv = player:getInventory()
+    if not inv then return nil end
+
+    for _, t in ipairs({ "BankingCD", "Catalogue.BankingCD" }) do
+        local item = inv:getFirstTypeRecurse(t)
+        if item then return item end
+    end
+    return nil
+end
+
+local function onInstallBanking(worldobjects, playerNum, pc)
+    local player = getSpecificPlayer(playerNum)
+    if not player or not pc then return end
+
+    local square = pc:getSquare()
+    if square and luautils.walkAdj(player, square, true) then
+        ISTimedActionQueue.add(TC_InstallBankingAction:new(player, pc))
+    end
+end
+
+--[[ Opening the bank on a computer, billed to one card.
+
+     The SAME window the cash machine opens, in remote mode: no deposit and no withdrawal,
+     because a desktop has no cash drawer and making notes appear in an inventory from a
+     computer would break the rule that no dollar in this mod is ever created. Balance,
+     statement and transfers -- moving numbers is exactly what a computer can do. ]]
+local function onBank(worldobjects, playerNum, pc, account)
+    local player = getSpecificPlayer(playerNum)
+    if not player or not pc then return end
+
+    local square = pc:getSquare()
+    if square and luautils.walkAdj(player, square, true) then
+        ISTimedActionQueue.add(TC_UseBankingAction:new(player, pc, account))
+    end
+end
+
+--[[ The card entries for the banking side. Same rule as the catalogue's: one card is not a
+     question, several are a submenu, and none is a greyed-out line that says why. ]]
+local function addBankingEntries(context, playerNum, player, pc)
+    local cards = TC.cardsOnPlayer(player)
+
+    if #cards == 0 then
+        local option = TC.addOption(context, getText("ContextMenu_TC_InternetBanking"),
+                                    nil, nil)
+        option.notAvailable = true
+        option.toolTip = tooltip(getText("ContextMenu_TC_InternetBanking"),
+                                 getText("IGUI_TC_OnlineNeedsCard"))
+        return
+    end
+
+    if #cards == 1 then
+        TC.addOption(context, getText("ContextMenu_TC_InternetBanking"),
+                     nil, onBank, playerNum, pc, cards[1].account.number)
+        return
+    end
+
+    local parent = TC.addOption(context, getText("ContextMenu_TC_InternetBanking"), nil, nil)
+    local sub = ISContextMenu:getNew(context)
+    context:addSubMenu(parent, sub)
+
+    for _, card in ipairs(cards) do
+        local acct = card.account
+        TC.addOption(sub, getText("IGUI_TC_OnlineBillTo", TC.cardTail(acct.number)),
+                     nil, onBank, playerNum, pc, acct.number)
+    end
+end
+
 local function addOptions(playerNum, context, worldobjects, test)
     if test and ISWorldObjectContextMenu.Test then return true end
 
@@ -210,23 +315,48 @@ local function addOptions(playerNum, context, worldobjects, test)
     local pc = findComputer(worldobjects)
     if not pc then return false end
 
-    local installed = TC.catalogueInstalled(pc)
-    local discs     = TC.discItemsOn(player)
+    local hasShop    = TC.catalogueInstalled(pc)
+    local hasBank    = TC.bankingInstalled(pc)
+    local shopDisc   = #TC.discItemsOn(player) > 0
+    local bankDisc   = TC.findBankingDisc(player) ~= nil
 
-    --[[ Nothing to say about a computer with no catalogue on it and no disc in the
-         player's bag. Every desktop in Knox County would otherwise carry a line about a
-         feature the player cannot use yet, on a menu that is already twenty entries long. ]]
-    if not installed and #discs == 0 then return false end
+    --[[ Nothing to say about a computer with nothing on it and nothing in the player's bag
+         to put on it. Every desktop in Knox County would otherwise carry a line about a
+         feature the player cannot use yet, on a menu already twenty entries long. ]]
+    if not hasShop and not hasBank and not shopDisc and not bankDisc then return false end
 
     if test then return ISWorldObjectContextMenu.setTest() end
 
-    if not installed then
+    if hasShop then
+        addPaymentEntries(context, playerNum, player, pc)
+    elseif shopDisc then
         TC.addOption(context, getText("ContextMenu_TC_InstallCatalogue"),
                      worldobjects, onInstall, playerNum, pc)
-        return
     end
 
-    addPaymentEntries(context, playerNum, player, pc)
+    if hasBank then
+        addBankingEntries(context, playerNum, player, pc)
+
+    elseif bankDisc then
+        local option = TC.addOption(context, getText("ContextMenu_TC_InstallBanking"),
+                                    worldobjects, onInstallBanking, playerNum, pc)
+
+        --[[ The card reader goes in with the disc and is consumed with it.
+
+             A computer cannot read a magnetic strip on its own, and the reader the player
+             built for examining cards is exactly the part that can. Wiring it into the
+             case is what makes it permanent: it stops being ten reads in a bag and becomes
+             a machine that reads cards forever -- which is the trade, because that is the
+             last it will ever be used for anywhere else. ]]
+        if not TC.findSkimmer(player) then
+            option.notAvailable = true
+            option.toolTip = tooltip(getText("ContextMenu_TC_InstallBanking"),
+                                     getText("IGUI_TC_BankingNeedsReader"))
+        else
+            option.toolTip = tooltip(getText("ContextMenu_TC_InstallBanking"),
+                                     getText("IGUI_TC_BankingConsumes"))
+        end
+    end
 end
 
 Events.OnFillWorldObjectContextMenu.Add(addOptions)

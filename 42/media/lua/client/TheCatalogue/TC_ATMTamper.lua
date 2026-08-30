@@ -290,3 +290,98 @@ function TC.findPryBar(player)
     end
     return nil
 end
+
+-- ---------------------------------------------------------------------------
+-- Cloning the machine's software
+-- ---------------------------------------------------------------------------
+
+--[[ Copying a cash machine's operating system onto a blank disc.
+
+     THE MACHINE HAS TO BE WRECKED FIRST, and that is the price rather than an obstacle.
+     Forcing the cashbox takes an ATM out of the world permanently -- for this player and
+     for anybody else, and for every account they were going to reach through it -- and
+     only once the cabinet is open is the board inside reachable at all. So an internet
+     banking disc costs one cash machine, and Knox County has a finite number of them.
+
+     It also gives a forced machine a second life. Until now a wrecked ATM was a dead end
+     with a tooltip on it; it is now the only place in the game this disc can be made.
+
+     ELECTRICITY 5, a step above the 3 that wires a reader or builds a card reader. Pulling
+     the software out of a bank's own board should be the most advanced thing this mod asks
+     for, and the skill is what separates a player who invested from one who found the
+     parts.
+]]
+TC.CLONE_ELEC_MIN = 5
+
+local CLONE_SECONDS = 210
+
+TC_CloneATMAction = ISBaseTimedAction:derive("TC_CloneATMAction")
+
+function TC_CloneATMAction:isValid()
+    return self.atm ~= nil
+       and self.atm:getSquare() ~= nil
+       and TC.atmBroken(self.atm)
+       and TC.findBlankDisc(self.character) ~= nil
+end
+
+function TC_CloneATMAction:waitToStart()
+    self.character:faceThisObject(self.atm)
+    return self.character:isTurning() or self.character:shouldBeTurning()
+end
+
+function TC_CloneATMAction:start()
+    self:setActionAnim(CharacterActionAnims.Craft)
+end
+
+function TC_CloneATMAction:update()
+    self.character:setMetabolicTarget(Metabolics.LightWork)
+end
+
+--[[ The blank disc is looked up again rather than carried from the menu: three and a half
+     minutes have passed, and that is long enough to have put it down. ]]
+function TC_CloneATMAction:perform()
+    local blank = TC.findBlankDisc(self.character)
+
+    if blank then
+        TC.removeItem(blank)
+
+        local disc = self.character:getInventory():AddItem("Catalogue.BankingCD")
+        if disc then
+            HaloTextHelper.addGoodText(self.character, getText("IGUI_TC_ATMCloned"))
+            self.character:getXp():AddXP(Perks.Electricity, 25)
+        else
+            TC.warn("could not create Catalogue.BankingCD -- the disc was lost")
+        end
+    end
+
+    ISBaseTimedAction.perform(self)
+end
+
+function TC_CloneATMAction:new(character, atm)
+    local o = ISBaseTimedAction.new(self, character)
+    o.atm = atm
+    o.stopOnWalk = true
+    o.stopOnRun  = true
+
+    -- Faster the more you know, from the floor of 5 upwards.
+    local level = character:getPerkLevel(Perks.Electricity)
+    local scale = 1 - math.min(0.5, (level - TC.CLONE_ELEC_MIN) * 0.1)
+    o.maxTime = math.floor(CLONE_SECONDS * 60 * scale)
+    return o
+end
+
+--[[ A blank disc on the player, of either spelling.
+
+     Both, because this mod has guessed wrong twice about whether getAllTypeRecurse wants
+     the module prefix. See TC.cardItemsOn. ]]
+function TC.findBlankDisc(player)
+    if not player then return nil end
+    local inv = player:getInventory()
+    if not inv then return nil end
+
+    for _, t in ipairs({ "BlankCD", "Catalogue.BlankCD" }) do
+        local item = inv:getFirstTypeRecurse(t)
+        if item then return item end
+    end
+    return nil
+end

@@ -12,6 +12,59 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.9.0-beta — 2026-08-29
+
+### Added
+- **Internet Banking.** The bank, on a desktop, reached with your own cards. It is the
+  last of the three things a computer can run and by far the most expensive to get to.
+
+- **Cloning a machine's software — at a WRECKED cash machine.** Vitor's rule, and it is
+  better than either option I offered: the cabinet has to have been **forced open** first,
+  which takes that ATM out of the world permanently, for this player and for every account
+  anybody was going to reach through it. Only then is the board inside reachable.
+
+  So an internet banking disc costs **one cash machine**, and Knox County has a finite
+  number of them. It also gives a forced ATM a second life — until now a wrecked machine
+  was a dead end with a tooltip on it, and it is now the only place in the game this disc
+  can be made.
+
+  **Electricity 5**, a step above the 3 that wires a reader or builds a card reader, plus a
+  screwdriver and a blank CD. Pulling a bank's software off its own board should be the
+  most advanced thing this mod asks for.
+
+- **Installing it consumes the disc AND the card reader.** A computer cannot read a
+  magnetic strip on its own, and the reader is the only thing in the game that can. Wired
+  into the case it stops being ten reads in a bag and becomes a machine that reads cards
+  **forever** — which is exactly the trade, because that is the last that reader will ever
+  be used for anywhere else.
+
+- **No deposit and no withdrawal, ever.** A desktop has no cash drawer, and making notes
+  appear in an inventory from a computer would break the rule the whole mod rests on: no
+  dollar is ever created. Balance, statement and **transfers** — moving numbers is what a
+  computer can actually do. The two buttons are hidden rather than greyed out, because
+  there is no circumstance in a remote session where they would come back.
+
+- **The PIN is asked for exactly as the machine asks**, three tries and a 24-hour lockout
+  included. A stranger's card is as much of a puzzle at a desk as it is in the street, and
+  a computer that skipped the PIN because a reader was wired into it would have made all
+  nine ways into a stranger's account pointless overnight.
+
+### Details
+- **A computer tracks its two installs separately.** Shop and bank are independent: a
+  machine can have either, both or neither, and the menu says which is missing rather than
+  lumping them into one "set up" flag.
+
+- **The flag 0.8.0-beta wrote is migrated on read.** That version stored a bare `true`
+  against the square, because the catalogue was the only installable thing. Read as a table
+  it would be neither installed nor installable, and a player would find their machine had
+  quietly forgotten — so a bare `true` is folded into `{ catalogue = true }` the first time
+  it is looked at.
+
+- **The banking disc is not sold by the catalogue**, alongside the reader and the other two
+  discs. Ordering the thing that costs a destroyed ATM would be the whole price deleted.
+
+---
+
 ## 0.8.0-beta — 2026-08-29
 
 **The disc is software, not a credit card.** 0.7.0-beta stamped each burned disc with the

@@ -120,3 +120,115 @@ function TC_UseComputerAction:new(character, computer, account)
     o.maxTime = 90
     return o
 end
+
+-- ---------------------------------------------------------------------------
+
+TC_InstallBankingAction = ISBaseTimedAction:derive("TC_InstallBankingAction")
+
+function TC_InstallBankingAction:isValid()
+    local TC = TheCatalogue
+    return self.computer ~= nil
+       and self.computer:getSquare() ~= nil
+       and not TC.bankingInstalled(self.computer)
+       and TC.findBankingDisc(self.character) ~= nil
+       and TC.findSkimmer(self.character) ~= nil
+end
+
+function TC_InstallBankingAction:waitToStart()
+    self.character:faceThisObject(self.computer)
+    return self.character:isTurning() or self.character:shouldBeTurning()
+end
+
+function TC_InstallBankingAction:start()
+    self:setActionAnim(CharacterActionAnims.Craft)
+end
+
+function TC_InstallBankingAction:update()
+    self.character:setMetabolicTarget(Metabolics.LightWork)
+end
+
+--[[ BOTH PARTS ARE CONSUMED and the machine reads cards forever afterwards.
+
+     The disc is the bank's software; the card reader is the only thing in the game that
+     can pull a number off a magnetic strip. Wired into the case it stops being ten reads
+     in a bag and becomes a permanent fixture -- which is exactly the trade, because that
+     is the last this reader will ever be used for anywhere else.
+
+     Both are looked up again rather than carried from the menu: minutes have passed. ]]
+function TC_InstallBankingAction:perform()
+    local TC = TheCatalogue
+
+    local disc   = TC.findBankingDisc(self.character)
+    local reader = TC.findSkimmer(self.character)
+
+    if disc and reader and TC.installBanking(self.computer) then
+        TC.removeItem(disc)
+        TC.removeItem(reader)
+        HaloTextHelper.addGoodText(self.character, getText("IGUI_TC_BankingInstalled"))
+        self.character:getXp():AddXP(Perks.Electricity, 20)
+    end
+
+    ISBaseTimedAction.perform(self)
+end
+
+function TC_InstallBankingAction:new(character, computer)
+    local o = ISBaseTimedAction.new(self, character)
+    o.computer = computer
+    o.stopOnWalk = true
+    o.stopOnRun  = true
+    -- Longer than installing the shop: a reader has to be opened up and wired in.
+    o.maxTime = 360
+    return o
+end
+
+-- ---------------------------------------------------------------------------
+
+TC_UseBankingAction = ISBaseTimedAction:derive("TC_UseBankingAction")
+
+function TC_UseBankingAction:isValid()
+    return self.computer ~= nil and self.computer:getSquare() ~= nil
+end
+
+function TC_UseBankingAction:waitToStart()
+    self.character:faceThisObject(self.computer)
+    return self.character:isTurning() or self.character:shouldBeTurning()
+end
+
+function TC_UseBankingAction:start()
+end
+
+function TC_UseBankingAction:update()
+    self.character:setMetabolicTarget(Metabolics.LightDomestic)
+end
+
+--[[ The bank window, in remote mode.
+
+     Same window, same PIN, same three-tries-and-a-lockout: a card belonging to somebody
+     else is exactly as much of a puzzle at a desk as it is at a machine in the street. The
+     alternative -- a computer that skips the PIN because a reader is wired into it -- would
+     have made every one of the nine ways into a stranger's account pointless overnight.
+
+     The card is re-checked because minutes have passed since the menu was drawn. ]]
+function TC_UseBankingAction:perform()
+    local TC = TheCatalogue
+    local playerNum = self.character:getPlayerNum()
+
+    if not TC.holdsCardFor(self.character, self.account) then
+        HaloTextHelper.addBadText(self.character, getText("IGUI_TC_OnlineNeedsCard"))
+        ISBaseTimedAction.perform(self)
+        return
+    end
+
+    TC.openATMWindow(playerNum, self.computer, self.account)
+    ISBaseTimedAction.perform(self)
+end
+
+function TC_UseBankingAction:new(character, computer, account)
+    local o = ISBaseTimedAction.new(self, character)
+    o.computer = computer
+    o.account  = account
+    o.stopOnWalk = true
+    o.stopOnRun  = true
+    o.maxTime = 90
+    return o
+end
