@@ -207,7 +207,6 @@ module Catalogue
     {
         timedAction = MakingElectrical,
         time = 120,
-        OnCreate = TheCatalogue.stampDisc,
         Tags = InHandCraft;Electrical,
         category = Electrical,
         inputs

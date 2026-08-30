@@ -76,6 +76,13 @@ local function sweep(player)
     for _, item in ipairs(TC.cardItemsOn(player)) do
         TC.blessCard(item)
     end
+
+    -- And any burned disc that has not been stamped with its account yet. Same sweep,
+    -- because it is the same problem: an item whose identity the mod writes rather than
+    -- the script, and which has to acquire it the first time the mod sees the thing.
+    for _, disc in ipairs(TC.discItemsOn(player)) do
+        TC.stampDisc(player, disc)
+    end
 end
 
 Events.OnFillContainer.Add(onFillContainer)
