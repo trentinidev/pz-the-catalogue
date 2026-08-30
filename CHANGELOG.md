@@ -12,6 +12,35 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.6.2-beta — 2026-08-29
+
+### Fixed
+- **The PIN boxes were drawn underneath the keypad.** The keys were anchored to the bottom
+  of the body and the prompt and boxes flowed down from the top — two independent pieces of
+  arithmetic about one screen, which is the exact mistake the arrival window's `layout()`
+  exists to prevent, and it went in anyway. Once the card-knowledge line was added the two
+  met in the middle and the row of boxes ended up behind the digits.
+
+  Everything on that screen is measured back from the keys now, in one `pinGeometry`
+  function that both the layout pass and the drawing pass ask. Slack from a taller window
+  collects at the **top**, where nothing is competing for it.
+
+- **"Pressed into the plastic: 1 3 3 7 - the order is yours to find" ran off both edges.**
+  `drawCentred` will happily centre a string wider than the box it is centred in, which
+  puts equal amounts of it outside each border. It goes through `TC.wrapText` like every
+  other run of prose in the mod, and the sentence lost its second half — after the first
+  time, "the order is yours to find" is telling the player something they know.
+
+- **The window's minimum height did not count the card-knowledge line**, so at the smallest
+  size there was exactly enough room for the prompt and the boxes and the hint landed on
+  the headline. Two lines are reserved for it whether or not there is anything to say.
+
+Checked by replaying the layout arithmetic at three UI scales and four window heights,
+including the minimum: 192 assertions that nothing on the PIN screen overlaps anything
+else.
+
+---
+
 ## 0.6.1-beta — 2026-08-29
 
 ### Fixed

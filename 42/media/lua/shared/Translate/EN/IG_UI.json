@@ -157,7 +157,7 @@
     "IGUI_TC_PinLockedOut": "Too many wrong PINs - this card is refused for %1 hours",
     "IGUI_TC_PinCardLocked": "This card is refused for another %1 hour(s)",
     "IGUI_TC_PinKnown": "You know this one: %1",
-    "IGUI_TC_PinDigitsKnown": "Pressed into the plastic: %1 - the order is yours to find",
+    "IGUI_TC_PinDigitsKnown": "Pressed into the plastic: %1",
 
     "IGUI_TC_ExaminedBack": "Written on the back: %1",
     "IGUI_TC_ExaminedWorn": "A pencil impression, rubbed out: %1",
