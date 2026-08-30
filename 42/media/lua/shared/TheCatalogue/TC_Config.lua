@@ -122,6 +122,21 @@ TC.EXCLUDED_ITEMS = {
     ["Catalogue.Parcel_XXL"]  = true,
     ["Catalogue.Parcel_5XL"]  = true,
     ["Catalogue.Parcel_10XL"] = true,
+
+    --[[ The card reader is NOT for sale, and this is the most important line in the table.
+
+         Nothing else here is excluded to protect a mechanic; the parcels are excluded
+         because they are boxes. The reader is gated behind Electricity 3 and a handful of
+         scrap ON PURPOSE -- it is the one route into a stranger's account that works the
+         same on every card, and the skill is what pays for it. A mail-order company that
+         would post you one for a few hundred dollars is that gate deleted: no skill, no
+         materials, just money, which is the thing the player already has plenty of by the
+         time this matters.
+
+         It stays out of the SELL side too, which is what excluding it does, and that is
+         right as well -- a reader bought back at a fraction of nothing is not a trade
+         anybody needs. ]]
+    ["Catalogue.CardSkimmer"] = true,
 }
 
 --[[ Delivery packaging.
@@ -212,7 +227,7 @@ end
      A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
      sandbox option and this line has to be there whether or not anyone turned it on.
      tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
-TC.VERSION = "0.5.0-beta"
+TC.VERSION = "0.6.0-beta"
 print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging

@@ -166,6 +166,9 @@
     "IGUI_TC_NoteUnknown": "The account on this note means nothing here",
     "IGUI_TC_CannotReadIlliterate": "You cannot read",
     "IGUI_TC_CannotReadDark": "Too dark to make anything out",
+    "IGUI_TC_Skimmed": "The reader gives up the number: %1",
+    "IGUI_TC_SkimmerDead": "The reader has come apart",
+    "IGUI_TC_SkimmerUses": "%1 read(s) left in the reader.",
 
     "IGUI_TC_ATMWired": "The reader is bypassed - this machine takes any card for %1 hours",
     "IGUI_TC_ATMAlreadyWired": "The reader on this machine is already bypassed.",

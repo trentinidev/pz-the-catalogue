@@ -12,6 +12,44 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.6.0-beta — 2026-08-29
+
+### Added
+- **The card reader**, and with it the tenth and last route into somebody else's account.
+
+  Two electronics scrap, a battery, a length of wire and a screwdriver, at **Electricity
+  3** — the same floor the mod puts on wiring an ATM's reader, and for the same reason.
+  Run a card through it and it hands back the four digits, without the machine, without
+  the wait, and without the three-tries-a-day.
+
+  **It is the only route that does not depend on the card.** Examining tells you whatever
+  that particular card happens to carry — the number on the back if you are lucky, four
+  unordered digits if you are not — and a note is either in the wallet or it is not. The
+  reader works the same on every card in the county, and that is what the skill is buying.
+
+  **Condition is the ceiling that stops it being simply better than everything else.** Ten
+  reads to a reader, one point per card, and it comes apart at zero — removed rather than
+  left at condition 0, because an item the game still shows but the mod will not use again
+  is a puzzle. It is offered on a card that has *already* been examined, because knowing
+  four digits is not knowing the number: the reader is what turns twenty-four arrangements
+  into one.
+
+  Electricity sets the time and nothing else. A chance to fail is re-rollable by clicking
+  again, which teaches clicking again — and having built the thing, "it did not work, try
+  once more" is a worse experience than waiting longer.
+
+  Icon drawn by Vitor; the source is in `art/skimmer_icon.png` so the 32×32 can be redone.
+
+### Changed
+- **The catalogue will not sell you a card reader.** The most important line in
+  `EXCLUDED_ITEMS` and the only one there to protect a mechanic rather than because the
+  item is a box. The reader is gated behind a skill and a handful of scrap on purpose; a
+  mail-order company that posts you one for a few hundred dollars is that gate deleted —
+  no skill, no materials, just money, which is the thing a player has plenty of by the
+  time any of this matters.
+
+---
+
 ## 0.5.0-beta — 2026-08-29
 
 **Getting into an account that was not yours.** 0.4.0-beta put real accounts on the cards

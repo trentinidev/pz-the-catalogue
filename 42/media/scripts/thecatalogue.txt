@@ -103,6 +103,61 @@ module Catalogue
         Tags = base:neverempty;base:isfirefuel;base:isfiretinder,
     }
 
+    /* The card reader.
+
+       A strip reader wired to a battery: run a card through it and it hands back the four
+       digits the owner used, without the machine, the wait, or the three-tries-a-day the
+       cash machine imposes. It is the answer for somebody who put points into Electrical
+       rather than into luck, and it is the only route into a stranger's account that does
+       not depend on what that particular card happens to be carrying.
+
+       CONDITION IS THE COST, and it is why this is not simply better than every other
+       route. Ten reads and the reader is finished -- ConditionMax = 10, one point per card,
+       and it falls apart at zero. The materials are not rare; the ceiling is what stops one
+       craft answering every card in the county.
+
+       The icon is ours, drawn by Vitor. No world model: this is a thing in a bag, and
+       vanilla has no mesh that reads as a strip reader. Left without WorldStaticModel it
+       falls back to the engine's default, which is the honest option -- a wrong mesh on
+       the floor is worse than a generic one. */
+    item CardSkimmer
+    {
+        DisplayCategory = Electronics,
+        ItemType = base:normal,
+        Weight = 0.4,
+        Icon = CardSkimmer,
+        ConditionMax = 10,
+        ConditionLowerChanceOneIn = 1000,
+        Tags = base:electronic,
+    }
+
+    /* Scrap, a battery and wire: nothing rare, because the reader is capped at ten reads
+       and a rare-materials gate on top of that would make it not worth building.
+
+       Electricity 3 is the same floor the mod puts on wiring an ATM's reader, and for the
+       same reason -- below that you are looking at a circuit board you do not understand.
+       The screwdriver is mode:keep: it is a tool, not a component. */
+    craftRecipe MakeCardSkimmer
+    {
+        timedAction = MakingElectrical,
+        time = 180,
+        SkillRequired = Electricity:3,
+        xpAward = Electricity:15,
+        Tags = InHandCraft;Electrical,
+        category = Electrical,
+        inputs
+        {
+            item 2 [Base.ElectronicsScrap],
+            item 1 [Base.Battery],
+            item 1 [Base.ElectricWire],
+            item 1 [Base.Screwdriver] mode:keep,
+        }
+        outputs
+        {
+            item 1 Catalogue.CardSkimmer,
+        }
+    }
+
     /* Bundle loose notes. The exact mirror of vanilla's UnbundleMoney -- same time,
        same tags, same category, same 1:100 rate -- so the two read as one pair of
        recipes rather than as a mod bolted onto a vanilla one.
