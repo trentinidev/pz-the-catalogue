@@ -148,6 +148,7 @@ TC.EXCLUDED_ITEMS = {
     ["Catalogue.BlankCD"]         = true,
     ["Catalogue.OnlineCatalogue"] = true,
     ["Catalogue.BankingCD"]       = true,
+    ["Catalogue.DepositCassette"] = true,
 }
 
 --[[ Delivery packaging.
@@ -238,7 +239,7 @@ end
      A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
      sandbox option and this line has to be there whether or not anyone turned it on.
      tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
-TC.VERSION = "0.9.0-beta"
+TC.VERSION = "0.10.0-beta"
 print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging

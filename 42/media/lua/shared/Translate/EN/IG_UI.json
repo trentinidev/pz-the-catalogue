@@ -198,6 +198,11 @@
     "IGUI_TC_BankingNeedsReader": "Needs a card reader as well - a computer cannot read a strip on its own.",
     "IGUI_TC_BankingConsumes": "Consumes the disc AND the card reader. The machine then reads cards forever.",
 
+    "IGUI_TC_CassetteWhat": "Takes the cassette and note feed out of this machine. One per ATM, and it is gone from here for good.",
+    "IGUI_TC_CassetteTaken": "The note gear is out",
+    "IGUI_TC_CassetteConsumes": "Consumes the note gear. This computer can then take notes IN - taking them out still needs a real machine.",
+    "IGUI_TC_CassetteInstalled": "The note gear is fitted - this machine takes deposits",
+
     "IGUI_TC_BankOpenAccount": "Open an account",
     "IGUI_TC_BankOpenFailed": "The machine could not open an account",
     "IGUI_TC_BankLostCard": "Lost card - open a new account",
