@@ -46,18 +46,30 @@ local BANDS = {
     { weight = 5,  min = 5000, max = 10000 },   -- the one in twenty worth finding
 }
 
+--[[ The sandbox multiplier scales the RESULT, not the bands.
+
+     Which keeps the shape and moves only the level: half of all cards stay petty cash and
+     one in twenty stays the one worth the walk, whatever the multiplier is. Scaling the
+     band edges instead would let a large multiplier flatten the distribution into "every
+     card is rich", which is the thing the bands exist to prevent. Zero is allowed and
+     means every found card is empty -- the puzzle without the reward. ]]
 local function rollBalance()
     local total = 0
     for _, band in ipairs(BANDS) do total = total + band.weight end
 
+    local raw = 1
     local roll = ZombRand(total)
     for _, band in ipairs(BANDS) do
         if roll < band.weight then
-            return band.min + ZombRand(band.max - band.min + 1)
+            raw = band.min + ZombRand(band.max - band.min + 1)
+            break
         end
         roll = roll - band.weight
     end
-    return 1
+
+    local mult = TC.opt("ForeignBalanceMultiplier")
+    if type(mult) ~= "number" then mult = 1.0 end
+    return math.floor(raw * mult + 0.5)
 end
 
 --[[ Fallback names, used only when the game's own survivor factory will not answer.
@@ -224,6 +236,10 @@ end
 function TC.blessCard(item)
     if not TC.isCardItem(item) then return nil end
     if TC.isBankCard(item) then return nil end
+
+    -- Two different objections, two different switches. See sandbox-options.txt.
+    if not TC.opt("BankingEnabled") then return nil end
+    if not TC.opt("ForeignCards")   then return nil end
 
     local number = TC.reserveTail()
     if not number then return nil end

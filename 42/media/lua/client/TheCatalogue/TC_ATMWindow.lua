@@ -1027,7 +1027,7 @@ function TC_ATMWindow:submitPin()
             -- The card is NOT retained. A mod that destroys the way into an account over
             -- three typos is a mod nobody keeps installed; it goes quiet until tomorrow.
             HaloTextHelper.addBadText(self.player,
-                getText("IGUI_TC_PinLockedOut", TC.PIN_LOCKOUT_HOURS))
+                getText("IGUI_TC_PinLockedOut", TC.opt("PinLockoutHours") or 24))
             self:close()
             return
         end

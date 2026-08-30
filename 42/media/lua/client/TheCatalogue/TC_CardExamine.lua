@@ -305,6 +305,7 @@ end
 local function addOptions(playerNum, context, items)
     local player = getSpecificPlayer(playerNum)
     if not player then return end
+    if not TC.opt("BankingEnabled") then return end
 
     local ok, why = canRead(player)
 

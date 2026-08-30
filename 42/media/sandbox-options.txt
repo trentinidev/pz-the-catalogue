@@ -138,3 +138,72 @@ option TheCatalogue.MinConditionToSell
     page = TheCatalogue,
     translation = TheCatalogue_MinConditionToSell,
 }
+
+/* Everything the banking half of the mod adds -- accounts, cards, cash machines, the
+   computer -- switched off in one place.
+
+   OFF returns the mod to what it was before 0.1.0-beta: a catalogue you buy and sell with
+   out of the notes in your pocket. No account, no ATM entry, no computer entry, and no
+   credit card in the world is touched. That last part is the reason this option exists at
+   all -- a server that does not want a banking economy, or a player who hits a conflict
+   with another mod that cares about CreditCard, needs a way out that is not uninstalling. */
+option TheCatalogue.BankingEnabled
+{
+    type = boolean,
+    default = true,
+    page = TheCatalogue,
+    translation = TheCatalogue_BankingEnabled,
+}
+
+/* Whether the credit cards the world spawns belong to somebody.
+
+   OFF leaves your OWN account working -- you can still open one at a machine and use it --
+   and stops the mod naming, pricing and stamping every CreditCard it finds. Separate from
+   BankingEnabled because they are different objections: one is "I do not want banking",
+   the other is "I do not want the mod touching an item other things use". */
+option TheCatalogue.ForeignCards
+{
+    type = boolean,
+    default = true,
+    page = TheCatalogue,
+    translation = TheCatalogue_ForeignCards,
+}
+
+/* Scales the balance on a card found in the world.
+
+   The bands behind it are weighted, not flat: half of all cards are petty cash and about
+   one in twenty is worth the walk. This multiplies the result, so the SHAPE of the
+   distribution is kept and only the level moves. 0 makes every found card empty, which is
+   a way to keep the puzzle and remove the reward. */
+option TheCatalogue.ForeignBalanceMultiplier
+{
+    type = double,
+    min = 0.0, max = 10.0,
+    default = 1.0,
+    page = TheCatalogue,
+    translation = TheCatalogue_ForeignBalanceMultiplier,
+}
+
+/* Wrong PINs allowed before a card is refused. Burglar always gets two more than this. */
+option TheCatalogue.PinTries
+{
+    type = integer,
+    min = 1, max = 20,
+    default = 3,
+    page = TheCatalogue,
+    translation = TheCatalogue_PinTries,
+}
+
+/* How long a card stays refused afterwards, in game hours.
+
+   24 is "come back tomorrow", which is the unit a player thinks in. Lower it if working
+   through the twenty-four arrangements a pencil impression leaves you is too slow; set it
+   to 0 to remove the lockout and keep only the count. */
+option TheCatalogue.PinLockoutHours
+{
+    type = integer,
+    min = 0, max = 168,
+    default = 24,
+    page = TheCatalogue,
+    translation = TheCatalogue_PinLockoutHours,
+}

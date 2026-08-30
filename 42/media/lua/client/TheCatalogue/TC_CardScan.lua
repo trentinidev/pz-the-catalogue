@@ -32,10 +32,17 @@ local TC = TheCatalogue
      bug. ]]
 local SWEEP_MS = 2000
 
-local lastSweep = 0
+--[[ Per player, not one shared clock.
+
+     It was a single number, which on a split screen meant two players took turns starving
+     each other: whoever ran first reset it, and the other one waited another two seconds
+     for a sweep that had already happened to somebody else. Keyed by playerNum it is the
+     same cost and actually two independent timers. ]]
+local lastSweep = {}
 
 --[[ Loot being generated. The container is handed over already full. ]]
 local function onFillContainer(roomName, containerType, container)
+    if not TC.opt("BankingEnabled") then return end
     if not container then return end
 
     --[[ Where this container is, which the "note elsewhere in the building" secret needs.
@@ -52,6 +59,10 @@ local function onFillContainer(roomName, containerType, container)
 
     -- And drop any note a card found in a nearby drawer was waiting for.
     if square then
+        --[[ The player is only used to resolve an account number the note names, and a
+             stranger's account lives in the WORLD register rather than on anybody -- so any
+             live player answers, and nil answers too. getSpecificPlayer(0) is the one that
+             certainly exists while loot is being generated. ]]
         local notes = TC.placeHouseNotes(getSpecificPlayer(0), container, square)
         if notes > 0 then TC.log("left %d PIN note(s) in a %s", notes, tostring(containerType)) end
     end
@@ -64,11 +75,13 @@ end
      The stolen variant is asked for separately rather than folded in, because
      getAllTypeRecurse takes one type at a time. ]]
 local function sweep(player)
+    if not TC.opt("BankingEnabled") then return end
     if not player then return end
 
+    local playerNum = player:getPlayerNum()
     local now = getTimestampMs()
-    if (now - lastSweep) < SWEEP_MS then return end
-    lastSweep = now
+    if (now - (lastSweep[playerNum] or 0)) < SWEEP_MS then return end
+    lastSweep[playerNum] = now
 
     -- The same lookup the machine uses, so a card the sweep names is a card the machine
     -- can see. These were two separate lists once, they disagreed about the stolen

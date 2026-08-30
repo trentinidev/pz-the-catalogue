@@ -32,5 +32,20 @@
     "Sandbox_TheCatalogue_RequireCatalogueOnPerson_tooltip": "When on, the catalogue window closes if you no longer have a Catalogue in your inventory or a bag. Turn it off for an arcade-style game where the catalogue is a menu rather than an object you carry.",
 
     "Sandbox_TheCatalogue_MinConditionToSell": "Minimum condition to sell",
-    "Sandbox_TheCatalogue_MinConditionToSell_tooltip": "Items below this fraction of condition are refused. 0.0 accepts anything, including near-broken gear and rotten food."
+    "Sandbox_TheCatalogue_MinConditionToSell_tooltip": "Items below this fraction of condition are refused. 0.0 accepts anything, including near-broken gear and rotten food.",
+
+    "Sandbox_TheCatalogue_BankingEnabled": "Banking",
+    "Sandbox_TheCatalogue_BankingEnabled_tooltip": "Accounts, credit cards, cash machines and the computer. Off returns the mod to buying and selling with the notes in your pocket, and no credit card in the world is touched -- which is also the way out if another mod cares about CreditCard.",
+
+    "Sandbox_TheCatalogue_ForeignCards": "Cards belong to somebody",
+    "Sandbox_TheCatalogue_ForeignCards_tooltip": "Gives every credit card the world spawns an owner, a balance and a PIN you have to work out. Off leaves your OWN account working and stops the mod naming or stamping cards it finds.",
+
+    "Sandbox_TheCatalogue_ForeignBalanceMultiplier": "Found card balance",
+    "Sandbox_TheCatalogue_ForeignBalanceMultiplier_tooltip": "Scales what is in a card found in the world. The underlying spread is weighted -- half are petty cash, about one in twenty is worth the walk -- and this moves the level without flattening that shape. 0 makes every found card empty.",
+
+    "Sandbox_TheCatalogue_PinTries": "Wrong PINs allowed",
+    "Sandbox_TheCatalogue_PinTries_tooltip": "How many wrong PINs a card takes before it is refused. The Burglar trait always gets two more than this.",
+
+    "Sandbox_TheCatalogue_PinLockoutHours": "PIN lockout hours",
+    "Sandbox_TheCatalogue_PinLockoutHours_tooltip": "How long a card stays refused afterwards, in game hours. Lower it if working through the arrangements a pencil impression leaves you is too slow; 0 removes the lockout and keeps only the count."
 }

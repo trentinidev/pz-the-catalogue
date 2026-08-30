@@ -624,12 +624,34 @@ function TC.nameCard(card, acct)
     local want = getText("IGUI_TC_CardName", acct.holder or "?", TC.cardTail(acct.number))
     if card:getName() == want then return false end
 
+    --[[ SOMEBODY ELSE'S NAME IS LEFT ALONE.
+
+         This mod names every credit card it sees, which is what makes a looted one readable
+         -- and it is also the most invasive thing here, because CreditCard is a vanilla item
+         that other mods, foraging and StoryClutter all put into the world. A card that
+         already carries a custom name got it from something that cared enough to set one,
+         and overwriting that is this mod deciding it matters more.
+
+         The ACCOUNT is still stamped either way, so the card works at a machine and the
+         feature is whole; only the label is conceded. Ours are renamed regardless, because
+         the very first thing TC.issueCard does after creating one is call this -- at which
+         point the name is the script's default, not a custom one. ]]
+    if card:isCustomName() and not (card:getModData() or {}).TC_named then
+        return false
+    end
+
     card:setName(want)
     -- The flag that stops the game re-deriving the display name from the item script --
     -- the step that is easy to leave out and that makes a rename look like it silently
     -- failed. syncItemFields is what vanilla's own rename does afterwards, so that an
     -- inventory pane which is already open redraws.
     card:setCustomName(true)
+
+    -- Ours, so a later rename of our own -- an older format, a changed holder -- is not
+    -- mistaken for somebody else's name and skipped by the guard above.
+    local md = card:getModData()
+    if md then md.TC_named = true end
+
     card:syncItemFields()
     return true
 end
