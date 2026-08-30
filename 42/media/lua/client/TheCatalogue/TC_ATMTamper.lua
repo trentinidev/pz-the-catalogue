@@ -249,16 +249,28 @@ end
 -- Requirements, asked once so the menu and the action agree
 -- ---------------------------------------------------------------------------
 
---[[ Something to open a housing with. `base:screwdriver` is vanilla's own tag, so a
-     screwdriver another mod adds counts without this file knowing about it. ]]
+--[[ Something to open a housing with.
+
+     ItemTag.SCREWDRIVER, NOT THE STRING "Screwdriver". getFirstTagRecurse is a Java method
+     that takes an ItemTag enum, and Kahlua will not coerce a string into one -- it throws
+     `expected argument of type ItemTag, got String`, which is precisely what it did every
+     time somebody right-clicked a cash machine. The tag is still the right thing to ask
+     for: it picks up a screwdriver another mod adds without this file knowing about it.
+
+     The type lookup stays as a fallback for anything that is a screwdriver without
+     carrying the tag, and the whole thing is wrapped because a nil ItemTag constant on
+     some future build should cost the menu an option, not the menu. ]]
 function TC.findScrewdriver(player)
     if not player then return nil end
     local inv = player:getInventory()
     if not inv then return nil end
 
-    local item = inv:getFirstTagRecurse("Screwdriver")
-    if item then return item end
-    return inv:getFirstTypeRecurse("Base.Screwdriver")
+    local ok, item = pcall(function()
+        return inv:getFirstTagRecurse(ItemTag.SCREWDRIVER)
+    end)
+    if ok and item then return item end
+
+    return inv:getFirstTypeRecurse("Screwdriver")
 end
 
 --[[ Something to hit a steel cabinet with. A crowbar is the obvious one; a sledgehammer
@@ -269,7 +281,10 @@ function TC.findPryBar(player)
     local inv = player:getInventory()
     if not inv then return nil end
 
-    for _, t in ipairs({ "Base.Crowbar", "Base.Sledgehammer", "Base.SledgeHammer" }) do
+    -- Bare types, not module-prefixed. getFirstTypeRecurse answers on the short name, and
+    -- the prefixed form is what quietly returned nothing here for a bag with a crowbar in
+    -- it -- the same trap findScrewdriver was in one line above.
+    for _, t in ipairs({ "Crowbar", "Sledgehammer", "SledgeHammer" }) do
         local item = inv:getFirstTypeRecurse(t)
         if item then return item end
     end

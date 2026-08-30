@@ -57,15 +57,21 @@ local LAZY_PINS = {
 
 --[[ What a given card gives up when you look at it closely.
 
-     Weighted, and the weights are the pacing. A tenth are written on, a sixth have a note
-     in the same pocket, a sixth have one somewhere else in the building, and the rest give
-     only the impression. So roughly two cards in five hand you the number outright and the
-     other three are work. ]]
+     MOST CARDS GIVE NOTHING, and that is the correction that matters. The first cut had no
+     "nothing" at all: every card in the county carried either the number or the digits, so
+     examining was a button that always paid and the only question was how much. A search
+     that always succeeds is not a search.
+
+     Half give nothing now. One in twelve is written on, one in five carries the pencil
+     impression, and about one in five has a note somewhere -- in the wallet or a drawer in
+     the same building. So looking at a card is usually a waste of twelve seconds, which is
+     what makes the times it is not worth something. ]]
 local SECRETS = {
-    { weight = 10, kind = "back"  },   -- written on the card itself
-    { weight = 15, kind = "note"  },   -- a scrap in the same container
-    { weight = 15, kind = "house" },   -- a scrap elsewhere in the building
-    { weight = 60, kind = "worn"  },   -- only the pencil impression
+    { weight = 8,  kind = "back"    },   -- written on the card itself
+    { weight = 12, kind = "note"    },   -- a scrap in the same container
+    { weight = 10, kind = "house"   },   -- a scrap elsewhere in the building
+    { weight = 20, kind = "worn"    },   -- a pencil impression: the digits, no order
+    { weight = 50, kind = "nothing" },   -- a card, and nothing else
 }
 
 local function rollWeighted(list)

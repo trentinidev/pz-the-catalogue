@@ -173,6 +173,45 @@ function TC.isCardItem(item)
     return t == TC.CARD_ITEM or t == "Base.CreditCard_Stolen"
 end
 
+--[[ Every credit card on a player, of either kind, found once.
+
+     ONE PLACE, because there were three and they disagreed. The card sweep asked for
+     "Base.CreditCard", "CreditCard" and "Base.CreditCard_Stolen"; TC.cardsOnPlayer asked
+     for the first two only. So a stolen card was named by the sweep and then invisible to
+     the machine -- it had an account, it had an Examine option in the inventory, and it
+     never appeared in the list of cards to insert. That is the bug, and one function that
+     everything asks is the fix.
+
+     BOTH SPELLINGS OF BOTH TYPES. getAllTypeRecurse answers on the short name in some
+     builds and the module-prefixed one in others, and the mod has been guessing which
+     since TC_Money.lua. Asking for all four and de-duplicating by identity costs a walk of
+     an inventory that has perhaps two cards in it. ]]
+function TC.cardItemsOn(player)
+    local out = {}
+    if not player then return out end
+
+    local inv = player:getInventory()
+    if not inv then return out end
+
+    local seen = {}
+
+    for _, t in ipairs({ "CreditCard", "Base.CreditCard",
+                         "CreditCard_Stolen", "Base.CreditCard_Stolen" }) do
+        local list = inv:getAllTypeRecurse(t)
+        if list then
+            for i = 0, list:size() - 1 do
+                local item = list:get(i)
+                if item and not seen[item] then
+                    seen[item] = true
+                    table.insert(out, item)
+                end
+            end
+        end
+    end
+
+    return out
+end
+
 --[[ Give an unclaimed card an owner, an account and a balance.
 
      Returns the account, or nil if the card already had one or could not be given a

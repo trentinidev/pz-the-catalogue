@@ -55,20 +55,42 @@ end
      A window would be a whole UI for one sentence, and this is a sentence: the number, or
      the four digits it is made of. It also goes into the account, which is what the
      machine reads later -- the halo is the telling, the account is the remembering. ]]
+--[[ What twelve seconds with a card in your hands actually gets you.
+
+     THE `else` USED TO REVEAL THE DIGITS, and that was the bug the player saw as "every
+     card tells me the PIN". Two things were wrong with it. A card whose secret is a note
+     in a drawer has nothing written on it at all, and fell into that branch anyway; and a
+     card named by 0.4.0-beta, before secrets existed, has no `secret` field and fell in
+     too. So examining always paid.
+
+     Each outcome is now named explicitly and anything else finds nothing. A missing
+     `secret` is rolled once, here, so cards from an older save join the same distribution
+     as everything else rather than being permanently generous. ]]
 function TC_ExamineCardAction:perform()
     local acct = TC.account(self.character, self.number)
 
     if acct then
+        if acct.secret == nil then acct.secret = TC.rollCardSecret() end
+
         if acct.secret == "back" then
             TC.revealPin(acct)
             HaloTextHelper.addGoodText(self.character,
                 getText("IGUI_TC_ExaminedBack", acct.pin))
-        else
+
+        elseif acct.secret == "worn" then
             TC.revealDigits(acct)
             HaloTextHelper.addGoodText(self.character,
                 getText("IGUI_TC_ExaminedWorn", TC.pinDigits(acct)))
+
+        else
+            -- Nothing on it, or what there is to find is not on the card. Said plainly, so
+            -- the twelve seconds read as answered rather than as broken.
+            HaloTextHelper.addBadText(self.character, getText("IGUI_TC_ExaminedNothing"))
         end
 
+        --[[ Marked either way, which is what stops this being a button to press twice.
+             The card has been looked at; looking again at the same piece of plastic does
+             not make writing appear on it. ]]
         local known = TC.cardKnown(acct)
         if known then known.examined = true end
     end
@@ -300,8 +322,14 @@ local function addOptions(playerNum, context, items)
             local acct = md and md.TC_account and TC.account(player, md.TC_account)
 
             if acct and not TC.knowsPin(acct) then
+                --[[ Once looked at, never again -- whatever the looking found.
+
+                     This used to also require that the digits were known, which meant a
+                     card with nothing on it offered Examine forever and could be clicked
+                     until the player gave up on it. Examining is about the card, and a
+                     card does not change. ]]
                 local known = TC.cardKnown(acct)
-                local done  = known and known.examined and TC.knowsDigits(acct)
+                local done  = known and known.examined
 
                 if not done then
                     local option = context:addOption(getText("ContextMenu_TC_ExamineCard"),

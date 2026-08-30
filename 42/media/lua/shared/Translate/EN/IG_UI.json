@@ -161,6 +161,7 @@
 
     "IGUI_TC_ExaminedBack": "Written on the back: %1",
     "IGUI_TC_ExaminedWorn": "A pencil impression, rubbed out: %1",
+    "IGUI_TC_ExaminedNothing": "Nothing written on it anywhere",
     "IGUI_TC_NoteName": "Scrap of Paper (card %1)",
     "IGUI_TC_NoteRead": "Card %1 - PIN %2",
     "IGUI_TC_NoteUnknown": "The account on this note means nothing here",
