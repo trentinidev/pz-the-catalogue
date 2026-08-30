@@ -508,6 +508,14 @@ function TC_ATMWindow:createChildren()
     self.cardList.itemheight = ROW_HGT
     self.cardList.drawBorder = true
     self.cardList.target = self
+    --[[ Double-clicking a row inserts it, because that is what a list of things you pick
+         one of is expected to do and it is the first thing anybody tries. The button stays:
+         it is the discoverable half, and it is the half a controller can reach.
+
+         ISScrollingListBox sets `selected` on the mouse-down that precedes the double
+         click, so by the time this fires onInsertCard already has the right row and the
+         handler needs no argument of its own. ]]
+    self.cardList.onmousedblclick = TC_ATMWindow.onCardDoubleClick
     self:addChild(self.cardList)
 
     self.insertBtn      = self:mkButton(getText("IGUI_TC_BankInsertCard"), TC_ATMWindow.onInsertCard)
@@ -545,7 +553,7 @@ function TC_ATMWindow:createChildren()
     self.confirmBtn = self:mkButton(getText("IGUI_TC_BankConfirm"), TC_ATMWindow.onConfirmAmount)
     self.backBtn    = self:mkButton(getText("IGUI_TC_BankBack"),    TC_ATMWindow.onBack)
 
-    self:refreshStatement()
+    self:refreshForScreen()
     self:applyScreen()
 end
 
@@ -553,10 +561,22 @@ end
 -- Screens
 -- ---------------------------------------------------------------------------
 
+--[[ Fill whatever the screen we are on reads from.
+
+     CALLED FROM BOTH PLACES A SCREEN CAN BE SET, and that is the whole reason it exists as
+     a function rather than as two lines inside setScreen. `screen` is written directly in
+     :new -- the window has to know what it is before createChildren runs -- and goes
+     through setScreen everywhere after. Only setScreen used to repopulate, so a window
+     that ARRIVED at the chooser by clicking was fine and one that OPENED on it drew an
+     empty table with two cards in the player's pockets. ]]
+function TC_ATMWindow:refreshForScreen()
+    if self.screen == ACCOUNT then self:refreshStatement() end
+    if self.screen == CHOOSE  then self:refreshCards() end
+end
+
 function TC_ATMWindow:setScreen(screen)
     self.screen = screen
-    if screen == ACCOUNT then self:refreshStatement() end
-    if screen == CHOOSE  then self:refreshCards() end
+    self:refreshForScreen()
     self:applyScreen()
 end
 
@@ -724,6 +744,14 @@ function TC_ATMWindow:refreshCards()
     for _, card in ipairs(TC.cardsOnPlayer(self.player)) do
         self.cardList:addItem(card.account.number or "", card)
     end
+
+    -- Kept in step with the list so the prerender's cheap "has it changed" test has
+    -- something true to compare against, whoever rebuilt it.
+    self.lastCardCount = #self.cardList.items
+
+    -- The first row is selected rather than nothing, so Insert card always has something
+    -- to act on and the screen never answers a click with "choose a card first" while a
+    -- card is plainly sitting there.
     self.cardList.selected = 1
 end
 
@@ -734,6 +762,10 @@ end
 function TC_ATMWindow:openLabel()
     if TC.hasAnyAccount(self.player) then return getText("IGUI_TC_BankLostCard") end
     return getText("IGUI_TC_BankOpenAccount")
+end
+
+function TC_ATMWindow:onCardDoubleClick()
+    self:onInsertCard()
 end
 
 function TC_ATMWindow:onInsertCard()
@@ -1040,6 +1072,18 @@ function TC_ATMWindow:prerender()
             self:close()
             return
         end
+
+        -- The chooser is a picture of the player's pockets, and the pockets stay editable
+        -- while it is open. Rebuilt only when the COUNT moves, so the ordinary case is a
+        -- comparison rather than a rebuild -- the same trick the arrival window uses to
+        -- notice a second delivery landing while it is on screen.
+        if self.screen == CHOOSE then
+            local n = #TC.cardsOnPlayer(self.player)
+            if n ~= self.lastCardCount then
+                self.lastCardCount = n
+                self:refreshCards()
+            end
+        end
     end
 
     local L = self:layout()
@@ -1147,6 +1191,14 @@ function TC_ATMWindow:drawChoose(L)
     self:drawText(getText("IGUI_TC_BankAccountNo"), L.x + INSET, hy, 0.72, 0.72, 0.76, 1, F)
     TC.drawRight(self, getText("IGUI_TC_BankColOpened"), L.x + L.w - INSET, hy,
                  F, 0.72, 0.72, 0.76)
+
+    -- An empty chooser should be unreachable -- it is only opened with two cards in hand --
+    -- but the player can empty it from underneath by putting the cards down, and a black
+    -- panel with no words in it is the worst thing a screen can be.
+    if #self.cardList.items == 0 then
+        TC.drawCentred(self, TC.truncate(F, getText("IGUI_TC_ATMLost1"), L.w - PAD * 2),
+                       L.x, L.w, self.cardList:getY() + PAD, F, 0.55, 0.55, 0.6)
+    end
 end
 
 --[[ The four PIN boxes.

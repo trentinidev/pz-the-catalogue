@@ -12,6 +12,34 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.2.1-beta — 2026-08-29
+
+### Fixed
+- **The card chooser opened empty.** Two cards in the player's pockets, the screen
+  correctly decided to ask which one, and then drew an empty table.
+
+  The line that fills it was there and was never reached. `screen` is written in TWO
+  places — directly in `:new`, because the window has to know what it is before
+  `createChildren` runs, and through `setScreen` everywhere after — and only `setScreen`
+  repopulated. So a window that ARRIVED at the chooser by clicking would have been fine,
+  and one that OPENED on it never was. Fixed by giving the population its own function
+  and calling it from both, rather than by adding the missing line to one of them: the
+  bug was the second path, not the absent call.
+
+### Added
+- **Double-clicking a card inserts it.** It is what a list you pick one thing out of is
+  expected to do, and it is the first thing anybody tries. The button stays — it is the
+  discoverable half, and the half a controller can reach.
+- **The chooser follows the pockets it is a picture of.** The inventory stays editable
+  while the machine is open, so picking cards up or putting them down while the list is on
+  screen rebuilds it. Only when the count actually moves, so the ordinary frame costs a
+  comparison; the same trick the delivery window uses to notice a second van arriving.
+- **A word in the empty chooser.** It should be unreachable — the screen only opens with
+  two cards in hand — but the player can empty it from underneath, and a black panel with
+  nothing written in it is the worst thing a screen can be.
+
+---
+
 ## 0.2.0-beta — 2026-08-29
 
 **The card is the account.** This replaces the rule 0.1.0-beta shipped with, and it is a
