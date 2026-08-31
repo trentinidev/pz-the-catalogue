@@ -12,6 +12,31 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.12.1-beta — 2026-08-30
+
+### Fixed
+- **Selling furniture in place broke the ledger.** The sale worked — the piece went, the
+  money arrived — and then the ledger threw `Expected a table` out of `ipairs` the next
+  time it was opened, and kept throwing.
+
+  `TC.logTransaction` takes a list of receipt **lines**; the furniture sale handed it the
+  piece's name as a plain string. Nothing complained at the time, because writing a bad
+  entry is silent and only reading one is loud.
+
+  **The repair runs at both doors, and that is the point.** At the write door, so no
+  future caller can put a bad entry in the save. At the read door, so a save that already
+  holds one is healed the first time it is read — otherwise the crash would have outlived
+  the fix, and reinstalling would not have cured it. A string is kept as the line's name
+  rather than dropped: it is what the player sold, and losing it to tidiness would be a
+  second bug stacked on the first.
+
+  The furniture sale now summarises through the same helper the sell window uses, so its
+  rows carry an icon, and it labels the line with the tile's own name — `getDisplayName`
+  on a generic moveable answers "Moveable object" where the sprite props know it is a
+  Blue Comfy Couch.
+
+---
+
 ## 0.12.0-beta — 2026-08-30
 
 The catalogue sells furniture.

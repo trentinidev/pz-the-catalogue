@@ -24,10 +24,40 @@ local HISTORY_KEY = "TheCatalogue_History"
      kilobytes. The oldest fall off the end. ]]
 local MAX_ENTRIES = 200
 
+--[[ Turn whatever `lines` happens to be into the list of receipt lines it must be.
+
+     A LEDGER ENTRY IS FOREVER, WHICH IS WHY THIS EXISTS TWICE. 0.12.0 handed this a
+     plain string from the furniture sale, and nothing complained: the entry was written,
+     the sale went through, the money arrived. The ledger then threw `Expected a table`
+     out of ipairs the next time it was opened -- and kept throwing, because the bad
+     entry was in the save by then and a fresh install would not have cured it.
+
+     So the repair runs on the way IN, where no future caller can write a bad entry, and
+     on the way OUT, where a save that already holds one is healed the first time it is
+     read. A string is kept as the line's name rather than dropped: it is what the player
+     bought, and losing it to tidiness would be a second bug on top of the first. ]]
+local function receiptLines(lines)
+    if type(lines) == "table" then return lines end
+    if type(lines) == "string" and lines ~= "" then
+        return { { name = lines, qty = 1 } }
+    end
+    return {}
+end
+
 function TC.history(player)
     if not player then return {} end
     local md = player:getModData()
     if type(md[HISTORY_KEY]) ~= "table" then md[HISTORY_KEY] = {} end
+
+    -- Healed in place, so the save is corrected once rather than reformatted on every
+    -- draw. The loop is over at most MAX_ENTRIES and does nothing at all in the
+    -- ordinary case.
+    for _, e in ipairs(md[HISTORY_KEY]) do
+        if type(e) == "table" and type(e.lines) ~= "table" then
+            e.lines = receiptLines(e.lines)
+        end
+    end
+
     return md[HISTORY_KEY]
 end
 
@@ -59,7 +89,7 @@ function TC.logTransaction(player, kind, lines, total)
         kind  = kind,                 -- "buy" or "sell"
         total = math.floor((total or 0) + 0.5),
         when  = TC.gameStamp(),
-        lines = lines or {},
+        lines = receiptLines(lines),
     })
 
     while #hist > MAX_ENTRIES do

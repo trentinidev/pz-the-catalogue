@@ -89,13 +89,28 @@ function TC_SellFurnitureAction:perform()
         if value then
             local total = math.max(0, math.floor(value + 0.5))
 
+            -- Summarised BEFORE the item is removed, and through the same helper the
+            -- sell window uses, because the ledger stores receipt LINES and not a
+            -- sentence. Handing it the label string wrote an entry that crashed the
+            -- ledger on its next open; see receiptLines in TC_History.lua.
+            local receipt = TC.summariseItems({ item })
+
+            -- The tile's own name if the menu gave us one. getDisplayName on a generic
+            -- moveable answers "Moveable object", where the sprite props know it is a
+            -- Blue Comfy Couch -- and a receipt is only worth keeping if it says what
+            -- was sold. The fullType stays as summariseItems set it, so the row keeps
+            -- its icon.
+            if receipt[1] and self.label and self.label ~= "" then
+                receipt[1].name = self.label
+            end
+
             if TC.removeItem(item) then
                 TC.playSound(self.character, "orderSign")
                 -- Cash. There is no catalogue window open out here to have chosen an
                 -- account, and putting money into one the player did not name would be
                 -- deciding for them.
                 TC.purseGive(self.character, nil, total)
-                TC.logTransaction(self.character, "sell", self.label or "", total)
+                TC.logTransaction(self.character, "sell", receipt, total)
                 HaloTextHelper.addGoodText(self.character,
                                            getText("IGUI_TC_SoldFurniture", total))
             end
