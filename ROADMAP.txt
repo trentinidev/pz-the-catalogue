@@ -5,13 +5,19 @@ What is deliberately not built yet, and why. Everything here was considered and
 parked on purpose -- none of it is rejected. Landed work lives in CHANGELOG.md;
 this file is the other half of that story.
 
-Current version: 0.11.0-beta. 1.0.0 is reserved for the first build that has been
+Current version: 0.13.0-beta. 1.0.0 is reserved for the first build that has been
 played end to end. It does NOT promise a dedicated server: server authority is
 deferred past 1.0 rather than half-done before it, and the README says the same.
 
 The number went DOWN at the alpha/beta line, on purpose: the alpha line ended at
 0.13.0 and the beta line starts its own count at 0.1.0. Nothing has been released,
 so no install anywhere reads it as a downgrade. See the CHANGELOG entry.
+
+One loose end from that, worth knowing before it confuses somebody: a checkout that
+had not seen the beta line carried the ALPHA numbering on to 0.14.0-alpha with the
+5x price pass. That work was merged in at 0.13.0-beta, so 0.13.0 exists twice in the
+history under two schemes. The beta number is the live one; the alpha tag is only
+reachable through the merge commit.
 
 WHAT MOVED THIS TO BETA. Named by Vitor on 2026-08-29: the alpha ends when the work
 turns to how the thing LOOKS and how far it REACHES, rather than what it does. The
@@ -126,5 +132,11 @@ Kept here so nothing on the list gets proposed twice:
     at it, spending a bank balance and never touching a note
   - Internet Banking: a wrecked ATM cloned onto a disc, installed with a card
     reader, giving balance, statement and transfers at a computer
+  - Furniture, both ways: 1,119 pieces generated from the game's own tile
+    definitions and sold as placeable moveables, and yours sold back either by
+    carrying it in or by right-clicking the piece where it stands. Priced per
+    category rather than per piece, because the study prices items and a sofa
+    is not one
+
   - The ATM note gear salvaged from a wreck and fitted to a computer, so notes
     can be paid IN at a desk. Taking them out still needs a real machine
