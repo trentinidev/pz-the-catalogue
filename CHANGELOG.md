@@ -12,6 +12,30 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.14.0-alpha — 2026-09-01
+
+### Changed
+- **Everything on the shelf costs five times what it did.** `PriceMultiplier` now
+  defaults to 5.0 instead of 1.0. The table itself is untouched -- the multiplier is
+  applied in `getBuyPrice`, so it reaches the imported study, the modded-item formula
+  and the fallback alike, and an admin can still dial it back to 1.0 for the study's
+  own figures.
+- **Selling pays a tenth, not a third.** `SellRatio` drops from 0.30 to 0.10.
+
+  Together these are a second pass at the problem 0.7.0-alpha attacked with 1.75x and
+  0.30: selling loot still paid for anything worth having, so there was no reason to
+  leave the base. Buying power per item sold is now about a sixth of what it was at
+  0.30, on top of prices being five times higher.
+
+### Known consequence
+- **Eleven items cost more than a player can carry cash for.** The carry ceiling is
+  about $5,000 and money is physical, so the four generators ($13,500), both ham radios
+  and the antibiotics box ($6,300), the assault rifle ($9,450) and the gold and silver
+  bars are no longer purchasable in a single trip -- or at all, since payment is taken
+  when the order is placed. Firearms in the $3,800--$4,700 band are reachable but eat
+  most of a load. This is a consequence of the multiplier, not a separate decision;
+  lowering `PriceMultiplier` restores them.
+
 ## 0.13.0-alpha — 2026-08-29
 
 ### Changed

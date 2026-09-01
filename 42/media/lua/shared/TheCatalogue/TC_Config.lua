@@ -45,8 +45,8 @@ TC.NOTES_PER_BUNDLE = 100
 -- more often than you would think: an existing save made before the mod was added
 -- keeps its old SandboxVars table until the settings are re-saved.
 local DEFAULTS = {
-    PriceMultiplier            = 1.0,
-    SellRatio                  = 0.30,
+    PriceMultiplier            = 5.0,
+    SellRatio                  = 0.10,
     MaxQuantityPerPurchase     = 100,
     SellContainerContents      = true,
     MinConditionToSell         = 0.0,
@@ -165,7 +165,7 @@ end
      A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
      sandbox option and this line has to be there whether or not anyone turned it on.
      tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
-TC.VERSION = "0.13.0-alpha"
+TC.VERSION = "0.14.0-alpha"
 print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging

@@ -13,7 +13,7 @@
    screen (Host -> Manage settings), not by the singleplayer sandbox screen -- the only
    consumer of SandboxOptions.isCustom() in the game's Lua is ServerSettingsScreen.lua.
    For a solo save you can also hand-edit <save>_SandboxVars.lua:
-       TheCatalogue = { PriceMultiplier = 1.0, SellRatio = 0.9 },
+       TheCatalogue = { PriceMultiplier = 5.0, SellRatio = 0.10 },
 */
 
 VERSION = 1,
@@ -25,19 +25,19 @@ option TheCatalogue.PriceMultiplier
 {
     type = double,
     min = 0.05, max = 20.0,
-    default = 1.0,
+    default = 5.0,
     page = TheCatalogue,
     translation = TheCatalogue_PriceMultiplier,
 }
 
-/* Fraction of an item's value paid out when selling. 0.9 is the 10% spread asked for.
-   Setting this to 1.0 makes buy and sell lossless, which turns any craft that adds
-   value into an infinite money loop -- deliberately allowed, but be aware. */
+/* Fraction of an item's value paid out when selling. 0.10 pays a tenth of what the
+   catalogue charges. Setting this to 1.0 makes buy and sell lossless, which turns any
+   craft that adds value into an infinite money loop -- deliberately allowed. */
 option TheCatalogue.SellRatio
 {
     type = double,
     min = 0.0, max = 1.0,
-    default = 0.30,
+    default = 0.10,
     page = TheCatalogue,
     translation = TheCatalogue_SellRatio,
 }

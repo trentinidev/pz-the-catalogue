@@ -53,7 +53,7 @@ you in the currencies a magic shop menu would not:
 - **Goods take time.** An order books, the money leaves immediately, and the van arrives
   when the bulk of what you ordered says it arrives — twenty minutes for a pistol round,
   several days for a generator. You cannot re-equip in the middle of a horde.
-- **The company buys low and sells high.** Selling pays 30% of catalogue price, so
+- **The company buys low and sells high.** Selling pays 10% of catalogue price, so
   clearing out a safehouse is a way to convert junk into cash, never a way to farm it.
 
 **What it is deliberately not:** a trader mod with NPCs, an economy simulation, or an
@@ -80,7 +80,7 @@ system paints on a body — and are refused outright rather than listed at a tok
 
 **Sell** — drop items into the sell window and it prices them, scaled by condition: a
 40%-durability axe fetches 40%, a half-empty bleach bottle fetches half, rotten food
-fetches nothing. Selling pays 30% of catalogue price -- the catalogue buys low and sells
+fetches nothing. Selling pays 10% of catalogue price -- the catalogue buys low and sells
 high, as a company with no competition would.
 
 **Bundling cash** — a `Bundle Money` recipe turns 100 loose notes into one
@@ -157,8 +157,8 @@ not scarcity. Finite stock needs levels that survive a save, which is real work 
 than a missing checkbox.
 
 **Prices never move.** They do not drift with the weeks you have survived, they do not
-respond to what you buy, and there is no haggling. A hammer costs $21 in week one and
-$21 in year two.
+respond to what you buy, and there is no haggling. A hammer costs $105 in week one and
+$105 in year two.
 
 **Everything arrives mint.** There are no used, damaged or clearance goods; the
 condition system runs on the selling side only.
@@ -201,8 +201,8 @@ Custom sandbox options in B42 are drawn by the **server settings** screen
 
 | Option | Default | What it does |
 |---|---|---|
-| `PriceMultiplier` | 1.0 | Scales every buy price. Sell prices follow. |
-| `SellRatio` | 0.30 | Fraction of value paid when selling. |
+| `PriceMultiplier` | 5.0 | Scales every buy price. Sell prices follow. |
+| `SellRatio` | 0.10 | Fraction of value paid when selling. |
 | `MaxQuantityPerPurchase` | 100 | Cap on the quantity field. |
 | `SellContainerContents` | true | Selling a bag sells what is inside it. |
 | `MinConditionToSell` | 0.0 | Refuse items below this condition. |
@@ -235,9 +235,13 @@ always spends bundles first. $2,350 arrives as 23 bundles and 50 notes: 73 objec
 The practical consequence is a ceiling on what you can carry to spend — roughly
 **$5,000** with a decent backpack. Up to 0.11.1 the price scale was built around that
 number. It is not any more: prices come from the study now, and the study was written
-about 1993 Kentucky rather than about how much cash fits in a rucksack. A generator at
-$2,700 is over half a full load, and a gold bar at $38,900 is not purchasable in one
-trip at all.
+about 1993 Kentucky rather than about how much cash fits in a rucksack. Since 0.14.0
+`PriceMultiplier` defaults to **5** on top of the table, so the shelf price is five
+times the study figure: a generator is $13,500 and a gold bar $194,500.
+
+Eleven items now cost more than one trip can carry at all -- the four generators, both
+ham radios, a box of antibiotics, the assault rifle and the precious-metal bars. Lower
+`PriceMultiplier` in the sandbox if you would rather they stayed reachable.
 
 That is the intended reading rather than a problem to correct. The ceiling is a fact
 about carrying money, not a budget the catalogue has to fit inside, and the dearest
@@ -299,7 +303,7 @@ draw calls that hurt.
 ### The lists sort themselves, too
 
 Kahlua's `table.sort` is a recursive quicksort, and this data is its worst case twice
-over. 899 vanilla items are priced $1, 465 at $2 — sorting by price is sorting one long
+over. 899 vanilla items sit at the table minimum and 465 one step above — sorting by price is one long
 plateau. And the array handed to it is already sorted by the tie-break, because the index
 is built in name order and every comparator falls through to the name, so inside that
 plateau the comparator says "already in order" for every pair. Recursion depth becomes the

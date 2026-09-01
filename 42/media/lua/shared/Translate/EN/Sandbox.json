@@ -2,10 +2,10 @@
     "Sandbox_TheCatalogue": "The Catalogue",
 
     "Sandbox_TheCatalogue_PriceMultiplier": "Price multiplier",
-    "Sandbox_TheCatalogue_PriceMultiplier_tooltip": "Scales every buy price. Sell prices follow automatically, since they are derived from the buy price.",
+    "Sandbox_TheCatalogue_PriceMultiplier_tooltip": "Scales every buy price, and defaults to 5. Sell prices follow automatically, since they are derived from the buy price.",
 
     "Sandbox_TheCatalogue_SellRatio": "Sell ratio",
-    "Sandbox_TheCatalogue_SellRatio_tooltip": "Fraction of an item's value paid out when selling. 0.30 means the catalogue pays a third of what it charges. Setting this to 1.0 makes buying and selling lossless, which turns any value-adding craft into an infinite money loop.",
+    "Sandbox_TheCatalogue_SellRatio_tooltip": "Fraction of an item's value paid out when selling. 0.10 means the catalogue pays a tenth of what it charges. Setting this to 1.0 makes buying and selling lossless, which turns any value-adding craft into an infinite money loop.",
 
     "Sandbox_TheCatalogue_MaxQuantityPerPurchase": "Max quantity per purchase",
     "Sandbox_TheCatalogue_MaxQuantityPerPurchase_tooltip": "Upper bound on the quantity field in the buy panel.",
