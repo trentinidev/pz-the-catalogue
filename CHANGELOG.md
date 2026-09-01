@@ -12,6 +12,49 @@ Dates are the day the work was done, not a release date — nothing here has shi
 
 ---
 
+## 0.13.0-beta — 2026-09-01
+
+Merged from a branch worked on separately, which had not seen the banking or furniture
+work. The two numbers below are its, kept as they were; the note at the end is rewritten,
+because on this branch its conclusion is no longer true.
+
+### Changed
+- **Everything on the shelf costs five times what it did.** `PriceMultiplier` now
+  defaults to 5.0 instead of 1.0. The table itself is untouched — the multiplier is
+  applied in `getBuyPrice`, so it reaches the imported study, the modded-item formula
+  and the fallback alike, and an admin can still dial it back to 1.0 for the study's
+  own figures.
+- **Selling pays a tenth, not a third.** `SellRatio` drops from 0.30 to 0.10.
+
+  Together these are a second pass at the problem 0.7.0-beta attacked with 1.75x and
+  0.30: selling loot still paid for anything worth having, so there was no reason to
+  leave the base. Buying power per item sold is now about a sixth of what it was at
+  0.30, on top of prices being five times higher.
+
+  The $1 sell floor from 0.11.2 still applies, and it now bites much harder: at a tenth,
+  everything the catalogue prices under $10 pays exactly a dollar. That is the floor
+  doing its job — an item taken for nothing was the bug it was written for — but it does
+  flatten the bottom of the market, and it is the first number to look at if junk starts
+  feeling too profitable.
+
+### A consequence that is smaller here than it looks
+- **Eleven items cost more than a player can carry cash for**: the four generators
+  ($13,500), both ham radios, the antibiotics box ($6,300), the assault rifle ($9,450)
+  and the gold and silver bars. The carry ceiling is about $5,000 because money is
+  physical, and payment is taken when the order is placed.
+
+  **This is not the wall it was on the branch this came from, which had no bank.** Buying
+  through the **Online Catalogue** pays from an account rather than from your pockets —
+  `TC.purseTake` takes the account when one is in session — and an account has no weight
+  and no ceiling. So the eleven are out of reach on foot and in reach from a desk, which
+  is a better answer than either half was on its own: it gives the banking half a reason
+  to exist beyond storage, and it puts the most expensive things in the game behind a
+  computer, a disc and a card rather than behind a sandbox setting.
+
+  Lowering `PriceMultiplier` still restores them for anyone who would rather not.
+
+---
+
 ## 0.12.1-beta — 2026-08-30
 
 ### Fixed
