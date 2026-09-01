@@ -53,6 +53,18 @@ because on this branch its conclusion is no longer true.
 
   Lowering `PriceMultiplier` still restores them for anyone who would rather not.
 
+### Documentation caught up
+- The **Prices** section never learned that furniture is a pricing layer, and its sample
+  figures (apple $1, hammer $35, gold bar $38,900) now read as the table's, since the
+  shelf multiplies them by five.
+- **ROADMAP** said 0.11.0-beta and had furniture nowhere. It also now records that
+  0.13.0 exists twice in the history — once as the end of the alpha line, once as this
+  entry — because a checkout that had not seen the beta line carried the alpha numbering
+  on to 0.14.0-alpha before it was merged here.
+- The **beta note** claimed the mod had never been run beside other mods. It has, and
+  that run is where 0.11.1's two crashes came from. What is still owed is one character
+  running the whole chain end to end, and a genuinely large mod list.
+
 ---
 
 ## 0.12.1-beta — 2026-08-30
