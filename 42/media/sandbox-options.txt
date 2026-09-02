@@ -12,8 +12,15 @@
    WHERE TO FIND THESE IN GAME: custom sandbox options are drawn by the SERVER SETTINGS
    screen (Host -> Manage settings), not by the singleplayer sandbox screen -- the only
    consumer of SandboxOptions.isCustom() in the game's Lua is ServerSettingsScreen.lua.
-   For a solo save you can also hand-edit <save>_SandboxVars.lua:
-       TheCatalogue = { PriceMultiplier = 5.0, SellRatio = 0.10 },
+
+   A SAVE ALREADY IN PROGRESS DOES NOT SEE A CHANGED DEFAULT. Every option a save knows
+   about is written into it when it is created, and TC.opt reads the save before it
+   reads our defaults -- deliberately, because a player's setting must beat ours. So
+   changing `default =` here reaches new saves only.
+
+   There is no <save>_SandboxVars.lua in B42; the values live in the save's map_sand.bin
+   as Java writeUTF pairs. `sh tools/patch_save_sandbox.sh --apply` rewrites them in
+   place, with the game closed and a backup taken.
 */
 
 VERSION = 1,

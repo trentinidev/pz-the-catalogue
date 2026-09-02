@@ -65,6 +65,25 @@ because on this branch its conclusion is no longer true.
   that run is where 0.11.1's two crashes came from. What is still owed is one character
   running the whole chain end to end, and a genuinely large mod list.
 
+### A save already in progress does not see any of this
+- **And that is not a bug in the numbers, it is how sandbox options work.** A save writes
+  every option it knows about when it is created, and `TC.opt` reads the save before it
+  reads our defaults — on purpose, because a player's setting has to beat ours. So the
+  save being played while 0.13.0 was written still holds `PriceMultiplier = 1.0` and
+  `SellRatio = 0.3`, and will keep holding them for good.
+- **`tools/patch_save_sandbox.sh`** rewrites them in place. It refuses to run while the
+  game is open (Project Zomboid rewrites `map_sand.bin` on exit and would throw the patch
+  away), takes a backup, and leaves alone any value that is neither the old default nor
+  the new one — a number somebody chose is not ours to overwrite.
+
+  Only same-length values, and that is the whole safety argument: `1.0` → `5.0` and
+  `0.3` → `0.1` are three bytes for three bytes, so nothing after them moves and no
+  offset anywhere else in the file can go stale. Anything that would change length is
+  refused rather than guessed at.
+- The advice to hand-edit `<save>_SandboxVars.lua`, in both `sandbox-options.txt` and the
+  README, was left over from B41. **That file does not exist in B42** — the values are
+  Java `writeUTF` pairs inside `map_sand.bin`.
+
 ---
 
 ## 0.12.1-beta — 2026-08-30
