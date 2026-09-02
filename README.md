@@ -297,8 +297,22 @@ Then enable **The Catalogue** in the Mods menu.
 ## Sandbox options
 
 Custom sandbox options in B42 are drawn by the **server settings** screen
-(Host → Manage settings), not the singleplayer sandbox screen. For a solo save, edit
-`<save>_SandboxVars.lua` directly.
+(Host → Manage settings), not the singleplayer sandbox screen.
+
+**A save already in progress will not pick up a changed default.** A save stores every
+option it knows about at creation, and the mod reads the save before it reads its own
+defaults — deliberately, so your setting always beats ours. The consequence is that
+updating the mod never re-tunes a game you are already playing.
+
+There is no `<save>_SandboxVars.lua` in B42: the values sit in the save's
+`map_sand.bin`. With the game closed:
+
+```
+sh tools/patch_save_sandbox.sh --apply
+```
+
+It takes the most recent sandbox save, backs the file up, and rewrites only the values
+that are still at an old default — anything you set yourself is left alone.
 
 | Option | Default | What it does |
 |---|---|---|
