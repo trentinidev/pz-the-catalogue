@@ -649,6 +649,10 @@ function TC_BuyWindow:onOrderComplete(payload)
     TC.logTransaction(player, "buy",
                       { { name = entry.name, qty = qty, fullType = entry.fullType } }, total)
 
+    -- The player now owns more of this than the cached count says. Dropped rather than
+    -- recomputed: the detail panel asks for it on the very next frame anyway.
+    self:forgetOwnedCount()
+
     -- Deliver regardless of capacity, then say so. Being overloaded is a vanilla-legal
     -- state -- looting a hardware store does it too -- and silently refusing a purchase
     -- the player can afford is worse than letting them stagger home.
@@ -681,6 +685,47 @@ end
 -- Same slow tick as the sell window: dropping the catalogue shuts the shop, but it is
 -- not worth asking the inventory about it sixty times a second.
 local CATALOGUE_CHECK_MS = 1000
+
+--[[ How many of the selected item the player already owns, off the slow tick.
+
+     WHY IT IS NOT READ WHERE IT IS DRAWN. getItemCountRecurse walks the player's
+     inventory and every bag inside it, and it used to be called from inside the detail
+     panel -- so one line of text cost a full recursive inventory walk sixty times a
+     second, for a number that only changes when the player buys, sells or picks
+     something up.
+
+     It is a getter that can throw on a null inventory, so it still needs the pcall; the
+     answer is that the guard should be paid once a second and not once a frame. The
+     count is invalidated whenever the selection changes or a purchase lands, so the
+     panel never shows a stale figure for the item in front of you -- only, at worst, a
+     figure that is one tick behind the world.
+
+     This is the same trade TC.conditionRatio and the index loop already make, written
+     down in both of their headers: the cost of a guard is not the guard, it is how
+     often you pay for it. ]]
+function TC_BuyWindow:ownedCount(entry)
+    if not entry then return 0 end
+
+    local now = getTimestampMs()
+    if self.ownedFor == entry.fullType and self.ownedAt
+       and (now - self.ownedAt) < CATALOGUE_CHECK_MS then
+        return self.owned or 0
+    end
+
+    local count = 0
+    local ok, n = pcall(function()
+        return self.player:getInventory():getItemCountRecurse(entry.fullType)
+    end)
+    if ok and type(n) == "number" then count = n end
+
+    self.owned, self.ownedFor, self.ownedAt = count, entry.fullType, now
+    return count
+end
+
+-- Called wherever the player's holding of the selected item can have changed under us.
+function TC_BuyWindow:forgetOwnedCount()
+    self.ownedAt = nil
+end
 
 function TC_BuyWindow:prerender()
     ISCollapsableWindow.prerender(self)
@@ -718,6 +763,15 @@ function TC_BuyWindow:prerender()
     local y = dy + PAD + 4
     local innerLeft  = dx + PAD
     local innerRight = dx + DETAIL_W - PAD
+
+    --[[ Read ONCE per frame, and used by both the detail panel's "cash after" line and
+         the balance printed at the bottom of it.
+
+         Asking twice is asking the inventory to count every note the player is carrying
+         twice, for two prints of the same number that cannot disagree. The account half
+         is cheap, the cash half is not -- see TC.getBalance. ]]
+    local account = TC.onlineAccount(self.playerNum)
+    local balance = TC.purseBalance(self.player, account)
 
     -- The wishlist button only makes sense with something selected, and its label has
     -- to say which way it will go.
@@ -761,7 +815,6 @@ function TC_BuyWindow:prerender()
         local unit       = TC.getBuyPrice(entry.fullType) or 0
         local total      = unit * self.quantity
         local itemWeight = (entry.weight or 0) * self.quantity
-        local balance    = TC.purseBalance(self.player, TC.onlineAccount(self.playerNum))
         local after      = balance - total
 
         -- The detail block flows downward while the cash block below it is pinned to
@@ -789,13 +842,10 @@ function TC_BuyWindow:prerender()
              "$" .. TC.sellBackPrice(unit),
              UIFont.Small, 0.62, 0.62, 0.66)
 
-        -- Counted recursively so a box of nails in a backpack still counts as owned.
-        local owned = 0
-        local okCount, n = pcall(function()
-            return self.player:getInventory():getItemCountRecurse(entry.fullType)
-        end)
-        if okCount and type(n) == "number" then owned = n end
-        line(getText("IGUI_TC_YouOwn"), tostring(owned), UIFont.Small, 0.62, 0.62, 0.66)
+        -- Counted recursively so a box of nails in a backpack still counts as owned,
+        -- and cached on the slow tick -- see TC_BuyWindow:ownedCount.
+        line(getText("IGUI_TC_YouOwn"), tostring(self:ownedCount(entry)),
+             UIFont.Small, 0.62, 0.62, 0.66)
 
         y = y + 2
         self:drawRect(innerLeft, y, DETAIL_W - PAD * 2, 1, 0.35, 1, 1, 1)
@@ -828,9 +878,8 @@ function TC_BuyWindow:prerender()
     -- move as the detail above them grows or shrinks.
     local blockY = self:cashBlockY()
 
-    self:drawText(TC.purseLabel(TC.onlineAccount(self.playerNum)), innerLeft, blockY + 4,
+    self:drawText(TC.purseLabel(account), innerLeft, blockY + 4,
                   0.68, 0.68, 0.72, 1, UIFont.Small)
-    local balance = TC.purseBalance(self.player, TC.onlineAccount(self.playerNum))
     local bText = "$" .. balance
     local bw = getTextManager():MeasureStringX(UIFont.Large, bText)
     self:drawText(bText, innerRight - bw, blockY, 0.85, 1, 0.85, 1, UIFont.Large)

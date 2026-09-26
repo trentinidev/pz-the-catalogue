@@ -93,6 +93,17 @@ end
      overlong name would draw straight through the category and price. Truncating up
      front is what keeps the table looking like a table. Header labels go through it
      too, which is what stopped them piling on top of each other.
+
+     BINARY SEARCH, NOT A CHARACTER-AT-A-TIME SHRINK, and this is the hottest text path
+     in the mod. It used to walk one character off the end per iteration and measure
+     again, so a forty-character name in a narrow column cost about thirty
+     MeasureStringX calls. The buy list calls it twice per visible row -- name and
+     category -- for twenty-odd rows, every frame: roughly a thousand text measurements
+     a frame, for one table.
+
+     A prefix that fits implies every shorter prefix fits, so the predicate is monotone
+     and halving finds exactly the same cut the walk did -- the longest prefix within
+     `avail` -- in about six measurements instead of thirty. Same output, byte for byte.
 ]]
 function TC.truncate(font, text, maxW)
     if not text then return "" end
@@ -104,11 +115,19 @@ function TC.truncate(font, text, maxW)
     local avail = maxW - tm:MeasureStringX(font, ellipsis)
     if avail <= 0 then return "" end
 
-    local out = text
-    while #out > 1 and tm:MeasureStringX(font, out) > avail do
-        out = string.sub(out, 1, #out - 1)
+    -- lo always fits, hi + 1 always does not; the loop closes the gap between them.
+    local lo, hi = 1, #text
+    while lo < hi do
+        -- Rounded UP, so that lo can actually reach hi and the loop terminates.
+        local mid = lo + math.floor((hi - lo) / 2) + 1
+        if tm:MeasureStringX(font, string.sub(text, 1, mid)) > avail then
+            hi = mid - 1
+        else
+            lo = mid
+        end
     end
-    return out .. ellipsis
+
+    return string.sub(text, 1, lo) .. ellipsis
 end
 
 --[[ The catalogue's own inventory icon, resolved once and remembered.
@@ -660,13 +679,18 @@ end
 function TC.refreshRail(win)
     if not win.railBtns then return end
 
+    -- The delivery count is kept from the loop rather than asked for a second time:
+    -- this runs every frame in every window, and arrivedCount walks the order list.
+    local deliveries = 0
+
     for id, b in pairs(win.railBtns) do
         local n    = railCount(win.playerNum, id)
         local want = (n > 0) and (b.baseText .. "  " .. tostring(n)) or b.baseText
         if b:getTitle() ~= want then b:setTitle(want) end
+        if id == "delivery" then deliveries = n end
     end
 
-    win.railBtns.delivery:setVisible(railCount(win.playerNum, "delivery") > 0)
+    win.railBtns.delivery:setVisible(deliveries > 0)
 end
 
 

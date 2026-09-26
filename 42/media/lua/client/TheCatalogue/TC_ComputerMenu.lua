@@ -37,9 +37,9 @@ local DISC_ITEM = "Catalogue.OnlineCatalogue"
      and the pcall CAUGHT the error while the engine still wrote it to the log. Fourteen
      stack traces from a menu that silently added nothing.
 
-     That is the lesson already written down in CONTRIBUTING.md about pcall-ing a getter, arrived
-     at again from a new direction. Asking `has` before `get` is both correct and cheaper
-     than an exception. ]]
+     That is the lesson already written down in CONTRIBUTING.md about pcall-ing a getter,
+     arrived at again from a new direction. Asking `has` before `get` is both correct and
+     cheaper than an exception. ]]
 local function isComputer(obj)
     local props = obj:getProperties()
     if not props then return false end

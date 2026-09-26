@@ -8,7 +8,82 @@ was reset from an over-optimistic 1.x to reflect that. 1.0.0 is reserved for the
 version that has been played end to end. It does not promise a dedicated server —
 server authority is deferred past 1.0, as the 0.7.4-alpha entry below records.
 
-Dates are the day the work was done, not a release date — nothing here has shipped.
+Dates are the day the work was done. 0.13.1-beta is the first entry with a tagged
+release behind it; everything above that line was development in the open.
+
+---
+
+## 0.13.1-beta — 2026-09-26
+
+The first version with a release tag on it, and an audit against the game it claims to
+support. Project Zomboid 42.20.4 is the current public build; every id, sprite, model,
+sound, recipe input and sandbox default this mod names was checked against an installed
+copy of it. Four things came back wrong or slow.
+
+### Fixed
+- **Blank discs never spawned in two of the ten places they were meant to.**
+  `OfficeDeskDrawers` and `ElectronicStoreOther` are not containers vanilla has — the
+  real names are `OfficeDrawers` and `ElectronicStoreComputers`.
+
+  This is the failure mode that hides. `ProceduralDistributions` is a plain Lua table, a
+  name that is not in it is skipped rather than reported, and the file was already
+  written to skip quietly on purpose so that a build which retires a container does not
+  take the rest of the list down with it. That tolerance is right and it is also why
+  nobody noticed: two of the ten weightiest spawn points were doing nothing, and a disc
+  that is meant to be scarce simply looked scarce.
+
+  The online catalogue is gated behind finding a disc and nothing else, so this was a
+  fifth of the route to a whole half of the mod, missing.
+
+### Performance
+The buy window's detail panel was doing a surprising amount of work per frame. None of
+it was visible as a stutter; all of it was avoidable.
+
+- **Counting the player's cash no longer builds a list of every banknote they carry.**
+  `TC.getBalance` called `TC.getCash`, which is right when you are about to SPEND money
+  and have to pick which objects go, and pure waste when the question is how many there
+  are. Every dollar is its own `InventoryItem`, so a player with $4,000 in loose notes
+  had a 4,000-entry Lua table built to print one number — and the buy window asked twice
+  a frame. The Java list already knows its own length.
+- **The buy window asks for that balance once a frame instead of twice.** The detail
+  panel's "cash after" line and the balance under it are the same number and cannot
+  disagree.
+- **"You own" is read on the same one-second tick as the catalogue check**, not sixty
+  times a second. `getItemCountRecurse` walks the inventory and every bag inside it; the
+  answer only changes when the player buys, sells or picks something up, and the cache
+  is dropped when a purchase lands or the selection moves.
+- **`TC.truncate` bisects instead of shaving a character at a time.** It is the hottest
+  text path in the mod — the buy list calls it twice per visible row, every frame — and
+  it used to measure the string again for each character it dropped: 31 measurements for
+  a long clothing name, 42 for a long piece of furniture. Now 8 and 7. A prefix that fits
+  implies every shorter prefix fits, so halving finds the same cut; the output is
+  byte-for-byte identical, checked against the old implementation on 2,400 random cases.
+- **The rail asks for the delivery count once**, keeping it from the loop it already ran,
+  rather than walking the order list a second time to decide whether to show the button.
+
+### Internal
+- The developer notes are now a single **`CONTRIBUTING.md`**, addressed to whoever is
+  about to change the code. There were two of them and they had drifted apart — one
+  still described "five windows, two context menus" — and there was no reason for the
+  engineering facts to exist twice.
+- A new note in that file: a loot container name that does not exist fails silently, so
+  grep the game's own `ProceduralDistributions.lua` before adding a spawn point.
+- The checks workflow said it ran nine checks. It runs ten.
+- README points at `CONTRIBUTING.md`, and records the two checks that need an installed
+  game and therefore cannot run in CI.
+
+### Verified against 42.20.4, unchanged
+Recorded because "we checked and it was fine" is worth as much as a fix the next time
+somebody wonders:
+- All 4,898 priced ids still exist; no id in `TC_PriceTable.lua` has been retired, and
+  nothing vanilla ships is unpriced that is not on the 194-id exclusion list.
+- Re-running `tools/gen_furniture.sh` against the installed tile definitions reproduces
+  `TC_FurnitureTable.lua` byte for byte — all 1,119 sprites still there.
+- The four ATM sprites, every vanilla item, model, sound and recipe input the script
+  names, and the twelve catalogue loot containers.
+- All 136 engine methods the mod calls appear in the installed build's own Lua.
+- All 16 sandbox defaults agree between `sandbox-options.txt` and `TC_Config.lua`.
+- `UnbundleMoney` still yields 100 notes, which is what `TC.NOTES_PER_BUNDLE` claims.
 
 ---
 
@@ -335,8 +410,8 @@ behaves; all of it is about what happens when something else is in the way.
   worse than no code.
 
 ### Internal
-- `CONTRIBUTING.md`'s layout map said "five windows, two context menus". It is seven windows,
-  three context menus, and there is a `models_X` folder now.
+- The developer notes' layout map said "five windows, two context menus". It is seven
+  windows, three context menus, and there is a `models_X` folder now.
 
 ---
 
@@ -597,9 +672,9 @@ never read. **Discs already in a save are not lost.**
   The call was wrapped in a `pcall`, on the assumption that wrapping made a wrong guess
   safe. **It did not, twice over**: the pcall caught the error while the engine still wrote
   it to the log, so fourteen stack traces came out of a menu that silently added nothing.
-  That is precisely the lesson already written down in `CONTRIBUTING.md` about pcall-ing a
-  getter, and I walked into it from a new direction. Asking `has` before `get` is both
-  correct and cheaper than an exception.
+  That is precisely the lesson already written down in the developer notes about
+  pcall-ing a getter, and it was walked into from a new direction. Asking `has` before
+  `get` is both correct and cheaper than an exception.
 
 - **The burned disc had no account on it.** The stamp hung off `OnCreate` on the
   craftRecipe — how vanilla does it, through `luaCallOnCreate`, whose Lua-side argument

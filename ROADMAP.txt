@@ -96,8 +96,8 @@ PRESENTATION
 8. PT-BR translation
 
    English only for now. Cheap to revisit: the JSON translation format and the
-   key-prefix-decides-the-file rule are both written down in CONTRIBUTING.md, which is
-   what made this expensive the first time.
+   key-prefix-decides-the-file rule are both written down in CONTRIBUTING.md, which
+   is what made this expensive the first time.
 
 9. Hand-made parcel models
 

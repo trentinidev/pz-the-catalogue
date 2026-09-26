@@ -1,4 +1,4 @@
-# The same nine checks .githooks/pre-commit runs, on a machine that is not yours.
+# The same ten checks .githooks/pre-commit runs, on a machine that is not yours.
 #
 # The hook is the fast feedback and the real gate: it refuses the commit before it
 # exists. But git will not run a hook that was merely cloned -- every clone has to opt

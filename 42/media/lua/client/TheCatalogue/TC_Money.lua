@@ -24,18 +24,27 @@ local TC = TheCatalogue
      the bare type because the two spellings appear in the game's own Lua and the
      cheap way to be certain is to try both and take whichever answers.
 ]]
-local function collect(inv, fullType, shortType)
-    local out = {}
-    if not inv then return out end
+--[[ The Java list of one money type, or nil.
+
+     Split out of collect so that counting can stop here. Both spellings are tried for
+     the reason above; whichever answers is the one handed back. ]]
+local function listOf(inv, fullType, shortType)
+    if not inv then return nil end
 
     local list = inv:getAllTypeRecurse(fullType)
     if (not list or list:size() == 0) then
         list = inv:getAllTypeRecurse(shortType)
     end
+    return list
+end
+
+local function collect(inv, fullType, shortType)
+    local out = {}
+    local list = listOf(inv, fullType, shortType)
     if not list then return out end
 
     for i = 0, list:size() - 1 do
-        table.insert(out, list:get(i))
+        out[i + 1] = list:get(i)
     end
     return out
 end
@@ -47,10 +56,30 @@ function TC.getCash(player)
            collect(inv, TC.MONEY_BUNDLE, "MoneyBundle")
 end
 
---[[ Total dollars the player is carrying. ]]
+--[[ Total dollars the player is carrying.
+
+     COUNTED, NOT COLLECTED, and the difference is the whole reason this is not simply
+     `#notes` off TC.getCash.
+
+     Every dollar is its own InventoryItem, so a player with $4,000 in loose notes has
+     four thousand of them. getCash builds a Lua array holding all four thousand -- which
+     is exactly right when you are about to SPEND them and have to pick which objects go,
+     and pure waste when the only question is how many there are. The buy window asks
+     that question twice a frame and the cash machine once, so at sixty frames a second
+     it was building a quarter of a million table slots per second to print one number.
+
+     The Java list already knows its own length. Reading :size() off it costs one call
+     and allocates nothing. ]]
+local function countOf(inv, fullType, shortType)
+    local list = listOf(inv, fullType, shortType)
+    return (list and list:size()) or 0
+end
+
 function TC.getBalance(player)
-    local notes, bundles = TC.getCash(player)
-    return #notes + (#bundles * TC.NOTES_PER_BUNDLE)
+    if not player then return 0 end
+    local inv = player:getInventory()
+    return countOf(inv, TC.MONEY, "Money")
+         + countOf(inv, TC.MONEY_BUNDLE, "MoneyBundle") * TC.NOTES_PER_BUNDLE
 end
 
 local function removeItem(item)

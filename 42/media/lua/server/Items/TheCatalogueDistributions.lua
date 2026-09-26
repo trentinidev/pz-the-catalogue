@@ -104,17 +104,29 @@ end
 ]]
 local BLANK_CD = "Catalogue.BlankCD"
 
+--[[ CHECKED AGAINST THE GAME, and two of these names were wrong.
+
+     "OfficeDeskDrawers" and "ElectronicStoreOther" are not containers vanilla has. The
+     loop below skips a name it cannot find rather than erroring, which is the right
+     behaviour and is also why this went unnoticed: two of the ten places a blank disc
+     could spawn were quietly doing nothing, so the feature read as merely rare rather
+     than as broken.
+
+     The real names are OfficeDrawers and ElectronicStoreComputers. Anything added here
+     should be grepped out of the game's own media/lua/server/Items/-
+     ProceduralDistributions.lua first: a wrong name costs nothing at load and
+     everything at spawn time. ]]
 local CD_PLACES = {
-    { "OfficeDeskDrawers",     1.2 },
-    { "OfficeDesk",            1.0 },
-    { "ElectronicStoreMisc",   1.5 },
-    { "ElectronicStoreOther",  1.2 },
-    { "ShelfGeneric",          0.5 },
-    { "LivingRoomShelf",       0.4 },
-    { "BedroomDresser",        0.3 },
-    { "StoreShelfElectronics", 1.0 },
-    { "ClassroomDesk",         0.6 },
-    { "LibraryCounter",        0.5 },
+    { "OfficeDrawers",            1.2 },
+    { "OfficeDesk",               1.0 },
+    { "ElectronicStoreMisc",      1.5 },
+    { "ElectronicStoreComputers", 1.2 },
+    { "ShelfGeneric",             0.5 },
+    { "LivingRoomShelf",          0.4 },
+    { "BedroomDresser",           0.3 },
+    { "StoreShelfElectronics",    1.0 },
+    { "ClassroomDesk",            0.6 },
+    { "LibraryCounter",           0.5 },
 }
 
 do

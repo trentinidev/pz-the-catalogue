@@ -4,7 +4,7 @@ A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
 [![checks](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml/badge.svg)](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml)
 
-> **Alpha — 0.13.0, single-player.** Not released, and the version number says so
+> **Alpha — 0.13.1, single-player.** Not released, and the version number says so
 > deliberately: it works and it is played, but parts of it have never been exercised.
 > [What to expect](#what-to-expect) sets out the limits before you install.
 > See [CHANGELOG.md](CHANGELOG.md) for what has landed, and [ROADMAP.txt](ROADMAP.txt)
@@ -26,6 +26,9 @@ a price. You pay in real banknotes and you get paid in real banknotes.
 - [Prices](#prices) — where any given number comes from
 - [For other mod authors](#for-other-mod-authors), [Checks](#checks),
   [Requirements](#requirements)
+
+Working on the mod itself? [CONTRIBUTING.md](CONTRIBUTING.md) has the testing loop, which
+files are generated, and the engine traps that have already cost somebody a day.
 
 ---
 
@@ -592,6 +595,11 @@ workflow is an `apt-get install luajit` and the same `sh tools/check.sh` you run
 took down the ledger in 0.6.4 — a cached function whose two exits returned different
 numbers of values — parses perfectly and always will. Static checks buy the cheap half;
 the rest is still playing the thing.
+
+Two more checks need an installed copy of the game and so cannot run in CI:
+`tools/verify_ids.sh` confirms every hand-set price id is a real vanilla item, and
+re-running `tools/gen_furniture.sh` against the install should leave the furniture table
+unchanged. [CONTRIBUTING.md](CONTRIBUTING.md) has both invocations.
 
 ## Requirements
 
