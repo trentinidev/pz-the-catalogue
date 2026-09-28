@@ -13,6 +13,7 @@ A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 Craft **The Catalogue** from a notebook and any pen, right-click it, pick **Open
 Catalogue**, and trade with the world's last mail-order company. Every vanilla item has
 a price. You pay in real banknotes and you get paid in real banknotes.
+And money is heavy, for immersion.
 
 ---
 
