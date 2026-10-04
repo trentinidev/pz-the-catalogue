@@ -13,6 +13,72 @@ release behind it; everything above that line was development in the open.
 
 ---
 
+## 0.14.0-beta — 2026-10-04
+
+### Added
+- **The catalogue pays out of containers the character can reach**, not only out of their
+  own pockets. Keep the safehouse money in a crate and buy standing next to it; a shop
+  till and a car boot work the same way.
+
+  The thing this removes is busywork rather than difficulty. A player whose cash lived in
+  a crate was doing four actions per purchase — open the crate, drag the money out, buy,
+  drag it back — and not one of them was a decision.
+
+  **The reach rule is the game's, not ours.** The obvious implementation is a radius, and
+  a radius is wrong in every way a radius is wrong: it reaches through walls, through
+  locked doors, up and down stairs, and it disagrees with what the player can see in their
+  own loot window. The engine already computes the right answer every frame — the loot
+  page's container list — and vanilla's own crafting reads exactly that list to decide
+  what it may consume. So the rule is: **if the game would let you craft with it, the
+  catalogue will pay with it.** Nothing to tune and nothing to drift.
+
+  A locked player-built crate is not money you have, and is excluded, which is the same
+  test vanilla's helper makes.
+
+  `SpendFromContainers`, on by default. Off restores pockets-only exactly.
+
+- **The buy panel says which money it is looking at.** The label reads `Cash within reach`
+  rather than `Your cash` as soon as some of the figure is not on the character, and the
+  line under it breaks the total into what is on you and what is merely nearby. Without
+  that, a balance that drops when you walk away from a crate reads as a bug.
+
+### Two things found by testing this rather than by playing it
+Both are the kind of bug that produces a plausible wrong number rather than a crash, so
+both are worth writing down.
+
+- **Summing the reach list double-counts every bag.** Each lookup is
+  `getAllTypeRecurse`, which descends into nested containers, and the reach list names the
+  player's main inventory AND every equipped bag separately — so money in a backpack was
+  counted twice. The window would have shown a balance the player did not have, and the
+  spend would then have tried to remove the same banknote twice and left the purchase
+  half-paid. Sources that another source already contains are dropped before anything is
+  counted, which also keeps the counting path allocation-free.
+- **"Pockets first" is a two-step, not an ordering.** Handing the whole pool to the
+  existing spend rule and trusting source order looked sufficient and was not: the rule
+  prefers spending loose notes over breaking a bundle, so a player carrying two bundles
+  who wanted a $150 item had ten loose notes taken out of the crate to save breaking one
+  of their own. Arithmetically correct and still wrong — it reached into a container for
+  money the character already had on them. What they are carrying is now offered alone
+  first, and the containers join only if that cannot cover the price, which makes
+  "a purchase you could afford unaided takes exactly the objects it always took" a
+  promise rather than a hope.
+
+### Changed
+- **Change from a broken bundle goes back where the bundle came from.** Breaking a $100
+  note out of a crate used to hand the remainder to the player; it now returns to the
+  crate. A player who deliberately keeps their money out of their pockets should not have
+  it put back in by the act of spending it.
+- Cash machines inherit all of this, because deposits go through the same helper: standing
+  at an ATM beside a crate, the crate's notes can be deposited. Consistent with the above
+  and switched off by the same option.
+
+### Removed
+- `TC.getCash` — a wrapper with no callers left once the spend path started asking for a
+  specific source list. A one-line function nothing calls is worse than no function: the
+  next reader assumes something depends on its behaviour.
+
+---
+
 ## 0.13.1-beta — 2026-09-26
 
 The first version with a release tag on it, and an audit against the game it claims to

@@ -140,3 +140,8 @@ Kept here so nothing on the list gets proposed twice:
 
   - The ATM note gear salvaged from a wreck and fitted to a computer, so notes
     can be paid IN at a desk. Taking them out still needs a real machine
+
+  - Paying out of containers the character can reach, not only their pockets, so
+    safehouse money kept in a crate is spendable where you stand. The reach rule
+    is the game's own loot-window list rather than a radius of ours, which is the
+    whole reason it needed no tuning

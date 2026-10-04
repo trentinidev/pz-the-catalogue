@@ -4,9 +4,10 @@ A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
 [![checks](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml/badge.svg)](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml)
 
-> **Alpha — 0.13.1, single-player.** Not released, and the version number says so
-> deliberately: it works and it is played, but parts of it have never been exercised.
-> [What to expect](#what-to-expect) sets out the limits before you install.
+> **Alpha — 0.14.0, single-player.** Pre-1.0 deliberately: it works and it is played,
+> but parts of it have never been exercised, and it is not on the Workshop yet.
+> [Releases](https://github.com/trentinidev/pz-the-catalogue/releases) has the installable
+> build. [What to expect](#what-to-expect) sets out the limits before you install.
 > See [CHANGELOG.md](CHANGELOG.md) for what has landed, and [ROADMAP.txt](ROADMAP.txt)
 > for what is deliberately still missing.
 
@@ -51,9 +52,10 @@ standing, and the company never has to exist on screen.
 That framing is also what keeps it from breaking the game, because a catalogue can charge
 you in the currencies a magic shop menu would not:
 
-- **Cash is physical and heavy.** Banknotes are real items with real weight, so there is
-  a hard ceiling on what you can carry to spend — around $5,000 with a good backpack.
-  You cannot simply buy your way out of the apocalypse.
+- **Cash is physical and heavy.** Banknotes are real items with real weight, so what you
+  can spend is bounded by what you can get to — around $5,000 on your back, or whatever
+  the crate you are standing next to holds. You cannot simply buy your way out of the
+  apocalypse, and you cannot do it from the far side of the county either.
 - **Goods take time.** An order books, the money leaves immediately, and the van arrives
   when the bulk of what you ordered says it arrives — twenty minutes for a pistol round,
   several days for a generator. You cannot re-equip in the middle of a horde.
@@ -86,6 +88,16 @@ system paints on a body — and are refused outright rather than listed at a tok
 40%-durability axe fetches 40%, a half-empty bleach bottle fetches half, rotten food
 fetches nothing. Selling pays 10% of catalogue price -- the catalogue buys low and sells
 high, as a company with no competition would.
+
+**Paying from where the money is** — the catalogue spends out of any container the
+character can reach, not just their pockets. Keep the safehouse money in a crate and buy
+standing next to it; the till behind a shop counter and a car boot work the same way. The
+reach rule is the game's own and not a radius of ours: **if your loot window is showing
+you the container, the catalogue can pay with it**, which is the same list vanilla's
+crafting reads to decide what it may build from. Your own money always goes first, and a
+purchase you could afford unaided takes nothing out of a crate. The panel says
+`Cash within reach` and breaks the figure down when some of it is not on you. Turn it off
+with `SpendFromContainers`.
 
 **Bundling cash** — a `Bundle Money` recipe turns 100 loose notes into one
 `MoneyBundle`, the exact mirror of vanilla's `UnbundleMoney`. Vanilla can only take a
@@ -325,6 +337,7 @@ that are still at an old default — anything you set yourself is left alone.
 | `MaxQuantityPerPurchase` | 100 | Cap on the quantity field. |
 | `SellContainerContents` | true | Selling a bag sells what is inside it. |
 | `MinConditionToSell` | 0.0 | Refuse items below this condition. |
+| `SpendFromContainers` | true | Pay out of any container the character can reach, not only their pockets. Off makes the weight of cash a real limit on a single purchase again. |
 | `RequireCatalogueOnPerson` | true | Close both windows if you no longer carry a catalogue. |
 | `DeliveryHoursMultiplier` | 1.0 | Scales how long orders take. |
 | `RushFeePercent` | 20 | Surcharge for skipping the wait. |
@@ -362,7 +375,13 @@ always spends bundles first. $2,350 arrives as 23 bundles and 50 notes: 73 objec
 12 kg, against 2,350 objects and 23.5 kg.
 
 The practical consequence is a ceiling on what you can carry to spend — roughly
-**$5,000** with a decent backpack. Up to 0.11.1 the price scale was built around that
+**$5,000** with a decent backpack. Since 0.14.0 that ceiling is about what you can
+**reach** rather than about your pockets: the catalogue pays out of any container the
+character can get at, so a crate of cash in the safehouse is spendable where you stand
+and not a trip to the inventory screen. The game's own reach rule decides which
+containers those are — if your loot window is showing it, the catalogue can see it —
+and `SpendFromContainers` turns the whole thing off for anyone who wants pockets to be
+the limit. Up to 0.11.1 the price scale was built around that
 number. It is not any more: prices come from the study now, and the study was written
 about 1993 Kentucky rather than about how much cash fits in a rucksack. Since 0.13.0
 `PriceMultiplier` defaults to **5** on top of the table, so the shelf price is five
@@ -371,8 +390,8 @@ times the study figure: a generator is $13,500 and a gold bar $194,500.
 Eleven items now cost more than one trip can carry in cash -- the four generators, both
 ham radios, a box of antibiotics, the assault rifle and the precious-metal bars.
 
-**In cash.** Buying through the [Online Catalogue](#what-it-does) spends a bank balance
-instead of your pockets, and a balance has no weight and no ceiling. So those eleven are
+**On your back.** Buying through the [Online Catalogue](#what-it-does) spends a bank
+balance instead of your pockets, and a balance has no weight and no ceiling. So those eleven are
 out of reach on foot and in reach from a desk, which puts the dearest things in the game
 behind a computer, a disc and a card rather than behind a sandbox setting. Lower
 `PriceMultiplier` if you would rather they stayed reachable either way.

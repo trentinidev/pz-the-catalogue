@@ -769,9 +769,21 @@ function TC_BuyWindow:prerender()
 
          Asking twice is asking the inventory to count every note the player is carrying
          twice, for two prints of the same number that cannot disagree. The account half
-         is cheap, the cash half is not -- see TC.getBalance. ]]
+         is cheap, the cash half is not -- see TC.getBalance.
+
+         The cash branch asks for the SPLIT rather than the total, for the same reason: it
+         is one walk of the reachable containers instead of two, and the split is what the
+         bottom of the panel needs in order to say how much of this money is actually in
+         the character's pockets. An account has no such distinction. ]]
     local account = TC.onlineAccount(self.playerNum)
-    local balance = TC.purseBalance(self.player, account)
+    local balance, ownCash, nearbyCash
+
+    if account then
+        balance, ownCash, nearbyCash = TC.purseBalance(self.player, account), 0, 0
+    else
+        ownCash, nearbyCash = TC.cashSplit(self.player)
+        balance = ownCash + nearbyCash
+    end
 
     -- The wishlist button only makes sense with something selected, and its label has
     -- to say which way it will go.
@@ -878,21 +890,37 @@ function TC_BuyWindow:prerender()
     -- move as the detail above them grows or shrinks.
     local blockY = self:cashBlockY()
 
-    self:drawText(TC.purseLabel(account), innerLeft, blockY + 4,
-                  0.68, 0.68, 0.72, 1, UIFont.Small)
+    --[[ "Cash within reach" rather than "Your cash" the moment some of it is not on the
+         character. The figure beside it is money they can spend and cannot carry, and a
+         label that calls that "yours" is the one word doing the lying. ]]
+    local cashLabel = (nearbyCash > 0) and getText("IGUI_TC_CashWithinReach")
+                                        or  TC.purseLabel(account)
+    self:drawText(cashLabel, innerLeft, blockY + 4, 0.68, 0.68, 0.72, 1, UIFont.Small)
     local bText = "$" .. balance
     local bw = getTextManager():MeasureStringX(UIFont.Large, bText)
     self:drawText(bText, innerRight - bw, blockY, 0.85, 1, 0.85, 1, UIFont.Large)
 
     local msgText, msgErr = self:activeMessage()
+    local my = blockY + FONT_HGT_LARGE + 6
+
     if msgText then
-        local my = blockY + FONT_HGT_LARGE + 6
         local msg = TC.truncate(UIFont.Small, msgText, DETAIL_W - PAD * 2)
         if msgErr then
             self:drawText(msg, innerLeft, my, 1, 0.3, 0.3, 1, UIFont.Small)
         else
             self:drawText(msg, innerLeft, my, 0.6, 1, 0.6, 1, UIFont.Small)
         end
+    elseif nearbyCash > 0 then
+        --[[ The split, in the slot the status line leaves empty -- the same trick the
+             sell window plays with its spread note, so the row says something permanent
+             and useful rather than going blank.
+
+             It is the one place the player can see that the big number above is two
+             numbers: what is in their pockets, and what is in the crate they are standing
+             next to. Without it a balance that drops when they walk away looks like a bug. ]]
+        local note = getText("IGUI_TC_CashNearbyNote", ownCash, nearbyCash)
+        self:drawText(TC.truncate(UIFont.Small, note, DETAIL_W - PAD * 2),
+                      innerLeft, my, 0.5, 0.5, 0.55, 1, UIFont.Small)
     end
 
     -- Row count, so a filter that matches nothing reads as a filter and not a bug.

@@ -135,6 +135,21 @@ option TheCatalogue.RequireCatalogueOnPerson
     translation = TheCatalogue_RequireCatalogueOnPerson,
 }
 
+/* When on, the catalogue pays out of any container the character can reach -- the crate
+   in the safehouse, the till on the counter, the car boot -- and not only out of their
+   own pockets. The reach rule is the game's own: the containers your loot window is
+   showing you are the containers the catalogue can see.
+
+   Turn it off to make the weight of cash a real ceiling again: at about $5,000 per
+   backpack, pockets-only is what limits a single purchase. */
+option TheCatalogue.SpendFromContainers
+{
+    type = boolean,
+    default = true,
+    page = TheCatalogue,
+    translation = TheCatalogue_SpendFromContainers,
+}
+
 /* Minimum condition an item must have to be accepted for sale, as a fraction.
    0.0 accepts anything including near-broken gear and rotten food. */
 option TheCatalogue.MinConditionToSell

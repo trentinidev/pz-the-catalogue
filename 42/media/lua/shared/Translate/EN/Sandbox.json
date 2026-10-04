@@ -31,6 +31,9 @@
     "Sandbox_TheCatalogue_RequireCatalogueOnPerson": "Require the catalogue on you",
     "Sandbox_TheCatalogue_RequireCatalogueOnPerson_tooltip": "When on, the catalogue window closes if you no longer have a Catalogue in your inventory or a bag. Turn it off for an arcade-style game where the catalogue is a menu rather than an object you carry.",
 
+    "Sandbox_TheCatalogue_SpendFromContainers": "Spend from nearby containers",
+    "Sandbox_TheCatalogue_SpendFromContainers_tooltip": "When on, the catalogue pays out of any container the character can reach -- a crate, a counter, a car boot -- and not only out of their own pockets. The reach rule is the game's own: the containers your loot window is showing you are the containers the catalogue can see. Turn it off to make the weight of cash a real ceiling on a single purchase again.",
+
     "Sandbox_TheCatalogue_MinConditionToSell": "Minimum condition to sell",
     "Sandbox_TheCatalogue_MinConditionToSell_tooltip": "Items below this fraction of condition are refused. 0.0 accepts anything, including near-broken gear and rotten food.",
 

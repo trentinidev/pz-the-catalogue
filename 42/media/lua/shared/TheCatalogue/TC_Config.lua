@@ -64,6 +64,18 @@ local DEFAULTS = {
     DeliveryHoursMultiplier    = 1.0,
     RushFeePercent             = 20,
 
+    --[[ Spend out of crates and counters the character can reach, not only pockets.
+
+         ON by default, because the thing it removes is busywork rather than difficulty:
+         a player whose safehouse money lives in a crate was dragging it out and back for
+         every purchase, and nothing about that was a decision.
+
+         It does soften the carry ceiling the mod otherwise leans on -- cash is heavy, so
+         about $5,000 is all you can walk around with -- and anyone who wants that ceiling
+         to mean pockets and nothing else turns this off. See TC.cashSources for the
+         reach rule, which is the game's own and not a radius of ours. ]]
+    SpendFromContainers        = true,
+
     -- The banking half. See sandbox-options.txt for what each one turns off.
     BankingEnabled             = true,
     ForeignCards               = true,
@@ -257,7 +269,7 @@ end
      A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
      sandbox option and this line has to be there whether or not anyone turned it on.
      tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
-TC.VERSION = "0.13.1-beta"
+TC.VERSION = "0.14.0-beta"
 print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging

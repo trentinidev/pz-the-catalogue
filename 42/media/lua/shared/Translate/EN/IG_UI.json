@@ -103,6 +103,8 @@
     "IGUI_TC_Total": "Total",
     "IGUI_TC_AddedWeight": "Added weight",
     "IGUI_TC_YourCash": "Your cash",
+    "IGUI_TC_CashWithinReach": "Cash within reach",
+    "IGUI_TC_CashNearbyNote": "$%1 on you, $%2 within reach",
     "IGUI_TC_YouOwn": "You own",
     "IGUI_TC_SellsBackFor": "Sells back for",
     "IGUI_TC_CashAfter": "Cash after",

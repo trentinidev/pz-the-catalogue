@@ -146,6 +146,21 @@ still matches the installed build.
   is a plain table; a name that is not in it is skipped, not reported. Grep the game's
   own `media/lua/server/Items/ProceduralDistributions.lua` before adding a spawn point.
   Two wrong names sat in the blank-disc list until 0.13.1.
+- **"What can the character reach" is already computed — never write a radius.** The loot
+  page's `backpacks` list is the set of containers in reach this frame, respecting walls,
+  locked doors and stairs, and it is what vanilla's own crafting reads
+  (`ISInventoryPaneContextMenu.getContainers`). A radius of our own disagrees with what
+  the player can see in their own inventory window, which is worse than being wrong.
+  Do NOT call vanilla's helper directly: it dereferences
+  `getPlayerInventory(n).inventoryPane.inventoryPage` with no nil guard, and all of that
+  is nil before the UI exists — which the order and delivery paths hit. `TC.cashSources`
+  is the guarded version.
+- **`getAllTypeRecurse` descends into nested containers, and the reach list is flat.**
+  The list names the player's main inventory AND every equipped bag, so summing both
+  counts the money in the bag twice: the window shows a balance that is not there and the
+  spend then tries to remove the same banknote twice. Anything that walks several
+  inventories at once has to drop the ones another already contains — `isNested` in
+  `TC_Money.lua` is that test, and it is why the counting path can stay allocation-free.
 - Every window is resizable: **measure text, never hardcode pixel offsets.** Three
   separate overflow bugs came from fixed offsets. `TC.buttonRow` and the `columnStops()`
   helpers exist for this. Remember `TC.UI.SCROLL_GUTTER` when a column is right-aligned.
