@@ -150,6 +150,51 @@ option TheCatalogue.SpendFromContainers
     translation = TheCatalogue_SpendFromContainers,
 }
 
+/* When on, the company pays more for what it actually wants back: roughly 25% for
+   weapons, ammunition, medicine, tools and radios, the ordinary rate for most things,
+   and about 5% for ornaments, mementoes and improvised clubs. Multipliers on the sell
+   ratio, so that dial still scales everything together.
+
+   Off pays one rate for everything, which is how the mod behaved before 0.15.0. */
+option TheCatalogue.CategorySellRates
+{
+    type = boolean,
+    default = true,
+    page = TheCatalogue,
+    translation = TheCatalogue_CategorySellRates,
+}
+
+/* When OFF (the default) the catalogue refuses to buy food that rots -- fresh produce,
+   meat, caught fish -- while still happily selling it to you. Tins, sacks and anything
+   else that keeps are unaffected.
+
+   The reason is that farming, fishing and foraging each produce dozens of items a trip,
+   nearly all of them at the one-dollar floor, at no risk and without end. Turn it on if
+   you would rather the catalogue bought your harvest. */
+option TheCatalogue.AcceptPerishableFood
+{
+    type = boolean,
+    default = false,
+    page = TheCatalogue,
+    translation = TheCatalogue_AcceptPerishableFood,
+}
+
+/* How many of the dearer items the company can supply in a game week. 1.0 is one
+   generator, three pistols or ten crowbars; 2.0 doubles every band; 0 removes the
+   limits entirely, which is how the mod behaved before 0.15.0.
+
+   Anything under roughly $250 on the shelf is never limited, so ammunition, food,
+   materials and nails are unaffected. Counted per character, and a cancelled or refused
+   order gives the allowance back. */
+option TheCatalogue.StockLimitMultiplier
+{
+    type = double,
+    min = 0.0, max = 20.0,
+    default = 1.0,
+    page = TheCatalogue,
+    translation = TheCatalogue_StockLimitMultiplier,
+}
+
 /* Minimum condition an item must have to be accepted for sale, as a fraction.
    0.0 accepts anything including near-broken gear and rotten food. */
 option TheCatalogue.MinConditionToSell

@@ -57,11 +57,18 @@ function TC.orders(player)
     return md[ORDERS_KEY]
 end
 
-local function worldHours()
+--[[ Hours since the world was created.
+
+     Shared rather than file-local since 0.15.0: the weekly stock bucket in TC_Stock.lua
+     needs the same clock, and two readings of "what time is it" that could drift apart is
+     a bug waiting to be written. ]]
+function TC.worldHours()
     local gt = getGameTime()
     if not gt then return 0 end
     return gt:getWorldAgeHours()
 end
+
+local worldHours = TC.worldHours
 
 -- ---------------------------------------------------------------------------
 -- Lead time
@@ -82,19 +89,23 @@ end
      being a delivery of its own. One round is a padded envelope; a hundred rounds is a
      box; a crate of medical supplies is a morning's work.
 
-     Value is deliberately a WEAK term. It is there so that something small and
-     precious is handled a little more carefully than something small and cheap, not so
-     that money buys delay -- an expensive light thing should still turn up quickly.
+     Value USED TO BE a weak term, on the reasoning that an expensive light thing should
+     still turn up quickly. That was wrong, and the note on the exponent below says why:
+     it made the dearest purchases in the game the least gated ones. Worth now compounds
+     too, though more gently than bulk, so a van with one route takes its time over
+     something irreplaceable whether or not it is heavy.
+
      The per-unit term does the same job for count, and covers items the game gives no
      weight at all, where quantity would otherwise be free.
 
      Roughly, at the default multiplier:
 
          1 pistol round            ~20 minutes
-         100 pistol rounds         ~2.5 hours
+         100 pistol rounds         ~4.5 hours
          a bandage                 ~20 minutes
-         a crate of medical stock  ~4-5 hours
-         a generator               days
+         a pistol                  ~19 hours
+         a rifle                   ~2 days
+         a generator, a gold bar   the 4-day ceiling
 
      Clamped at both ends: a floor so nothing is instant (that is what Rush is for and
      what the player pays a premium for), and a ceiling so a bulk order still arrives.
@@ -110,9 +121,31 @@ function TC.orderEta(lines)
         count  = count  + qty
     end
 
+    --[[ WHY THE VALUE EXPONENT IS 0.75 AND NOT 0.5.
+
+         At a square root the value term was decoration, and it left the curve saying
+         something it did not mean. Lead time was almost purely a function of MASS, so a
+         generator at $13,500 and 40 kg took the full four days while a gold bar at
+         $194,500 and almost no weight arrived in about fifteen hours. The most expensive
+         purchases in the game were the least gated ones, which is exactly backwards: a
+         heavy thing is awkward to ship, but a priceless one is the thing a company with
+         one van would actually take its time over.
+
+         0.75 bites where it should and nowhere else. The curve barely moves at the bottom
+         -- a $5 tin is 0.1 h either way -- and at the top it finally reaches the cap:
+
+                             value term at ^0.5   at ^0.75
+             $5 tin                  0.07 h        0.10 h
+             $225 crowbar            0.45 h        1.7 h
+             $4,400 pistol           2.0 h         16 h
+             $12,600 M1A             3.5 h         36 h
+             $194,500 gold bar       13 h          279 h -> capped at 96
+
+         So the dearest things on the shelf are now four days out whether they are heavy
+         or not, and the ordinary shopping trip is unchanged. ]]
     local hours = 0.25
                   + (weight ^ 1.3) * 1.5    -- bulk, and it compounds
-                  + (value  ^ 0.5) * 0.03   -- a little more care for a little more worth
+                  + (value  ^ 0.75) * 0.03  -- and worth, which compounds harder
                   + (count  ^ 0.5) * 0.04   -- handling, even for weightless goods
 
     hours = hours * (TC.opt("DeliveryHoursMultiplier") or 1.0)
@@ -419,6 +452,9 @@ function TC.cancelOrder(player, order)
 
     local refund = math.floor((order.paid or 0) + 0.5)
     player:getModData()[ORDERS_KEY] = kept
+    -- The week's supply goes back with the money. An allowance kept after a refund would
+    -- mean cancelling silently cost the player a generator they never received.
+    TC.stockRestore(player, order.lines)
     TC.purseGive(player, order.account, refund)
     TC.logTransaction(player, "cancel", order.lines or {}, refund)
     TC.log("cancelled order %s, refunded $%d", tostring(order.id), refund)
@@ -465,6 +501,13 @@ function TC.denyArrived(player)
                  Each order carries the account it was paid from precisely so that its own
                  refund can find its way home. ]]
             TC.purseGive(player, o.account, back)
+
+            --[[ And the week's supply, in full, even though only three quarters of the
+                 money comes back. The quarter is a restocking fee on goods that were
+                 assembled and carried to you; it is not a claim that the company then
+                 failed to have them. Keeping the allowance as well would charge the
+                 refusal twice, once in cash and once in a week of waiting. ]]
+            TC.stockRestore(player, o.lines)
 
             TC.logTransaction(player, "deny", o.lines or {}, back)
             TC.log("denied order %s, refunded $%d of $%d",

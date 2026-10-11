@@ -13,6 +13,147 @@ release behind it; everything above that line was development in the open.
 
 ---
 
+## 0.15.0-beta — 2026-10-11
+
+A balance pass, measured before it was tuned. The distribution of all 4,898 prices, the
+world's own money supply and the lead-time curve were all read off the real data first;
+the findings below are in the order they turned out to matter, which is not the order they
+were looked for.
+
+### Fixed: six rifles were priced as scrap metal
+The study's note on each of them read *"improvised weapon or blunt object, priced by the
+material"*. It had weighed the steel instead of pricing the gun, and classed them
+`C3 — valuable` where the M16 and the pistols got `C5 — critical`.
+
+The result was that **an M1A cost $390 on the shelf while an M9 pistol cost $4,400** —
+making the best firearm in the game very nearly the cheapest, with the highest damage, the
+longest range and the only detachable magazine among them.
+
+They now follow the study's own chain of 1993 US retail × 2.52, against the anchors it
+already contained (AR-15 $750 → 1,890; Beretta 92 $350 → 880):
+
+| | 1993 retail | shelf, before | shelf, now |
+|---|---|---|---|
+| M1A (`AssaultRifle2`) | $1,000 | $390 | $12,600 |
+| MSR7T Tactical | $600 | $390 | $7,560 |
+| JS-14 | $450 | $330 | $5,670 |
+| MSR700 (`VarmintRifle`) | $400 | $340 | $5,040 |
+| MSR788 (`HuntingRifle`) | $300 | $380 | $3,780 |
+| L94 | $300 | $365 | $3,780 |
+
+Checked against every other id the study priced by material: the other 153 are genuinely
+broken weapons and scrap, and are correctly cheap. These six were the only working
+equipment in that set. Fixed in the study and re-imported, so the relations it encodes are
+preserved — a `TC_Overrides.lua` entry would have opted them out of all of them.
+
+Four of the six now sit above the cash carry ceiling, which takes that list from eleven
+items to fifteen.
+
+### Added: the company pays more for what it wants
+The spread was one number for everything, which meant the catalogue paid the same tenth
+for an assault rifle and for a souvenir snow globe. The player had no reason to choose
+*what* to carry out of a house, only how much, and "carry everything" is not a decision.
+
+Multipliers on `SellRatio` per DisplayCategory: **2.5× for weapons, ammunition, medicine,
+tools, radios and security gear**, 1.5× for the useful middle, **0.5× for ornaments,
+mementoes and sticks with nails in them**, and the ordinary rate for everything unlisted.
+Furniture is deliberately not discounted — selling a sofa back is a whole feature with its
+own tool and carpentry requirements, and taxing it twice would make the effort not worth
+it.
+
+They are multipliers and not rates on purpose: `SellRatio` stays the one dial that scales
+the whole economy, and setting it to 0 still turns selling off completely. **It does move
+the arbitrage threshold**, which an admin raising it should know: selling goes lossless
+when rate × ratio reaches 1.0, which used to mean 1.0 and now means 0.40 for the top
+categories. At the 0.10 default there is a factor of four of headroom.
+
+`CategorySellRates`, on by default.
+
+### Added: the catalogue will not buy food that rots
+Farming, fishing and foraging were an uncapped money faucet. All three produce dozens of
+items a trip, **496 of the catalogue's ids are perishable and 27.8% of the whole table
+pays the $1 floor regardless** — so the income was unbounded, repeatable and risk-free,
+and it did not care whether the item was an apple or a bass.
+
+Buying is untouched: the company will ship you tinned peaches, it just has no way to
+resell your harvest. That asymmetry is the whole fix.
+
+**Decided by the engine, not by a category name.** Tinned beans and a caught bass are both
+DisplayCategory `Food`, and only one of them is merchandise. The line is whether the item
+declares `DaysFresh` — 497 food ids do, every tin and sack in the game does not — which
+shows up at runtime as a finite `OffAgeMax`. A category would have swept up the tins,
+which is the mistake `EXCLUDED_CATEGORIES` exists to remember.
+
+`AcceptPerishableFood`, off by default.
+
+### Added: a weekly supply limit on the dearer half
+Stock was infinite in quantity, so the only thing between a player and a hundred
+generators was money — and money is the resource the catalogue is best at giving you.
+
+One generator, three pistols or ten crowbars a game week. **Capped by shelf price rather
+than by a hand-written list**, because the price already encodes how precious something is
+and a list would be wrong the moment another mod adds a generator:
+
+```
+1 per week    >= $5,000    bars, generators, ham radios, rifles       15 ids
+3 per week    >= $1,000    handguns, shotguns, the costly middle      86 ids
+10 per week   >= $250      tools, optics, the useful middle          466 ids
+uncapped      under $250   ammunition, food, materials, nails      4,331 ids
+```
+
+So nothing bought by the handful is ever capped, and nothing that would settle a problem
+outright is ever bought by the handful. Counted per character — which is the honest reading
+of a mail-order account, and also means a cap cannot be dodged by switching characters.
+Cancelling an order or refusing it at the door gives the allowance back in full, even
+though a refusal only refunds 75% of the money: the quarter is a restocking fee, not a
+claim that the company then failed to have the goods.
+
+This is the cheap half of the roadmap's scarcity item. The simulation half — a level that
+depletes and recovers — is still parked, and ROADMAP.txt now says which half is which.
+
+`StockLimitMultiplier`, 1.0 by default, 0 to remove the limits entirely.
+
+### Changed: lead time is no longer priced by weight alone
+The value term was a square root, which made it decoration. Lead time was almost purely a
+function of mass, so **a generator at $13,500 and 40 kg took the full four days while a
+gold bar at $194,500 and almost no weight arrived in about fifteen hours** — the most
+expensive purchases in the game were the least gated ones.
+
+The exponent is now 0.75. The curve barely moves at the bottom and finally reaches the
+ceiling at the top:
+
+| | before | after |
+|---|---|---|
+| tin of beans | 1.5 h | 1.6 h |
+| 100 rounds of 9mm | 1.9 h | 4.4 h |
+| M9 pistol | 4.8 h | 19 h |
+| M1A rifle | 14.3 h | 1.9 days |
+| gold bar | 15 h | 4 days (capped) |
+| generator, sofa | 4 days | 4 days |
+
+### One bug this pass wrote and its own tests caught
+The dollar floor is written in *raw* dollars, as `MIN_SELL / spread`, so that the single
+multiply at the end lands it on exactly a dollar. The first cut of the category rates
+divided it by the rate as well — which floored the 0.5 categories at **$2** and the 2.5
+categories at **40 cents**: one paid four times the floor it was meant to, the other
+displayed as $0, which is the precise bug that floor was written to prevent. The rate is
+already folded into the value before the floor is consulted. Found by a harness that pins
+the invariant at every rate, not by playing.
+
+### Internal
+- `TC.worldHours` is shared rather than file-local, so the stock week and the order clock
+  cannot drift apart.
+- `TC_Stock.lua` is new and self-contained; `TC.catByType` is new in the index, mapping
+  fullType to DisplayCategory for the sell rate.
+- `TC.entryPerishable` instantiates **one** item, for the row the player has selected, so
+  the buy panel can say "not bought back" instead of quoting a price the counter will
+  refuse. A note in CONTRIBUTING.md records why `buildIndex` must never do that per row.
+- Two new test harnesses, 47 assertions between them, covering the stock bands, the week
+  rollover, the duplicate-cart-line hole, allowance restore, and the sell floor at every
+  category rate.
+
+---
+
 ## 0.14.0-beta — 2026-10-04
 
 ### Added

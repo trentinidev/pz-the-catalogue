@@ -189,6 +189,7 @@ end
 
 TC.entries     = nil   -- array, sorted by display name, for the buy list
 TC.priceByType = nil   -- fullType -> base price, for O(1) lookup when selling
+TC.catByType   = nil   -- fullType -> DisplayCategory, for the per-category sell rate
 
 --[[ Walk every item the game knows about and price it once.
 
@@ -203,6 +204,7 @@ function TC.buildIndex()
 
     TC.entries     = {}
     TC.priceByType = {}
+    TC.catByType   = {}
 
     local all = getAllItems()
     if not all then
@@ -285,6 +287,7 @@ function TC.buildIndex()
 
             if price then
                 TC.priceByType[fullType] = price
+                TC.catByType[fullType]   = category or "Generic"
 
                 -- Resolved after the loop: the sibling this box holds may not be priced
                 -- yet, and a carton of boxes needs its boxes done first.
@@ -407,6 +410,7 @@ function TC.buildIndex()
 
         if price and not TC.EXCLUDED_ITEMS[fullType] and not TC.priceByType[fullType] then
             TC.priceByType[fullType] = price
+            TC.catByType[fullType]   = "Furniture"
             n = n + 1
             furniture = furniture + 1
             TC.entries[n] = {
@@ -458,6 +462,30 @@ function TC.entryIcon(e)
     end
     if e.icon == false then return nil end
     return e.icon
+end
+
+--[[ Would the counter refuse this entry as perishable? Resolved on first ask, and kept.
+
+     ONE INSTANCE, FOR ONE ROW. Perishability lives on the InventoryItem and not on the
+     ScriptItem the index walks -- vanilla's own Lua never reads it off a script, so there
+     is no getter here worth betting on. Building an instance for all 4,898 rows is exactly
+     the cost the header of this file refuses to pay; building one for the row the player
+     has actually selected is nothing, and it is the same trade TC.entryIcon makes.
+
+     `false` rather than nil for "asked and no", so a miss is not re-instantiated on every
+     frame the detail panel draws. ]]
+function TC.entryPerishable(e)
+    if not e then return false end
+
+    if e.perishable == nil then
+        e.perishable = false
+        if e.fullType and not TC.furnitureSprite(e.fullType) then
+            local ok, item = pcall(function() return instanceItem(e.fullType) end)
+            if ok and item then e.perishable = TC.isPerishable(item) end
+        end
+    end
+
+    return e.perishable
 end
 
 --[[ The inventory icon for a fullType, for the lists that hold a fullType rather than a
@@ -604,6 +632,27 @@ end
      on every frame. Asking the item what it IS costs one call and no allocation, and
      these four class names are the same ones the game's own Lua tests against.
 ]]
+--[[ Does this item rot?
+
+     THE TEST IS THE ENGINE'S, NOT A CATEGORY'S. Tinned beans and a caught bass are both
+     DisplayCategory Food, and only one of them is something a mail-order company could
+     resell. Vanilla tells the two apart by whether the item declares DaysFresh at all:
+     497 food ids do, every tin and sack in the game does not, and at runtime that shows
+     up as a finite OffAgeMax. A category name would have swept up the tins -- which is
+     the mistake the EXCLUDED_CATEGORIES comment in TC_Config.lua exists to remember.
+
+     The 1000000 sentinel is the same one conditionRatio below already trusts to mean
+     "this never goes off"; the two have to agree or an item could be refused by one and
+     scaled by the other. ]]
+function TC.isPerishable(item)
+    if not item then return false end
+    if not instanceof(item, "Food") then return false end
+
+    local offAge, offAgeMax = item:getOffAge(), item:getOffAgeMax()
+    return type(offAge) == "number" and type(offAgeMax) == "number"
+           and offAgeMax > offAge and offAgeMax < 1000000
+end
+
 function TC.conditionRatio(item)
     if not item then return 1 end
 
@@ -688,6 +737,65 @@ end
      pathological enough that something else has already gone wrong. ]]
 local MAX_NODES = 4096
 
+--[[ What the company is KEEN to buy back, as a multiplier on the sandbox sell ratio.
+
+     WHY THIS EXISTS. The spread used to be one number for everything, which meant the
+     catalogue paid the same tenth for an assault rifle and for a souvenir snow globe.
+     That is a wasted dimension: the player had no reason to choose WHAT to carry out of
+     a house, only how much, and "carry everything" is not a decision.
+
+     A mail-order company with no competition and a county full of corpses wants exactly
+     what it cannot easily restock -- weapons, ammunition, medicine, tools, radios -- and
+     has no use at all for your collection of ornaments. Paying 25% for the first and 5%
+     for the second makes a backpack a set of choices rather than a volume.
+
+     A MULTIPLIER, NOT A RATE, and that is what keeps the sandbox honest. SellRatio stays
+     the one dial an admin turns to make selling better or worse across the board; these
+     numbers only say how the categories sit RELATIVE to each other. Setting SellRatio to
+     0 still turns selling off completely, and doubling it still doubles everything.
+
+     Unlisted categories are 1.0 on purpose -- the ordinary rate. A future patch adding a
+     category leaves its items selling at the sandbox figure rather than silently at
+     nothing, which is the same reasoning as DEFAULT_BASE on the buy side.
+
+     Furniture is deliberately NOT discounted. Selling a sofa back is a whole feature with
+     its own tool and carpentry requirements, and taxing it twice would make the effort not
+     worth it. ]]
+local CATEGORY_SELL = {
+    -- Hard to restock, immediately useful, and the reason to go out at all.
+    Weapon = 2.5, WeaponPart = 2.5, Ammo = 2.5, Explosives = 2.5,
+    FirstAid = 2.5, Electronics = 2.5, Communications = 2.5, Security = 2.5,
+    Tool = 2.5, VehicleMaintenance = 2.5,
+
+    -- Worth having, not worth a premium.
+    ToolWeapon = 1.5, SkillBook = 1.5, RecipeResource = 1.5, Cartography = 1.5,
+    ProtectiveGear = 1.5, Camping = 1.5, LightSource = 1.5, Material = 1.5,
+    Instrument = 1.5, WaterContainer = 1.5, Bandage = 1.5,
+
+    -- Nobody is mail-ordering an ornament in the middle of an outbreak. The improvised
+    -- weapons are here because they are sticks with nails in them, not armoury.
+    Junk = 0.5, Appearance = 0.5, Memento = 0.5, Teddy = 0.5, Bug = 0.5,
+    Entertainment = 0.5, BrokenWeapon = 0.5, WeaponCrafted = 0.5,
+    JunkWeapon = 0.5, WeaponImprovised = 0.5, HouseholdWeapon = 0.5,
+}
+
+TC.CATEGORY_SELL = CATEGORY_SELL
+
+--[[ The sell multiplier for one fullType, or 1.0.
+
+     Reads the index's category map rather than instantiating anything. A fullType the
+     index has never seen -- an item from a mod removed since the save was made, which the
+     ledger is full of -- is ordinary rather than refused. ]]
+function TC.sellRate(fullType)
+    if not TC.opt("CategorySellRates") then return 1.0 end
+    if not fullType then return 1.0 end
+
+    local cat = TC.catByType and TC.catByType[fullType]
+    if not cat then return 1.0 end
+
+    return CATEGORY_SELL[cat] or 1.0
+end
+
 local function rawValue(item, visited)
     visited = visited or { n = 0 }
 
@@ -741,11 +849,38 @@ local function rawValue(item, visited)
 
         if not unit then return nil, "notlisted" end
 
+        --[[ The company does not buy what rots, and the SELL side alone refuses it.
+
+             Ordering food stays untouched: a mail-order company can ship you tinned
+             peaches, and "you may buy it but not sell it" is the asymmetry that stops
+             farming, fishing and foraging from being a money printer. All three produce
+             dozens of items a trip, every one of them at the dollar floor, at no risk and
+             without end -- 496 ids in this catalogue, averaging $1.29 each.
+
+             Checked HERE, inside the node, so that a bag of fish is refused fish by fish
+             while the bag itself still sells. Returning nil from the top would have made
+             the whole bag unsellable because something in it was perishable. ]]
+        if not TC.opt("AcceptPerishableFood") and TC.isPerishable(item) then
+            return nil, "perishable"
+        end
+
         local ratio = TC.conditionRatio(item)
         local minCond = TC.opt("MinConditionToSell")
         if minCond > 0 and ratio < minCond then return nil, "condition" end
 
-        value = unit * ratio
+        --[[ The category's appetite, folded in HERE and not at the end.
+
+             It has to be per node, because a bag of rifles and ornaments is two different
+             rates in one sale -- which is exactly the case the single multiply at the end
+             cannot express. Applying it as a WEIGHT ON THE RAW VALUE rather than as a rate
+             of its own is what keeps that final multiply intact: the payout is
+             SellRatio x sum(raw x rate), so the spread is still applied exactly once to
+             the finished total, and the invariant the next two comments depend on holds.
+
+             Furniture is addressed by the sprite for the same reason `unit` is. ]]
+        local rate = TC.sellRate(sprite and TC.furnitureType(sprite) or fullType)
+
+        value = unit * ratio * rate
 
         --[[ Nothing the catalogue agrees to buy is bought for nothing.
 
@@ -770,7 +905,17 @@ local function rawValue(item, visited)
              empty parcel is still worth zero and a full one is still worth its contents.
 
              A sandbox SellRatio of zero means "selling pays nothing", which is a real
-             answer and not a bug to be floored away; it also cannot be divided by. ]]
+             answer and not a bug to be floored away; it also cannot be divided by.
+
+             THE CATEGORY RATE IS NOT IN THIS DIVISION, and the first version of it was.
+             The rate is already folded into `value` above, and the only thing applied
+             after this point is the spread -- so MIN_SELL / spread is exactly the raw
+             figure that comes out as one dollar, whatever rate got it there. Dividing by
+             the rate as well floored the 0.5 categories at $2 and the 2.5 categories at
+             40 cents: one paid four times the floor it was meant to, the other displayed
+             as $0, which is the bug this floor exists to prevent. Caught by the test
+             harness and not by playing, which is the only reason it is a comment and not
+             a changelog entry. ]]
         local spread = TC.opt("SellRatio")
         if spread > 0 then
             local floorRaw = MIN_SELL / spread
@@ -826,11 +971,17 @@ end
      The buy window states the spread before the player commits, and it used to work the
      arithmetic out itself. That was fine until the sell side gained a floor: a dollar
      item was advertised at "sells back for $0" and then actually paid a dollar. A quote
-     the shop does not honour is worse than no quote, so both sides read this. ]]
-function TC.sellBackPrice(unit)
+     the shop does not honour is worse than no quote, so both sides read this.
+
+     `fullType` is optional and only decides the category rate. It is optional rather than
+     required because the furniture quote has a sprite and not an id, and because a quote
+     at the ordinary rate is a better failure than no quote at all -- but every caller that
+     CAN name the item should, or the window advertises a tenth and the counter pays a
+     quarter. ]]
+function TC.sellBackPrice(unit, fullType)
     if type(unit) ~= "number" then return 0 end
 
-    local v = unit * TC.opt("SellRatio")
+    local v = unit * TC.opt("SellRatio") * TC.sellRate(fullType)
     -- Zero here means the sandbox turned selling off, not a rounding accident.
     if v > 0 and v < MIN_SELL then v = MIN_SELL end
     return math.max(0, math.floor(v + 0.5))

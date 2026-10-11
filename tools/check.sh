@@ -181,6 +181,29 @@ if [ -n "${LUA:-}" ] && [ -x "$LUA" ] || command -v "${LUA:-luajit}" >/dev/null 
     fi
 fi
 
+# --- 11. The two things that CAN be tested without the game -----------------------
+#
+# Almost nothing in this mod can run outside Project Zomboid. The weekly stock counter and
+# the sell-side arithmetic are the exceptions -- both are arithmetic over plain tables --
+# and both are places where a wrong answer is a plausible number rather than a crash.
+# tools/tests/ has a header each explaining what it pins and why.
+if [ ! -x "$LUA" ]; then
+    note "tests     SKIPPED, luajit not found"
+else
+    t=0
+    for f in tools/tests/*.lua; do
+        [ -f "$f" ] || continue
+        t=$((t + 1))
+        if ! out=$("$LUA" "$f" 2>&1); then
+            bad "tests: $f"
+            printf '%s\n' "$out" | sed 's/^/      /'
+        fi
+    done
+    if [ $fail -eq 0 ]; then
+        note "tests     $t harness(es) passed"
+    fi
+fi
+
 if [ $fail -eq 0 ]; then
     note ""
     note "all checks passed"

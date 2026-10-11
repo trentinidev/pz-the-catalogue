@@ -58,12 +58,19 @@ AFTER 1.0
 CONTENT AND ECONOMY
 -------------------
 
-3. Limited stock and scarcity
+3. Stock as a simulation
 
-   Stock is infinite. Finite stock with restocking would give buying a real sense
-   of scarcity, but it needs stock levels that survive a save -- and PZ has no
-   save hook, so the state has to live on player:getModData() like the ledger
-   does.
+   HALF OF THIS SHIPPED IN 0.15.0 and the half that shipped is the cheap half: a
+   weekly allowance per id, capped by shelf price, counted on the character's own
+   modData. It gets the gameplay effect -- money converts into waiting -- for one
+   counter and no bookkeeping.
+
+   What is still parked is the simulation: a stock LEVEL that depletes as you buy
+   and recovers over time, scarcity that differs by region, and supply that
+   responds to how long the world has survived. That is genuinely more work than
+   it looks, because none of it is worth having unless it is visible, and making
+   it visible means the buy window has to show a level and a trend rather than a
+   number. Worth doing after 1.0, not before.
 
 4. Shipping cost and named delivery tiers
 
@@ -145,3 +152,14 @@ Kept here so nothing on the list gets proposed twice:
     safehouse money kept in a crate is spendable where you stand. The reach rule
     is the game's own loot-window list rather than a radius of ours, which is the
     whole reason it needed no tuning
+
+  - A sell rate per DisplayCategory, so the company pays about 25% for what it is
+    short of and about 5% for ornaments. Multipliers on SellRatio, so that one
+    dial still scales the whole economy
+
+  - Refusing to buy perishable food, which is what farming, fishing and foraging
+    were quietly printing money through. Decided by the engine's own OffAgeMax
+    rather than by a category name, so tins and sacks are untouched
+
+  - A weekly supply cap on the dearer half of the catalogue -- see item 3 above
+    for the part of that idea still outstanding

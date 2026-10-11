@@ -76,6 +76,46 @@ local DEFAULTS = {
          reach rule, which is the game's own and not a radius of ours. ]]
     SpendFromContainers        = true,
 
+    --[[ Pay more for what the company actually wants back.
+
+         A multiplier per DisplayCategory on top of SellRatio -- 2.5x for weapons, ammo,
+         medicine, tools and radios, 0.5x for ornaments and sticks with nails in them.
+         See TC.CATEGORY_SELL in TC_Prices.lua for the table and the reasoning.
+
+         ON by default, because a uniform spread gave the player no reason to choose WHAT
+         to carry out of a house. Off restores one rate for everything.
+
+         IT MOVES THE ARBITRAGE THRESHOLD, and an admin raising SellRatio should know it.
+         Selling becomes lossless when rate x SellRatio reaches 1.0, which used to mean
+         SellRatio = 1.0 and now means 0.40 for the 2.5x categories -- past that, any
+         craft that adds value to a weapon or a tool is an infinite money loop. At the
+         0.10 default there is a factor of four of headroom. ]]
+    CategorySellRates          = true,
+
+    --[[ Whether the catalogue buys food that rots.
+
+         OFF by default, and this is the balance decision in the file. A mail-order
+         company cannot resell a fish, and while it could, farming, fishing and foraging
+         were an uncapped money faucet: all three produce dozens of items a trip, every
+         one of them under the dollar floor, at no risk and for ever.
+
+         PERISHABILITY, NOT CATEGORY. Tinned beans and a caught bass are both Food, and
+         only one of them is merchandise. The line is whether the engine gives the item a
+         finite OffAgeMax -- which is the game's own answer to "does this go bad" -- and
+         not a guess about what a category contains. The lesson about category names is
+         in CONTRIBUTING.md and it was expensive.
+
+         On makes the catalogue buy perishables again at the ordinary rate. ]]
+    AcceptPerishableFood       = false,
+
+    --[[ Scales the weekly supply limit on the dearer half of the catalogue.
+
+         1.0 is one generator, three pistols or ten crowbars a week; 2.0 doubles every
+         band and 0 removes the limits entirely, which is how every version before 0.15.0
+         behaved. See TC_Stock.lua for the bands and why they are read off the shelf price
+         rather than written down per item. ]]
+    StockLimitMultiplier       = 1.0,
+
     -- The banking half. See sandbox-options.txt for what each one turns off.
     BankingEnabled             = true,
     ForeignCards               = true,
@@ -269,7 +309,7 @@ end
      A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
      sandbox option and this line has to be there whether or not anyone turned it on.
      tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
-TC.VERSION = "0.14.0-beta"
+TC.VERSION = "0.15.0-beta"
 print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging

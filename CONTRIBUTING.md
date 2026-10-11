@@ -9,8 +9,15 @@ whichever file you are about to touch, which is deliberately where it can be fou
 
 ## Testing loop
 
-There is no test harness and there cannot be one: the code only runs inside the game's
-own Lua VM, against a world. So the loop is edit, launch, play, read the console.
+Almost nothing here can be tested outside the game: the code wants a world, an inventory
+and a Java API. So the loop is edit, launch, play, read the console.
+
+**The exceptions live in `tools/tests/` and `tools/check.sh` runs them.** Two files so
+far, and the rule for adding a third is: the thing under test must be arithmetic over
+plain tables, and a wrong answer must look like a plausible number rather than a crash.
+That is the combination playing cannot catch — the 0.15.0 category rates had the dollar
+floor paying $2 where it should have paid $1, and the game looked fine. If a change you
+are making has that shape, pin it there before you launch.
 
 The game must be **closed while you edit**. Project Zomboid reads scripts, models and
 Lua once at boot, so a file saved four minutes after launch is not the file being
@@ -77,11 +84,11 @@ before adding anything.
 
     sh tools/check.sh
 
-Ten checks: LuaJIT syntax, JSON balance and duplicate keys, translation keys in both
+Eleven checks: LuaJIT syntax, JSON balance and duplicate keys, translation keys in both
 directions, `TC.*` helpers called vs defined, duplicate methods, icon/texture and mesh
-existence, a changelog entry for `modversion`, `TC.VERSION` matching `mod.info`, and a
+existence, a changelog entry for `modversion`, `TC.VERSION` matching `mod.info`, a
 SCREAMING_CASE constant read from a file that never declared it -- how 0.10.0 shipped a
-rail that crashed on open.
+rail that crashed on open -- and the harnesses in `tools/tests/`.
 
 `.githooks/pre-commit` runs it. Every clone has to opt in:
 
@@ -155,6 +162,13 @@ still matches the installed build.
   `getPlayerInventory(n).inventoryPane.inventoryPage` with no nil guard, and all of that
   is nil before the UI exists — which the order and delivery paths hit. `TC.cashSources`
   is the guarded version.
+- **A ScriptItem does not know everything the item will.** Perishability, body location,
+  capacity and nutrition live on the `InventoryItem`, and vanilla's own Lua never reads
+  them off a script — so there is no getter there worth betting on. The index walks
+  ScriptItems on purpose (4,898 instances during a loading screen is the cost its header
+  refuses to pay), so anything that needs the richer properties either instantiates ONE
+  item for the row the player selected (`TC.entryPerishable`) or is answered offline in
+  the study. Never add a per-row instantiation to `buildIndex`.
 - **`getAllTypeRecurse` descends into nested containers, and the reach list is flat.**
   The list names the player's main inventory AND every equipped bag, so summing both
   counts the money in the bag twice: the window shows a balance that is not there and the

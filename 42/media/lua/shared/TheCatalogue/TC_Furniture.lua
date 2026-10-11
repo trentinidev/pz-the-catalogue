@@ -141,7 +141,10 @@ end
 --[[ What the catalogue pays for it, spread and dollar floor included. Shown on the menu
      BEFORE the player commits, because a sale you agree to sight unseen is not a sale. ]]
 function TC.furnitureSell(sprite, customItem)
-    return TC.sellBackPrice(TC.furnitureUnit(sprite, customItem))
+    -- Named rather than left to default, so that if Furniture ever stops being an
+    -- ordinary-rate category this quote moves with the counter instead of lying.
+    return TC.sellBackPrice(TC.furnitureUnit(sprite, customItem),
+                            TC.furnitureType(sprite))
 end
 
 --[[ Build one item, furniture included.

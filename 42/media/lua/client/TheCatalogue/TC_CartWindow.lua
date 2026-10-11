@@ -240,6 +240,19 @@ end
 function TC_CartWindow:onCheckout() self:startCheckout(false) end
 function TC_CartWindow:onRush()     self:startCheckout(true)  end
 
+--[[ The cart as the stock counter wants to see it: id, name and quantity.
+
+     Built in one place because both the pre-action check and the commit need it, and the
+     only thing worse than checking the allowance twice is checking it against two
+     differently-shaped baskets. ]]
+function TC_CartWindow:stockLines()
+    local out = {}
+    for _, line in ipairs(self:cart()) do
+        out[#out + 1] = { fullType = line.fullType, name = line.name, qty = line.qty }
+    end
+    return out
+end
+
 function TC_CartWindow:startCheckout(rush)
     local cart = self:cart()
     if #cart == 0 then
@@ -259,6 +272,12 @@ function TC_CartWindow:startCheckout(rush)
     if rush then due = due + TC.rushSurcharge(due) end
     if TC.purseBalance(self.player, TC.onlineAccount(self.playerNum)) < due then
         self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
+        return
+    end
+
+    local okStock, name, left = TC.stockCheck(self.player, self:stockLines())
+    if not okStock then
+        self:setMessage(getText("IGUI_TC_OutOfStock", name, left), true)
         return
     end
 
@@ -291,10 +310,24 @@ function TC_CartWindow:onOrderComplete(payload)
         self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
         return
     end
+
+    -- Re-checked for the same reason the total is re-priced: the cart or the week's
+    -- allowance may have moved during the action. Before the money, so a no costs nothing.
+    local stockLines = self:stockLines()
+    local okStock, name, left = TC.stockCheck(self.player, stockLines)
+    if not okStock then
+        self:setMessage(getText("IGUI_TC_OutOfStock", name, left), true)
+        return
+    end
+
     if not TC.purseTake(self.player, TC.onlineAccount(self.playerNum), total) then
         self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
         return
     end
+
+    -- Paid for, so the allowance is spent. Recorded from the basket that was CHECKED,
+    -- not rebuilt from the cart below, because the rush branch clears lines as it goes.
+    TC.stockTake(self.player, stockLines)
 
     -- A normal cart is booked for delivery; only a rush cart is handed over now.
     if not rush then

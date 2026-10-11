@@ -4,7 +4,7 @@ A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
 [![checks](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml/badge.svg)](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml)
 
-> **Alpha — 0.14.0, single-player.** Pre-1.0 deliberately: it works and it is played,
+> **Alpha — 0.15.0, single-player.** Pre-1.0 deliberately: it works and it is played,
 > but parts of it have never been exercised, and it is not on the Workshop yet.
 > [Releases](https://github.com/trentinidev/pz-the-catalogue/releases) has the installable
 > build. [What to expect](#what-to-expect) sets out the limits before you install.
@@ -59,11 +59,15 @@ you in the currencies a magic shop menu would not:
 - **Goods take time.** An order books, the money leaves immediately, and the van arrives
   when the bulk of what you ordered says it arrives — twenty minutes for a pistol round,
   several days for a generator. You cannot re-equip in the middle of a horde.
-- **The company buys low and sells high.** Selling pays 10% of catalogue price, so
-  clearing out a safehouse is a way to convert junk into cash, never a way to farm it.
+- **The company buys low and sells high.** Selling pays 10% of catalogue price, and
+  about 25% for the things it is short of, so clearing out a safehouse converts junk into
+  cash and never farms it. It also will not buy perishable food at all.
+- **It cannot supply everything at once.** One generator, three pistols or ten crowbars a
+  game week. Money is the resource the catalogue is best at giving you; availability is
+  the one it charges in time instead.
 
 **What it is deliberately not:** a trader mod with NPCs, an economy simulation, or an
-item spawner with a price tag on it. Prices are fixed, stock is infinite, and there is no
+item spawner with a price tag on it. Prices are fixed, there is no
 bartering. See [What to expect](#what-to-expect).
 
 ---
@@ -86,8 +90,22 @@ system paints on a body — and are refused outright rather than listed at a tok
 
 **Sell** — drop items into the sell window and it prices them, scaled by condition: a
 40%-durability axe fetches 40%, a half-empty bleach bottle fetches half, rotten food
-fetches nothing. Selling pays 10% of catalogue price -- the catalogue buys low and sells
-high, as a company with no competition would.
+fetches nothing. The catalogue buys low and sells high, as a company with no competition
+would — and **it pays more for what it actually wants.** Weapons, ammunition, medicine,
+tools and radios fetch about 25% of catalogue price; most things fetch 10%; ornaments,
+mementoes and sticks with nails in them fetch about 5%. That is what makes a backpack a
+set of choices instead of a volume.
+
+It **will not buy food that rots.** It will happily sell you tinned peaches, and it has no
+use for your fish — farming, fishing and foraging otherwise produce dozens of items a
+trip, nearly all of them at the one-dollar floor, at no risk and without end.
+
+**Stock is limited on the dearer half.** The company can get you one generator, three
+pistols or ten crowbars in a game week; anything under about $250 on the shelf is
+unlimited, so ammunition, food and materials are unaffected. Cancelling an order or
+refusing it at the door gives the week's allowance back. This converts money — the
+resource the catalogue is best at giving you — into waiting, which is the one thing you
+cannot farm.
 
 **Paying from where the money is** — the catalogue spends out of any container the
 character can reach, not just their pockets. Keep the safehouse money in a crate and buy
@@ -256,10 +274,13 @@ single-player and the mod description says so too. Moving the logic behind serve
 commands is one job that has to be done all at once, and it is deliberately deferred
 past 1.0 rather than half-done before it.
 
-**Stock is infinite.** The catalogue never runs out and never restocks. If you can carry
-the cash, you can buy the item — the brake on buying is money, weight and delivery time,
-not scarcity. Finite stock needs levels that survive a save, which is real work rather
-than a missing checkbox.
+**Stock is capped per week, not simulated.** Since 0.15.0 the dearer half of the catalogue
+has a weekly allowance — one generator, three pistols, ten crowbars — counted per
+character and given back if you cancel. Below about $250 on the shelf there is no limit at
+all. What there is *not* is a stock level that depletes and recovers, or scarcity that
+varies by region or by how long you have survived: that is a simulation, it needs state
+that survives a save, and it is parked behind 1.0 on purpose. The brake on buying is
+money, weight, delivery time and now availability — none of them a supply chain.
 
 **Prices never move.** They do not drift with the weeks you have survived, they do not
 respond to what you buy, and there is no haggling. A hammer costs $105 in week one and
@@ -337,6 +358,9 @@ that are still at an old default — anything you set yourself is left alone.
 | `MaxQuantityPerPurchase` | 100 | Cap on the quantity field. |
 | `SellContainerContents` | true | Selling a bag sells what is inside it. |
 | `MinConditionToSell` | 0.0 | Refuse items below this condition. |
+| `CategorySellRates` | true | Pay about 25% for weapons, ammunition, medicine, tools and radios, and about 5% for ornaments and improvised clubs, instead of one rate for everything. |
+| `AcceptPerishableFood` | false | Buy food that rots. Off (the default) means the catalogue sells you food but will not buy your harvest. |
+| `StockLimitMultiplier` | 1.0 | Scales the weekly supply limit on the dearer half of the catalogue. 0 removes it. |
 | `SpendFromContainers` | true | Pay out of any container the character can reach, not only their pockets. Off makes the weight of cash a real limit on a single purchase again. |
 | `RequireCatalogueOnPerson` | true | Close both windows if you no longer carry a catalogue. |
 | `DeliveryHoursMultiplier` | 1.0 | Scales how long orders take. |
@@ -387,11 +411,32 @@ about 1993 Kentucky rather than about how much cash fits in a rucksack. Since 0.
 `PriceMultiplier` defaults to **5** on top of the table, so the shelf price is five
 times the study figure: a generator is $13,500 and a gold bar $194,500.
 
-Eleven items now cost more than one trip can carry in cash -- the four generators, both
-ham radios, a box of antibiotics, the assault rifle and the precious-metal bars.
+**Six rifles were priced as scrap metal until 0.15.0.** The study's note on each of them
+read *"improvised weapon or blunt object, priced by the material"* — it had weighed the
+steel instead of pricing the gun, and classed them `C3 — valuable` where the M16 and the
+pistols got `C5 — critical`. An M1A cost $390 on the shelf while an M9 pistol cost
+$4,400, which made the best firearm in the game nearly the cheapest. They now follow the
+study's own chain of 1993 US retail × 2.52, against the anchors it already contained
+(AR-15 $750 → 1,890; Beretta 92 $350 → 880):
+
+| | 1993 retail | shelf, before | shelf, now |
+|---|---|---|---|
+| M1A (`AssaultRifle2`) | $1,000 | $390 | **$12,600** |
+| MSR7T Tactical | $600 | $390 | **$7,560** |
+| JS-14 | $450 | $330 | **$5,670** |
+| MSR700 (`VarmintRifle`) | $400 | $340 | **$5,040** |
+| MSR788 (`HuntingRifle`) | $300 | $380 | **$3,780** |
+| L94 | $300 | $365 | **$3,780** |
+
+The other 153 ids the study priced by material are genuinely broken weapons and scrap,
+and are correctly cheap. The six above were the only working equipment in that set.
+
+Fifteen items now cost more than one trip can carry in cash: the four generators, both
+ham radios, a box of antibiotics, the three precious-metal bars, and the five rifles --
+four of which only joined the list when 0.15.0 stopped pricing them as scrap.
 
 **On your back.** Buying through the [Online Catalogue](#what-it-does) spends a bank
-balance instead of your pockets, and a balance has no weight and no ceiling. So those eleven are
+balance instead of your pockets, and a balance has no weight and no ceiling. So those are
 out of reach on foot and in reach from a desk, which puts the dearest things in the game
 behind a computer, a disc and a card rather than behind a sandbox setting. Lower
 `PriceMultiplier` if you would rather they stayed reachable either way.
@@ -585,8 +630,8 @@ icons.
 
 `tools/check.sh` runs everything that can be verified without launching the game: Lua
 syntax, the translation JSON, translation keys in both directions, `TC.*` helpers called
-against helpers defined, methods defined twice in one file, and whether the version in
-`mod.info` has a changelog entry.
+against helpers defined, methods defined twice in one file, whether the version in
+`mod.info` has a changelog entry, and the two test harnesses in `tools/tests/`.
 
 ```sh
 sh tools/check.sh
@@ -615,6 +660,12 @@ workflow is an `apt-get install luajit` and the same `sh tools/check.sh` you run
 took down the ledger in 0.6.4 — a cached function whose two exits returned different
 numbers of values — parses perfectly and always will. Static checks buy the cheap half;
 the rest is still playing the thing.
+
+The harnesses in `tools/tests/` buy back a sliver of it. They cover the two places that
+are pure arithmetic over plain tables — the weekly stock counter and the sell-side spread
+— because those are where a mistake produces a plausible wrong number instead of a crash,
+which is exactly what playing does not catch. The 0.15.0 category rates had the dollar
+floor paying  where it should have paid ; the game looked fine.
 
 Two more checks need an installed copy of the game and so cannot run in CI:
 `tools/verify_ids.sh` confirms every hand-set price id is a real vanilla item, and

@@ -557,6 +557,15 @@ function TC_BuyWindow:startPurchase(rush)
         return
     end
 
+    -- Refused before the action starts, so the player is not made to wait two seconds
+    -- to be told no. It is checked again on the other side; see onOrderComplete.
+    local okStock, _, left = TC.stockCheck(self.player,
+        { { fullType = entry.fullType, name = entry.name, qty = self.quantity } })
+    if not okStock then
+        self:setMessage(getText("IGUI_TC_OutOfStock", entry.name, left), true)
+        return
+    end
+
     local seconds = TC.opt("OrderSeconds")
     if type(seconds) ~= "number" or seconds <= 0 then
         -- No action to hang the paperwork on when the wait is configured away, so the
@@ -601,6 +610,20 @@ function TC_BuyWindow:onOrderComplete(payload)
         return
     end
 
+    local lines = { {
+        fullType = entry.fullType, name = entry.name,
+        qty = qty, weight = entry.weight or 0, unit = unit,
+    } }
+
+    -- Re-checked here for the same reason the balance is: the two seconds the action
+    -- takes are two seconds in which another window could have spent the allowance.
+    -- BEFORE the money moves, so a refusal costs nothing to undo.
+    local okStock, _, left = TC.stockCheck(player, lines)
+    if not okStock then
+        self:setMessage(getText("IGUI_TC_OutOfStock", entry.name, left), true)
+        return
+    end
+
     if not TC.purseTake(player, TC.onlineAccount(self.playerNum), total) then
         -- takeCash re-checks and leaves the inventory untouched on failure, so a race
         -- between the balance check and here cannot half-charge the player.
@@ -608,10 +631,10 @@ function TC_BuyWindow:onOrderComplete(payload)
         return
     end
 
-    local lines = { {
-        fullType = entry.fullType, name = entry.name,
-        qty = qty, weight = entry.weight or 0, unit = unit,
-    } }
+    -- Paid for, so the week's allowance is spent whether this is a rush handed over now
+    -- or an order that lands tomorrow. Cancelling or refusing it gives the allowance
+    -- back; see TC.stockRestore.
+    TC.stockTake(player, lines)
 
     --[[ A normal order is booked and arrives later; only a rush order is handed over
          across the counter. The money is already gone either way, which is what makes
@@ -850,14 +873,40 @@ function TC_BuyWindow:prerender()
         -- What it fetches back. Buying and immediately reselling is a loss by design,
         -- and stating it up front is fairer than letting the player discover the
         -- spread only after they have committed.
-        line(getText("IGUI_TC_SellsBackFor"),
-             "$" .. TC.sellBackPrice(unit),
-             UIFont.Small, 0.62, 0.62, 0.66)
+        --[[ A quote the counter will not honour is worse than no quote, which is why
+             sellBackPrice exists at all -- and food the catalogue refuses to buy back is
+             the newest way to print one. Say so instead of quoting a number. ]]
+        if not TC.opt("AcceptPerishableFood") and TC.entryPerishable(entry) then
+            line(getText("IGUI_TC_SellsBackFor"), getText("IGUI_TC_SellsBackNever"),
+                 UIFont.Small, 0.62, 0.62, 0.66)
+        else
+            line(getText("IGUI_TC_SellsBackFor"),
+                 "$" .. TC.sellBackPrice(unit, entry.fullType),
+                 UIFont.Small, 0.62, 0.62, 0.66)
+        end
 
         -- Counted recursively so a box of nails in a backpack still counts as owned,
         -- and cached on the slow tick -- see TC_BuyWindow:ownedCount.
         line(getText("IGUI_TC_YouOwn"), tostring(self:ownedCount(entry)),
              UIFont.Small, 0.62, 0.62, 0.66)
+
+        --[[ Only shown for an item that HAS a limit, which is a minority of the
+             catalogue. Printing "unlimited" against four thousand rows would be noise,
+             and it would make the handful that are capped harder to notice rather than
+             easier.
+
+             Red at zero: the Buy button will refuse, and the panel should say why before
+             it is pressed rather than after. ]]
+        local left = TC.stockLeft(self.player, entry.fullType)
+        if left then
+            local capText = getText("IGUI_TC_StockThisWeek",
+                                    left, TC.stockCap(entry.fullType))
+            if left <= 0 then
+                line(getText("IGUI_TC_InStock"), capText, UIFont.Small, 1, 0.35, 0.35)
+            else
+                line(getText("IGUI_TC_InStock"), capText, UIFont.Small, 0.62, 0.62, 0.66)
+            end
+        end
 
         y = y + 2
         self:drawRect(innerLeft, y, DETAIL_W - PAD * 2, 1, 0.35, 1, 1, 1)

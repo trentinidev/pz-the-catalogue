@@ -106,6 +106,10 @@
     "IGUI_TC_CashWithinReach": "Cash within reach",
     "IGUI_TC_CashNearbyNote": "$%1 on you, $%2 within reach",
     "IGUI_TC_YouOwn": "You own",
+    "IGUI_TC_InStock": "Available",
+    "IGUI_TC_StockThisWeek": "%1 of %2 this week",
+    "IGUI_TC_OutOfStock": "The company cannot supply that many %1 this week -- %2 left",
+    "IGUI_TC_SellsBackNever": "not bought back",
     "IGUI_TC_SellsBackFor": "Sells back for",
     "IGUI_TC_CashAfter": "Cash after",
 
@@ -136,6 +140,7 @@
     "IGUI_TC_RefuseFavorite": "That item is marked as a favourite",
     "IGUI_TC_RefuseEquipped": "Unequip that first",
     "IGUI_TC_RefuseCondition": "That item is in too poor a condition to sell",
+    "IGUI_TC_RefusePerishable": "The catalogue does not buy food that rots",
     "IGUI_TC_RefuseNotListed": "The catalogue does not deal in that",
     "IGUI_TC_RefuseNotEmpty": "Empty that container first",
     "IGUI_TC_RefuseBankCard": "That card is tied to a bank account",

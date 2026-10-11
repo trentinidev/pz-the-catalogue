@@ -351,7 +351,8 @@ function TC_SellWindow:canStage(item)
 
     local value, reason = TC.getSellPriceRounded(item)
     if not value then
-        if reason == "condition" then return false, getText("IGUI_TC_RefuseCondition") end
+        if reason == "condition"  then return false, getText("IGUI_TC_RefuseCondition")  end
+        if reason == "perishable" then return false, getText("IGUI_TC_RefusePerishable") end
         return false, getText("IGUI_TC_RefuseNotListed")
     end
 
