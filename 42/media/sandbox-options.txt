@@ -195,6 +195,24 @@ option TheCatalogue.StockLimitMultiplier
     translation = TheCatalogue_StockLimitMultiplier,
 }
 
+/* How many of the catalogue's 6,017 lines the company actually has on the shelf on any
+   given day. The selection is drawn at random, is the same all day, and changes every
+   morning -- a warehouse with no suppliers left has what came in, not a full catalogue.
+
+   At 100, a NAMED item is in stock roughly one day in sixty, so shopping becomes a
+   question of what they have got rather than what you wanted. Raise it if that reads as
+   a wall; set it to 0 to carry everything every day, which is how the mod behaved before
+   0.16.0. The buy window can show the out-of-stock lines greyed out, so you can always
+   see what exists and wishlist it. */
+option TheCatalogue.DailyItemCount
+{
+    type = integer,
+    min = 0, max = 6000,
+    default = 100,
+    page = TheCatalogue,
+    translation = TheCatalogue_DailyItemCount,
+}
+
 /* Minimum condition an item must have to be accepted for sale, as a fraction.
    0.0 accepts anything including near-broken gear and rotten food. */
 option TheCatalogue.MinConditionToSell

@@ -68,12 +68,6 @@ function TC_BuyList:doDrawItem(y, item, alt)
     self:drawRect(0, y + ROW_HGT - 1, self:getWidth(), 1, 0.25, 1, 1, 1)
     TC.drawColumnRules(self, c, 0, y, ROW_HGT - 1, 0.22)
 
-    local icon = TC.entryIcon(e)
-    if icon then
-        self:drawTextureScaledAspect(icon, TC.UI.CELL_PAD, y + (ROW_HGT - ICON) / 2,
-                                     ICON, ICON, 1, 1, 1, 1)
-    end
-
     local textY = y + (ROW_HGT - FONT_HGT_MEDIUM) / 2
 
     -- A wishlisted row is tinted rather than given a star glyph, for the same reason
@@ -84,20 +78,35 @@ function TC_BuyList:doDrawItem(y, item, alt)
     local nr, ng, nb = 1, 1, 1
     if wished then nr, ng, nb = 1, 0.92, 0.6 end
 
+    --[[ Out of stock today: dimmed rather than hidden, and only ever on screen at all
+         because the player asked for it with the last quick filter.
+
+         Dimming the WHOLE row, name, category, weight and price together, so the state
+         reads at a glance down a long list instead of having to be inferred from one
+         greyed column among four. ]]
+    local dim = item.outOfStock and 0.42 or 1
+
+    local icon = TC.entryIcon(e)
+    if icon then
+        self:drawTextureScaledAspect(icon, TC.UI.CELL_PAD, y + (ROW_HGT - ICON) / 2,
+                                     ICON, ICON, dim, 1, 1, 1)
+    end
+
     self:drawText(TC.truncate(UIFont.Medium, e.name, c.nameW),
-                  c.nameLeft, textY, nr, ng, nb, 1, UIFont.Medium)
+                  c.nameLeft, textY, nr * dim, ng * dim, nb * dim, 1, UIFont.Medium)
 
     local smallY = y + (ROW_HGT - FONT_HGT_SMALL) / 2
     if c.catW > 20 then
         self:drawText(TC.truncate(UIFont.Small, e.category, c.catW),
-                      c.catLeft + TC.UI.CELL_PAD, smallY, 0.62, 0.62, 0.66, 1, UIFont.Small)
+                      c.catLeft + TC.UI.CELL_PAD, smallY,
+                      0.62 * dim, 0.62 * dim, 0.66 * dim, 1, UIFont.Small)
     end
 
     TC.drawRight(self, string.format("%.1f", e.weight or 0), c.midRight, smallY,
-                 UIFont.Small, 0.62, 0.62, 0.66)
+                 UIFont.Small, 0.62 * dim, 0.62 * dim, 0.66 * dim)
 
     TC.drawRight(self, "$" .. TC.entryPrice(e),
-                 c.priceRight, textY, UIFont.Medium, 0.78, 0.96, 0.78)
+                 c.priceRight, textY, UIFont.Medium, 0.78 * dim, 0.96 * dim, 0.78 * dim)
 
     return y + ROW_HGT
 end
@@ -198,6 +207,18 @@ function TC_BuyWindow:createChildren()
     self.quickCombo:addOption(getText("IGUI_TC_QuickOwned"))
     self.quickCombo:addOption(getText("IGUI_TC_QuickNotOwned"))
     self.quickCombo:addOption(getText("IGUI_TC_QuickWishlist"))
+    --[[ Last, and it is the only option that WIDENS the list rather than narrowing it.
+
+         It belongs in this combo anyway: a player who wants to see the whole catalogue is
+         answering the same kind of question as one who wants to see what they can afford,
+         and giving it a control of its own would mean re-flowing a header whose three
+         widths are already measured against each other.
+
+         It exists because a rotating shelf without it is opaque. With a hundred of six
+         thousand lines on sale, a player who cannot find a generator has no way to tell
+         whether the catalogue has never sold one or simply has not got one today -- and
+         the second is the whole point of the feature while the first would be a bug. ]]
+    self.quickCombo:addOption(getText("IGUI_TC_QuickOutOfStock"))
     self.quickCombo.selected = 1
     self:addChild(self.quickCombo)
 
@@ -403,13 +424,29 @@ function TC_BuyWindow:refreshList()
     if quick == 2 then balance = TC.purseBalance(self.player, TC.onlineAccount(self.playerNum)) end
     local wishes = (quick == 5) and TC.wishlist(self.player) or nil
 
-    local filtering = (needle ~= "" or spec.kind ~= "all" or quick ~= 1)
+    --[[ Today's shelf, fetched once per refresh rather than per row.
+
+         nil means the company carries everything, which is what the sandbox option set to
+         0 gives and what every version before 0.16.0 did. Quick option 6 is the one that
+         shows out-of-stock lines, so it reads the shelf for the ROW STATE -- the rows are
+         still drawn dimmed -- while skipping the filter itself. ]]
+    local shelf    = TC.dailyShelf()
+    local showGone = (quick == 6)
+
+    local filtering = (needle ~= "" or spec.kind ~= "all" or quick ~= 1 or shelf ~= nil)
 
     local items, n = {}, 0
     for i = 1, #ordered do
         local e = ordered[i]
         local keep = true
         if filtering then
+            -- Availability first: it is a set lookup, and it rejects 98% of the catalogue
+            -- before any string search or inventory comparison is reached.
+            if shelf and not showGone then
+                keep = (shelf[e.fullType] == true)
+            end
+        end
+        if keep and filtering then
             if spec.kind == "category" then
                 keep = (e.category == spec.value)
             elseif spec.kind == "module" then
@@ -432,7 +469,10 @@ function TC_BuyWindow:refreshList()
         end
         if keep then
             n = n + 1
-            items[n] = { text = e.name, item = e, itemindex = n, height = ROW_HGT }
+            items[n] = { text = e.name, item = e, itemindex = n, height = ROW_HGT,
+                         -- Computed here and not in doDrawItem, which runs per row per
+                         -- frame; this runs per row per refresh.
+                         outOfStock = (shelf and shelf[e.fullType] ~= true) or false }
         end
     end
 
@@ -552,6 +592,14 @@ function TC_BuyWindow:startPurchase(rush)
         self:setMessage(getText("IGUI_TC_ItemUnavailable"), true)
         return
     end
+
+    -- The player can SEE out-of-stock lines, by asking for them, so they can also click
+    -- Buy on one. Refused here as well as greyed in the list.
+    if not TC.isAvailable(entry.fullType) then
+        self:setMessage(getText("IGUI_TC_NotStockedToday",
+                                entry.name, TC.etaShort(TC.restockHours())), true)
+        return
+    end
     if TC.purseBalance(self.player, TC.onlineAccount(self.playerNum)) < total then
         self:setMessage(getText("IGUI_TC_InsufficientFunds"), true)
         return
@@ -602,6 +650,15 @@ function TC_BuyWindow:onOrderComplete(payload)
     -- player may have spent or dropped money in the meantime.
     if not getScriptManager():FindItem(entry.fullType) then
         self:setMessage(getText("IGUI_TC_ItemUnavailable"), true)
+        return
+    end
+
+    --[[ Re-checked after the action, and this one can genuinely change under the player:
+         the order takes a couple of seconds and a day can turn over inside them. Before
+         the money moves, so a midnight refusal costs nothing. ]]
+    if not TC.isAvailable(entry.fullType) then
+        self:setMessage(getText("IGUI_TC_NotStockedToday",
+                                entry.name, TC.etaShort(TC.restockHours())), true)
         return
     end
 
@@ -762,6 +819,19 @@ function TC_BuyWindow:prerender()
             self:close()
             return
         end
+
+        --[[ Midnight while the window is open.
+
+             A player reading the catalogue at 23:58 should not still be looking at
+             yesterday's shelf at 00:02 -- the Buy button would start refusing rows that
+             are still on screen, which reads as the button being broken rather than as
+             the day having turned. Rebuilt on the same slow tick that already watches for
+             the catalogue leaving their pockets. ]]
+        local day = TC.dayNumber()
+        if self.shelfDay ~= day then
+            if self.shelfDay ~= nil then self:refreshList() end
+            self.shelfDay = day
+        end
     end
 
     local top, listW, listY, listH = self:listGeometry()
@@ -897,14 +967,24 @@ function TC_BuyWindow:prerender()
 
              Red at zero: the Buy button will refuse, and the panel should say why before
              it is pressed rather than after. ]]
-        local left = TC.stockLeft(self.player, entry.fullType)
-        if left then
-            local capText = getText("IGUI_TC_StockThisWeek",
-                                    left, TC.stockCap(entry.fullType))
-            if left <= 0 then
-                line(getText("IGUI_TC_InStock"), capText, UIFont.Small, 1, 0.35, 0.35)
-            else
-                line(getText("IGUI_TC_InStock"), capText, UIFont.Small, 0.62, 0.62, 0.66)
+        --[[ Out of stock BEFORE the weekly allowance, because it is the stronger answer:
+             an allowance of three is irrelevant on a day the company is not carrying the
+             thing at all, and printing both would read as a contradiction. ]]
+        if not TC.isAvailable(entry.fullType) then
+            line(getText("IGUI_TC_InStock"),
+                 getText("IGUI_TC_RestocksIn", TC.etaShort(TC.restockHours())),
+                 UIFont.Small, 1, 0.55, 0.35)
+        else
+            local left = TC.stockLeft(self.player, entry.fullType)
+            if left then
+                local capText = getText("IGUI_TC_StockThisWeek",
+                                        left, TC.stockCap(entry.fullType))
+                if left <= 0 then
+                    line(getText("IGUI_TC_InStock"), capText, UIFont.Small, 1, 0.35, 0.35)
+                else
+                    line(getText("IGUI_TC_InStock"), capText,
+                         UIFont.Small, 0.62, 0.62, 0.66)
+                end
             end
         end
 
@@ -972,10 +1052,20 @@ function TC_BuyWindow:prerender()
                       innerLeft, my, 0.5, 0.5, 0.55, 1, UIFont.Small)
     end
 
-    -- Row count, so a filter that matches nothing reads as a filter and not a bug.
-    local countText = (#self.list.items == 0)
-        and getText("IGUI_TC_NoMatches")
-        or  getText("IGUI_TC_ItemsListed", #self.list.items)
+    --[[ Row count, so a filter that matches nothing reads as a filter and not a bug.
+
+         With a rotating shelf the count alone is not enough: "100 items" against a mod
+         that advertises six thousand looks like a broken filter. So when the company is
+         carrying a selection, the footer says so and gives both numbers. ]]
+    local shelfSize = TC.shelfSize()
+    local countText
+    if #self.list.items == 0 then
+        countText = getText("IGUI_TC_NoMatches")
+    elseif shelfSize then
+        countText = getText("IGUI_TC_ShelfToday", shelfSize, #TC.entries)
+    else
+        countText = getText("IGUI_TC_ItemsListed", #self.list.items)
+    end
     self:drawText(countText, PAD, self.height - BOTTOM_PAD - FONT_HGT_SMALL,
                   0.6, 0.6, 0.64, 1, UIFont.Small)
 end

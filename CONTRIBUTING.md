@@ -149,6 +149,19 @@ still matches the installed build.
   method that does not exist is a hard Kahlua error, not a nil -- `getUsedDelta` went
   away in B42 and took every drainable sale with it. `instanceof` is a Java global and
   is safe to point at an object of a class Lua has never been shown; a method call is not.
+- **Never reseed the game's RNG, and never expect `ZombRand` to repeat.** `math.randomseed`
+  reseeds the ONE generator the whole game shares, so using it to pick a shopping list
+  would perturb zombie spawns and loot rolls; `ZombRand` cannot be seeded from Lua at all,
+  so it can never be made to agree with itself twice. Anything that has to be random but
+  reproducible — the daily shelf — carries its own generator. Kahlua has no bitwise
+  operators, which rules out every modern hash, so `TC_Daily.lua` uses Park–Miller
+  (`16807 * x mod 2^31-1`): multiplication and modulo only, every intermediate under 2^53
+  so a double holds it exactly.
+- **Derive per-day state from the day number; do not store it.** A stored shelf can be
+  lost, can be two shelves if two windows disagree, and needs a rollover tick that fires
+  while nobody is looking. A pure function of `TC.dayNumber()` has none of those. Use
+  `TC.worldHours`, never `getGameTime():getDay()` — that is the day of the *month* and
+  wraps every thirty days.
 - **A loot container name that does not exist fails silently.** `ProceduralDistributions`
   is a plain table; a name that is not in it is skipped, not reported. Grep the game's
   own `media/lua/server/Items/ProceduralDistributions.lua` before adding a spawn point.

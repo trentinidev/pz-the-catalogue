@@ -163,3 +163,9 @@ Kept here so nothing on the list gets proposed twice:
 
   - A weekly supply cap on the dearer half of the catalogue -- see item 3 above
     for the part of that idea still outstanding
+
+  - A shelf that rotates daily: 100 of the 6,017 lines on sale on any given day,
+    drawn at random and DERIVED from the day number rather than stored, so a
+    reload cannot hand the player a different shelf than the one they were
+    reading. Out-of-stock lines stay visible, greyed, so the catalogue is still
+    a catalogue and not just a till receipt

@@ -116,6 +116,22 @@ local DEFAULTS = {
          rather than written down per item. ]]
     StockLimitMultiplier       = 1.0,
 
+    --[[ How many lines the company carries on any given day.
+
+         100 of 6,017, redrawn every morning and the same all day. A warehouse with no
+         suppliers left has what came in, not a full catalogue, and a shelf that changes
+         gives the window a reason to be opened tomorrow.
+
+         0 carries everything, which is how every version before 0.16.0 behaved.
+
+         SIZE IT DELIBERATELY. At 100 a NAMED item is in stock about one day in sixty, so
+         shopping becomes "what have they got" rather than "I will buy a hammer". That is
+         the intended feel, and it is also why the window can show the whole catalogue with
+         the out-of-stock lines greyed: a player has to be able to see that the thing
+         exists and will come round. Raise this if the wait reads as a wall rather than as
+         a reason to come back. See TC_Daily.lua for how the draw is made. ]]
+    DailyItemCount             = 100,
+
     -- The banking half. See sandbox-options.txt for what each one turns off.
     BankingEnabled             = true,
     ForeignCards               = true,
@@ -309,7 +325,7 @@ end
      A plain print rather than TC.log, because TC.log is gated behind the DebugLogging
      sandbox option and this line has to be there whether or not anyone turned it on.
      tools/check.sh verifies the string against mod.info, so it cannot drift. ]]
-TC.VERSION = "0.15.0-beta"
+TC.VERSION = "0.16.0-beta"
 print("[The Catalogue] " .. TC.VERSION .. " loaded")
 -- ---------------------------------------------------------------------------
 -- Logging

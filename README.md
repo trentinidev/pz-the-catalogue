@@ -4,7 +4,7 @@ A buy/sell mod for **Project Zomboid Build 42** (42.20+).
 
 [![checks](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml/badge.svg)](https://github.com/trentinidev/pz-the-catalogue/actions/workflows/checks.yml)
 
-> **Alpha — 0.15.0, single-player.** Pre-1.0 deliberately: it works and it is played,
+> **Alpha — 0.16.0, single-player.** Pre-1.0 deliberately: it works and it is played,
 > but parts of it have never been exercised, and it is not on the Workshop yet.
 > [Releases](https://github.com/trentinidev/pz-the-catalogue/releases) has the installable
 > build. [What to expect](#what-to-expect) sets out the limits before you install.
@@ -82,7 +82,9 @@ that appears only when something is at the door. The cart opens beside the windo
 than inside it, so you can watch the total while you keep adding to it; the rail entry
 toggles it shut again.
 
-**Buy** — a searchable, filterable table of 4,898 vanilla items on an early-90s scale.
+**Buy** — a searchable, filterable table of the 4,898 vanilla items on an early-90s scale,
+of which **a hundred are on the shelf on any given day** (see [the daily
+shelf](#what-to-expect)).
 Pick an item, pick a quantity (1–100), and the cost is deducted from the `Base.Money` and
 `Base.MoneyBundle` actually sitting in your inventory. The other 194 ids vanilla ships
 are not merchandise — debug fixtures, corpses, the wound and bandage overlays the health
@@ -274,8 +276,25 @@ single-player and the mod description says so too. Moving the logic behind serve
 commands is one job that has to be done all at once, and it is deliberately deferred
 past 1.0 rather than half-done before it.
 
-**Stock is capped per week, not simulated.** Since 0.15.0 the dearer half of the catalogue
-has a weekly allowance — one generator, three pistols, ten crowbars — counted per
+**The shelf rotates daily.** Since 0.16.0 the company carries **100 of its 6,017 lines on
+any given day**, drawn at random, the same all day and different every morning. A
+warehouse with no suppliers left has what came in, not a full catalogue.
+
+Shopping therefore becomes *what have they got* rather than *I will buy a hammer*. A named
+item is in stock roughly one day in sixty, with real variance — in a test run from day 1,
+an axe turned up on day 12, nails on day 30, a pistol on day 51 and a hammer not until day
+159. **If that reads as a wall rather than as a reason to come back tomorrow,
+`DailyItemCount` is the number to raise**, and 0 carries everything every day. A typical
+day's hundred averages about 19 pieces of furniture, 23 items under $10, 28 in the
+$51–250 band and less than one over $1,250.
+
+The buy window's last quick filter shows the out-of-stock lines greyed out, so you can
+always see that a thing exists, wishlist it, and know it will come round. **Selling is not
+affected** — the company buys what you bring it whether or not it happens to be selling
+one today.
+
+**Stock is also capped per week, not simulated.** Since 0.15.0 the dearer half of the
+catalogue has a weekly allowance — one generator, three pistols, ten crowbars — counted per
 character and given back if you cancel. Below about $250 on the shelf there is no limit at
 all. What there is *not* is a stock level that depletes and recovers, or scarcity that
 varies by region or by how long you have survived: that is a simulation, it needs state
@@ -358,6 +377,7 @@ that are still at an old default — anything you set yourself is left alone.
 | `MaxQuantityPerPurchase` | 100 | Cap on the quantity field. |
 | `SellContainerContents` | true | Selling a bag sells what is inside it. |
 | `MinConditionToSell` | 0.0 | Refuse items below this condition. |
+| `DailyItemCount` | 100 | Lines the company carries per day, drawn at random and redrawn every morning. 0 carries everything. |
 | `CategorySellRates` | true | Pay about 25% for weapons, ammunition, medicine, tools and radios, and about 5% for ornaments and improvised clubs, instead of one rate for everything. |
 | `AcceptPerishableFood` | false | Buy food that rots. Off (the default) means the catalogue sells you food but will not buy your harvest. |
 | `StockLimitMultiplier` | 1.0 | Scales the weekly supply limit on the dearer half of the catalogue. 0 removes it. |

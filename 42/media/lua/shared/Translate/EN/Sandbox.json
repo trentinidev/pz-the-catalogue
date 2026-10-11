@@ -43,6 +43,9 @@
     "Sandbox_TheCatalogue_StockLimitMultiplier": "Weekly supply limit",
     "Sandbox_TheCatalogue_StockLimitMultiplier_tooltip": "Scales how many of the dearer items the company can supply per week. At 1.0 that is one generator, three pistols or ten crowbars; 2.0 doubles every band, and 0 removes the limits entirely. Anything under about 250 dollars on the shelf is never limited, so ammunition, food and materials are unaffected.",
 
+    "Sandbox_TheCatalogue_DailyItemCount": "Lines carried per day",
+    "Sandbox_TheCatalogue_DailyItemCount_tooltip": "How many of the catalogue's 6,017 lines the company actually has on the shelf on any given day. The selection is drawn at random, is the same all day, and changes every morning. At 100 a named item is in stock roughly one day in sixty, so shopping becomes a question of what they have got rather than what you wanted. Set to 0 to carry everything, every day. The buy window can show out-of-stock lines greyed out, so you can still see what exists.",
+
     "Sandbox_TheCatalogue_MinConditionToSell": "Minimum condition to sell",
     "Sandbox_TheCatalogue_MinConditionToSell_tooltip": "Items below this fraction of condition are refused. 0.0 accepts anything, including near-broken gear and rotten food.",
 

@@ -13,6 +13,82 @@ release behind it; everything above that line was development in the open.
 
 ---
 
+## 0.16.0-beta — 2026-10-11
+
+### Added: the shelf rotates every day
+The company carries **100 of its 6,017 lines on any given day**, drawn at random, the same
+all day and different every morning. A warehouse with no suppliers left has what came in,
+not a full catalogue — and a shelf that changes gives the window a reason to be opened
+tomorrow.
+
+**Derived, not stored.** The obvious implementation writes today's list to modData and
+rolls it over on a tick, which gives a list that can be lost, a list that can be two lists
+if two windows disagree, and a rollover that has to happen while nobody is looking. The
+shelf here is a pure function of the day number: the same arithmetic always produces the
+same hundred ids, so there is nothing to save, nothing to migrate, and no way for a reload
+to hand the player a different shelf than the one they were looking at a second ago.
+
+**Its own generator, because the alternatives are all wrong.** `math.randomseed` reseeds
+the one generator the whole game shares, so picking a shopping list would perturb zombie
+spawns and loot rolls. `ZombRand` cannot be seeded from Lua, so it can never agree with
+itself twice. And Kahlua has no bitwise operators, which rules out every hash worth using.
+So: Park–Miller, `16807 * x mod 2^31-1`, multiplication and modulo only, every intermediate
+value under 2^53 so a double holds it exactly. The day number is seeded through the
+Numerical Recipes multiplier first, because consecutive days otherwise start 16807 apart
+and their first draws overlap — which would read as "the catalogue barely changed
+overnight".
+
+**What this actually feels like**, measured over 60 days rather than guessed:
+
+```
+a typical day's hundred     days until a named item first appears
+  furniture        18.5       axe                day 12
+  under $10        22.6       generator          day 29
+  $11-50           22.6       nails              day 30
+  $51-250          27.9       9mm box            day 44
+  $251-1,250        7.5       hunting rifle      day 49
+  over $1,250       0.8       pistol             day 51
+                              hammer             day 159
+```
+
+So shopping becomes *what have they got* rather than *I will buy a hammer*. That is the
+intended feel. **If it reads as a wall rather than as a reason to come back,
+`DailyItemCount` is the number to raise** — and 0 carries everything every day, which is
+how every version before this one behaved.
+
+- **The out-of-stock lines are still visible**, greyed, behind the buy window's last quick
+  filter. Without that the feature is opaque: a player who cannot find a generator has no
+  way to tell whether the catalogue has never sold one or simply has not got one today,
+  and the second is the point while the first would be a bug. The whole row dims — name,
+  category, weight and price — so the state reads down a long list.
+- **The detail panel says when it comes back**, and takes precedence over the weekly
+  allowance, which is irrelevant on a day the thing is not carried at all.
+- **A cart outlives the day it was filled.** Checkout lists every line that went out of
+  stock overnight, all at once, rather than one per attempt.
+- **Midnight with the window open** rebuilds the list on the existing one-second tick.
+  Otherwise the Buy button starts refusing rows that are still on screen, which reads as
+  the button being broken rather than as the day having turned.
+- **Selling is not affected.** A shop that refused to buy your axe because axes are
+  Thursday's stock would be absurd, and it would make the sell window a lottery. Pending
+  orders are not affected either: they are a debt the company already took money for.
+
+`DailyItemCount`, 100 by default.
+
+### Changed
+- `SpendFromContainers` stays on by default, confirmed rather than changed — paying out of
+  a reachable crate is the behaviour wanted, and the carry ceiling is not the thing holding
+  the economy together.
+
+### Internal
+- `TC_Daily.lua` is new and has no state at all.
+- A third test harness, `tools/tests/daily.lua`, 28 assertions. It loads the real file and
+  pins the properties a player would notice and nobody could debug from a screenshot: the
+  shelf not changing across a reload, being identical all day, holding exactly N *distinct*
+  ids on all of 200 consecutive days, consecutive days not overlapping heavily, and the
+  count falling back to "carry everything" at 0 and at anything above the catalogue length.
+
+---
+
 ## 0.15.0-beta — 2026-10-11
 
 A balance pass, measured before it was tuned. The distribution of all 4,898 prices, the

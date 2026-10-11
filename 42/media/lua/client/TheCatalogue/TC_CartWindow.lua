@@ -275,6 +275,19 @@ function TC_CartWindow:startCheckout(rush)
         return
     end
 
+    --[[ A cart outlives the day it was filled. Checked before the allowance, because
+         "they are not carrying that today" is the stronger and more actionable answer,
+         and reported as a LIST -- a cart assembled yesterday can have several lines that
+         went out of stock overnight, and telling the player one per checkout would be a
+         cruel way to spend an evening. ]]
+    local gone = TC.unavailableLines(self:stockLines())
+    if #gone > 0 then
+        self:setMessage(getText("IGUI_TC_CartOutOfStock",
+                                table.concat(gone, ", "),
+                                TC.etaShort(TC.restockHours())), true)
+        return
+    end
+
     local okStock, name, left = TC.stockCheck(self.player, self:stockLines())
     if not okStock then
         self:setMessage(getText("IGUI_TC_OutOfStock", name, left), true)
@@ -314,6 +327,17 @@ function TC_CartWindow:onOrderComplete(payload)
     -- Re-checked for the same reason the total is re-priced: the cart or the week's
     -- allowance may have moved during the action. Before the money, so a no costs nothing.
     local stockLines = self:stockLines()
+
+    -- Re-checked after the action for the same reason the total is re-priced, and because
+    -- a day can turn over inside the couple of seconds the order takes.
+    local gone = TC.unavailableLines(stockLines)
+    if #gone > 0 then
+        self:setMessage(getText("IGUI_TC_CartOutOfStock",
+                                table.concat(gone, ", "),
+                                TC.etaShort(TC.restockHours())), true)
+        return
+    end
+
     local okStock, name, left = TC.stockCheck(self.player, stockLines)
     if not okStock then
         self:setMessage(getText("IGUI_TC_OutOfStock", name, left), true)
